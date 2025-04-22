@@ -12,3 +12,4 @@ _deps
 .idea/
 .vscode/
 cmake-build-*/
+build/

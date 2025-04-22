@@ -1,0 +1,13 @@
+*.a
+*.orig
+*.so
+._obj/
+build/
+unicode/
+.idea
+cmake-*
+.vs
+out/
+CMakeUserPresets.json
+fuzz
+.vscode/
