@@ -46,9 +46,13 @@ add_custom_command(
         TARGET CamelliaBackendCore POST_BUILD
         COMMENT "Copying core build outputs..."
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_LIB_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
+
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/include ${EXPORT_INCLUDE_DIR}
+
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}/quickjs
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/
 )
 
 # swig

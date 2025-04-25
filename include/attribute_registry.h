@@ -8,7 +8,6 @@
 
 #include <map>
 #include <unordered_set>
-#include <functional>
 #include "variant.h"
 
 namespace camellia {

@@ -1,6 +1,6 @@
 ﻿project(test)
 add_subdirectory(lib)
-include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR} ${CamelliaBackend_SOURCE_DIR})
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR} ${CamelliaBackend_SOURCE_DIR} ${CamelliaBackend_SOURCE_DIR}/include)
 
 add_executable(test_run value_test.cpp
         scripting_test.cpp)

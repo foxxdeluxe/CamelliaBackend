@@ -3,7 +3,6 @@
 //
 
 #include "manager.h"
-#include "variant.h"
 
 #include "data/play/stage_data.h"
 #include "live/play/stage.h"
