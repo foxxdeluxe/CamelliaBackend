@@ -52,6 +52,7 @@ add_custom_command(
 
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_LIB_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:qjs> ${EXPORT_LIB_DIR}
 
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/camellia.h ${EXPORT_INCLUDE_DIR}
