@@ -13,7 +13,7 @@
 #include "camellia.h"
 %}
 
-%include "global.h"
+%include "camellia_typedef.h"
 
 namespace camellia {
         class actor;

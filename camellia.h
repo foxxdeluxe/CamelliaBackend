@@ -1,6 +1,7 @@
 #ifndef CAMELLIA_H
 #define CAMELLIA_H
 
+#include "camellia_typedef.h"
 #include "quickjs/quickjs.h"
 #include <format>
 #include <functional>
@@ -10,21 +11,20 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "global.h"
 
-#define RETURN_IF_NULL(P, X)                                                   \
-    if (P == nullptr) [[unlikely]]                                             \
+#define RETURN_IF_NULL(P, X)                                                                                                                                   \
+    if (P == nullptr) [[unlikely]]                                                                                                                             \
     return X
 #define RETURN_NULL_IF_NULL(P) RETURN_IF_NULL(P, nullptr)
 #define RETURN_ZERO_IF_NULL(P) RETURN_IF_NULL(P, 0)
 #define RETURN_FALSE_IF_NULL(P) RETURN_IF_NULL(P, false)
 
-#define THROW_IF_NULL(P, M)                                                    \
-    if (P == nullptr) [[unlikely]]                                             \
+#define THROW_IF_NULL(P, M)                                                                                                                                    \
+    if (P == nullptr) [[unlikely]]                                                                                                                             \
     throw std::runtime_error(M)
 
-#define THROW_UNINITIALIZED_IF_NULL(P)                                         \
-    if (P == nullptr) [[unlikely]]                                             \
+#define THROW_UNINITIALIZED_IF_NULL(P)                                                                                                                         \
+    if (P == nullptr) [[unlikely]]                                                                                                                             \
     throw uninitialized_exception(CLASS_NAME)
 
 namespace camellia {
@@ -86,10 +86,10 @@ class manager {
 
 /* VARIANT */
 #define TEXT(X) (text_t(X))
-#define DEF_VECTOR_COMMON_OPS(X)                                               \
-    bool operator==(const vector##X &other) const;                             \
-    bool operator!=(const vector##X &other) const;                             \
-                                                                               \
+#define DEF_VECTOR_COMMON_OPS(X)                                                                                                                               \
+    bool operator==(const vector##X &other) const;                                                                                                             \
+    bool operator!=(const vector##X &other) const;                                                                                                             \
+                                                                                                                                                               \
     [[nodiscard]] bool approx_equals(const vector##X &other) const
 
 struct vector2 {
@@ -160,18 +160,7 @@ struct vector4 {
 
 class variant {
   public:
-    enum types {
-        ERROR = -1,
-        VOID,
-        INTEGER,
-        NUMBER,
-        BOOLEAN,
-        TEXT,
-        VECTOR2,
-        VECTOR3,
-        VECTOR4,
-        BYTES
-    };
+    enum types { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES };
 
     static variant &get_default(types type);
 
@@ -256,8 +245,7 @@ class variant {
 
 class dirty_attribute_handler {
   public:
-    virtual boolean_t handle_dirty_attribute(hash_t h_key,
-                                             const variant &val) = 0;
+    virtual boolean_t handle_dirty_attribute(hash_t h_key, const variant &val) = 0;
 };
 
 class attribute_registry {
@@ -330,9 +318,7 @@ struct modifier_action_data : public continuous_action_data {
     variant::types value_type{variant::VOID};
     hash_t h_script_name{0ULL};
 
-    [[nodiscard]] action_types get_action_type() const override {
-        return action_data::ACTION_MODIFIER;
-    }
+    [[nodiscard]] action_types get_action_type() const override { return action_data::ACTION_MODIFIER; }
 
     ~modifier_action_data() override = default;
 };
@@ -370,8 +356,7 @@ struct text_region_attachment {
         enum modes { SEPARATE_LINES, ENVELOPE_LINES };
 
         modes mode{SEPARATE_LINES};
-        vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F},
-                pivot_pos = {0.0F, 0.0F};
+        vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
         number_t rotation{0.0F};
     };
 
@@ -428,9 +413,7 @@ template <typename T> integer_t compare_to(T a, T b) {
     return 0;
 }
 
-template <class T>
-integer_t upper_bound(const std::vector<T> &list,
-                      std::function<integer_t(const T &)> cmp) {
+template <class T> integer_t upper_bound(const std::vector<T> &list, std::function<integer_t(const T &)> cmp) {
     integer_t l = 0, r = list.size();
 
     while (l < r) {
@@ -444,9 +427,7 @@ integer_t upper_bound(const std::vector<T> &list,
     return l;
 }
 
-template <class T>
-integer_t lower_bound(const std::vector<T> &list,
-                      std::function<integer_t(const T &)> cmp) {
+template <class T> integer_t lower_bound(const std::vector<T> &list, std::function<integer_t(const T &)> cmp) {
     integer_t l = 0, r = list.size();
 
     while (l < r) {
@@ -470,10 +451,8 @@ class engine {
     engine();
     ~engine();
 
-    variant guarded_evaluate(const std::string &code,
-                             variant::types result_type);
-    variant guarded_invoke(const std::string &func_name, int argc,
-                           variant *argv, variant::types result_type);
+    variant guarded_evaluate(const std::string &code, variant::types result_type);
+    variant guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type);
     void set_property(const std::string &prop_name, const variant &prop_val);
 
 #ifndef SWIG
@@ -486,10 +465,8 @@ class engine {
       private:
         text_t msg;
     };
-    variant guarded_invoke(JSValue &this_value, const std::string &func_name,
-                           int argc, variant *argv, variant::types result_type);
-    void set_property(JSValue &this_value, const std::string &prop_name,
-                      const variant &prop_val);
+    variant guarded_invoke(JSValue &this_value, const std::string &func_name, int argc, variant *argv, variant::types result_type);
+    void set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val);
 
   private:
     static JSRuntime *_p_runtime;
@@ -498,11 +475,9 @@ class engine {
     JSAtom _length_atom;
     JSValue _global_obj;
 
-    variant _js_value_to_value(const JSValue &js_value,
-                               variant::types result_type);
+    variant _js_value_to_value(const JSValue &js_value, variant::types result_type);
     JSValue _value_to_js_value(const variant &val);
-    JSValue _new_typed_array(JSTypedArrayEnum array_type, size_t length,
-                             void *&data);
+    JSValue _new_typed_array(JSTypedArrayEnum array_type, size_t length, void *&data);
     void *_get_typed_array(JSValue typed_array, size_t &data_size) const;
     scripting_engine_error _get_exception();
 #endif
@@ -528,9 +503,7 @@ class action_timeline_keyframe {
 
     [[nodiscard]] action_timeline &get_timeline() const;
 
-    void init(const action_timeline_keyframe_data *data,
-              action_timeline *parent, integer_t ti, integer_t i,
-              number_t actual_duration);
+    void init(const action_timeline_keyframe_data *data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
 
     void fina();
 
@@ -551,19 +524,15 @@ class action_timeline {
 
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(const action_timeline_data &data, stage &stage,
-              timeline_evaluator *p_parent);
+    void init(const action_timeline_data &data, stage &stage, timeline_evaluator *p_parent);
 
     void fina();
 
-    [[nodiscard]] std::vector<const action_timeline_keyframe *>
-    sample(number_t timeline_time) const;
+    [[nodiscard]] std::vector<const action_timeline_keyframe *> sample(number_t timeline_time) const;
 
-    std::vector<const action_timeline_keyframe *>
-    update(number_t timeline_time, boolean_t continuous = true);
+    std::vector<const action_timeline_keyframe *> update(number_t timeline_time, boolean_t continuous = true);
 
-    variant get_base_value(number_t timeline_time, hash_t h_attribute_name,
-                           const modifier_action &until) const;
+    variant get_base_value(number_t timeline_time, hash_t h_attribute_name, const modifier_action &until) const;
 
     variant get_prev_value(const modifier_action &ac) const;
 
@@ -586,8 +555,7 @@ class action {
 
     [[nodiscard]] integer_t get_index() const;
 
-    virtual void init(const action_data *data, action_timeline_keyframe *parent,
-                      integer_t ti, integer_t i);
+    virtual void init(const action_data *data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
 
     virtual void fina();
 
@@ -628,16 +596,13 @@ class modifier_action : public continuous_action {
 
     [[nodiscard]] const std::map<text_t, variant> &get_default_params() const;
 
-    void init(const action_data *data, action_timeline_keyframe *p_parent,
-              integer_t ti, integer_t i) override;
+    void init(const action_data *data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
 
     void fina() override;
 
-    variant apply_modifier(number_t action_time, hash_t h_attribute_name,
-                           const variant &val) const;
+    variant apply_modifier(number_t action_time, hash_t h_attribute_name, const variant &val) const;
 
-    void apply_modifier(number_t action_time,
-                        std::map<hash_t, variant> &attributes) const;
+    void apply_modifier(number_t action_time, std::map<hash_t, variant> &attributes) const;
 
     variant final_value;
 
@@ -702,8 +667,7 @@ class actor : public dirty_attribute_handler {
   public:
     attribute_registry attributes;
 
-    [[nodiscard]] const std::map<hash_t, variant> &
-    get_default_attributes() const;
+    [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
     virtual ~actor() = default;
 
 #ifndef SWIG
@@ -824,12 +788,9 @@ class stage {
 
 #ifndef SWIG
 template <> struct std::formatter<camellia::variant::types> {
-    static constexpr auto parse(const std::format_parse_context &ctx) {
-        return ctx.begin();
-    }
+    static constexpr auto parse(const std::format_parse_context &ctx) { return ctx.begin(); }
 
-    auto format(const camellia::variant::types t,
-                std::format_context &ctx) const {
+    auto format(const camellia::variant::types t, std::format_context &ctx) const {
         std::string s;
         switch (t) {
         case camellia::variant::ERROR:
@@ -875,12 +836,9 @@ template <> struct std::formatter<camellia::variant::types> {
 
 #ifndef SWIG
 template <> struct std::formatter<camellia::action_data::action_types> {
-    static constexpr auto parse(const std::format_parse_context &ctx) {
-        return ctx.begin();
-    }
+    static constexpr auto parse(const std::format_parse_context &ctx) { return ctx.begin(); }
 
-    auto format(const camellia::action_data::action_types t,
-                std::format_context &ctx) const {
+    auto format(const camellia::action_data::action_types t, std::format_context &ctx) const {
         std::string s;
         switch (t) {
         case camellia::action_data::action_types::ACTION_MODIFIER:
