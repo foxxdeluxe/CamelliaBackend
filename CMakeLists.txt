@@ -34,8 +34,8 @@ add_library(
         live/action/action_timeline.cpp
         attribute_registry.cpp
         live/exception/uninitialized_exception.cpp
-        xxhash/xxhash.c
-        xxhash/xxh_x86dispatch.c
+        xxHash/xxhash.c
+        xxHash/xxh_x86dispatch.c
 )
 
 target_link_libraries(

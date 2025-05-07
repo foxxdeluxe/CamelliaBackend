@@ -1,0 +1,6 @@
+[submodule "quickjs"]
+	path = quickjs
+	url = https://github.com/quickjs-ng/quickjs
+[submodule "xxHash"]
+	path = xxHash
+	url = https://github.com/Cyan4973/xxHash
