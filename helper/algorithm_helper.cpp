@@ -4,8 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include "helper/algorithm_helper.h"
-#include "variant.h"
+#include "camellia.h"
 #include "xxhash/xxhash.h"
 
 namespace camellia::algorithm_helper {
@@ -31,16 +30,6 @@ namespace camellia::algorithm_helper {
         }
 
         return res;
-    }
-
-    std::u16string u8_to_u16(const std::string &str) {
-        static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-        return convert.from_bytes(str.c_str());
-    }
-
-    std::string u16_to_u8(const std::u16string &str) {
-        static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-        return convert.to_bytes(str.c_str());
     }
 
     hash_t calc_hash(const std::string &str) {

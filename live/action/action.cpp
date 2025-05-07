@@ -4,9 +4,7 @@
 
 #include <set>
 #include <format>
-#include "live/action/action.h"
-#include "live/action/action_timeline.h"
-#include "live/play/stage.h"
+#include "camellia.h"
 
 namespace camellia {
     action *action::allocate_action(const action_data *p_data) {

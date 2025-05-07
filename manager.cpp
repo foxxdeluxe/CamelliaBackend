@@ -2,10 +2,7 @@
 // Created by LENOVO on 2025/4/3.
 //
 
-#include "manager.h"
-
-#include "data/play/stage_data.h"
-#include "live/play/stage.h"
+#include "camellia.h"
 
 namespace camellia {
     void manager::register_stage_data(hash_t h_stage_name, const stage_data &data) {

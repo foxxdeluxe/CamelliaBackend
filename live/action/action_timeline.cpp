@@ -3,15 +3,9 @@
 //
 
 #include <cmath>
-#include "live/action/action_timeline.h"
-
 #include <format>
 
-#include "live/play/timeline_evaluator.h"
-#include "global.h"
-#include "helper/algorithm_helper.h"
-#include "live/exception/uninitialized_exception.h"
-#include "live/play/stage.h"
+#include "camellia.h"
 
 #define CLASS_NAME "action_timeline_keyframe"
 

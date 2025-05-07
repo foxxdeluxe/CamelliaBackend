@@ -4,8 +4,7 @@
 
 #define CLASS_NAME "actor"
 
-#include "live/play/actor.h"
-#include "live/exception/uninitialized_exception.h"
+#include "camellia.h"
 
 namespace camellia {
     const actor_data &actor::get_data() const {

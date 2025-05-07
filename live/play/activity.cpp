@@ -2,14 +2,9 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#include "live/play/activity.h"
-
 #include <format>
 
-#include "live/play/actor.h"
-#include "global.h"
-#include "live/exception/uninitialized_exception.h"
-#include "live/play/stage.h"
+#include "camellia.h"
 
 #define CLASS_NAME "activity"
 

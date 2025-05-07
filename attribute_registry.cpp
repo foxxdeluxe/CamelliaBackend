@@ -3,7 +3,7 @@
 //
 
 #include <stdexcept>
-#include "attribute_registry.h"
+#include "camellia.h"
 
 namespace camellia {
 

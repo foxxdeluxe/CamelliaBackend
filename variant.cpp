@@ -1,8 +1,7 @@
 ﻿//
 // Created by LENOVO on 2025/4/1.
 //
-#include "variant.h"
-#include "helper/algorithm_helper.h"
+#include "camellia.h"
 
 #define IMPL_VECTOR_COMMON_OPS(X) \
 bool vector ## X ::operator==(const vector ## X &other) const {  \

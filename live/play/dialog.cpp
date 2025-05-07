@@ -2,14 +2,9 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#include "live/play/dialog.h"
-
 #include <format>
 
-#include "global.h"
-#include "helper/algorithm_helper.h"
-#include "live/exception/uninitialized_exception.h"
-#include "live/play/stage.h"
+#include "camellia.h"
 
 #define CLASS_NAME "_dialog"
 namespace camellia {

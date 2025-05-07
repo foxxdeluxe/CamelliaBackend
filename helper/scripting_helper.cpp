@@ -4,7 +4,7 @@
 
 #include <sstream>
 #include <format>
-#include "helper/scripting_helper.h"
+#include "camellia.h"
 
 namespace camellia::scripting_helper {
     engine::engine() : _p_context(JS_NewContext(_p_runtime)),

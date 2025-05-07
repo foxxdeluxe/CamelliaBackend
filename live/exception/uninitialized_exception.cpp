@@ -3,7 +3,7 @@
 //
 
 #include <format>
-#include "live/exception/uninitialized_exception.h"
+#include "camellia.h"
 
 namespace camellia {
     uninitialized_exception::uninitialized_exception(const text_t &class_name) {

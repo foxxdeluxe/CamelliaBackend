@@ -3,11 +3,7 @@
 //
 
 #include <ranges>
-#include "live/play/stage.h"
-#include "global.h"
-#include "live/play/activity.h"
-#include "live/play/actor.h"
-#include "manager.h"
+#include "camellia.h"
 
 namespace camellia {
 

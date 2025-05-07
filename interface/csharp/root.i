@@ -10,25 +10,10 @@
 
 
 %{
-#include "manager.h"
-#include "attribute_registry.h"
-#include "variant.h"
-
-// live
-#include "live/play/stage.h"
-
-// data
-#include "data/play/stage_data.h"
-#include "data/action/continuous/modifier_action_data.h"
-#include "data/action/instant/instant_action_data.h"
-#include "data/basic/curve_data.h"
-
-#include "helper/scripting_helper.h"
-#include "helper/algorithm_helper.h"
+#include "camellia.h"
 %}
 
 %include "global.h"
-
 
 namespace camellia {
         class actor;
@@ -106,32 +91,4 @@ namespace camellia {
         %feature("director") actor;
 }
 
-%include "../include/rc_obj.h"
-%include "../include/manager.h"
-%include "../include/attribute_registry.h"
-%include "../include/variant.h"
-
-// live
-%include "../include/live/play/timeline_evaluator.h"
-%include "../include/live/play/stage.h"
-%include "../include/live/play/dialog.h"
-%include "../include/live/play/actor.h"
-
-// data
-%include "../include/data/basic/curve_data.h"
-
-%include "../include/data/play/stage_data.h"
-%include "../include/data/play/dialog_data.h"
-%include "../include/data/play/beat_data.h"
-%include "../include/data/play/actor_data.h"
-%include "../include/data/play/activity_data.h"
-
-%include "../include/data/action/action_timeline_data.h"
-%include "../include/data/action/action_data.h"
-%include "../include/data/action/continuous/continuous_action_data.h"
-%include "../include/data/action/continuous/modifier_action_data.h"
-%include "../include/data/action/instant/instant_action_data.h"
-
-// helpers
-%include "../include/helper/scripting_helper.h"
-%include "../include/helper/algorithm_helper.h"
+%include "camellia.h"

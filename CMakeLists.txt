@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.30)
 project(CamelliaBackend)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 
@@ -13,7 +15,7 @@ set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 add_subdirectory(quickjs)
 add_subdirectory(test)
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR})
 
 # main C++ library
 add_library(
@@ -34,7 +36,6 @@ add_library(
         live/exception/uninitialized_exception.cpp
         xxhash/xxhash.c
         xxhash/xxh_x86dispatch.c
-        rc_obj.cpp
 )
 
 target_link_libraries(
@@ -45,11 +46,16 @@ target_link_libraries(
 add_custom_command(
         TARGET CamelliaBackendCore POST_BUILD
         COMMENT "Copying core build outputs..."
+
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_LIB_DIR} 
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_INCLUDE_DIR} 
+
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_LIB_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
 
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/include ${EXPORT_INCLUDE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/camellia.h ${EXPORT_INCLUDE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/global.h ${EXPORT_INCLUDE_DIR}
 
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}/quickjs
         COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/
@@ -82,6 +88,8 @@ target_link_libraries(
 add_custom_command(
         TARGET CamelliaBackendCSharp POST_BUILD
         COMMENT "Copying SWIG C# bindings & build outputs..."
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_CSHARP_LIB_DIR}
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_CSHARP_GLUE_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_CSHARP_LIB_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_CSHARP_GLUE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCSharp> ${EXPORT_CSHARP_LIB_DIR}
