@@ -91,4 +91,6 @@ namespace camellia {
         %feature("director") actor;
 }
 
+%warnfilter(473) stage;
+%warnfilter(473) dialog;
 %include "camellia.h"

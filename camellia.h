@@ -246,6 +246,7 @@ class variant {
 class dirty_attribute_handler {
   public:
     virtual boolean_t handle_dirty_attribute(hash_t h_key, const variant &val) = 0;
+    virtual ~dirty_attribute_handler() = default;
 };
 
 class attribute_registry {
@@ -343,12 +344,13 @@ struct activity_data {
 
 struct actor_data {
     integer_t h_actor_type;
-    text_t name, nickname;
 
     // actors can share names, so a unique id is needed
-    hash_t h_id;
+    hash_t h_actor_id;
 
     std::map<hash_t, variant> default_attributes;
+    std::map<integer_t, activity_data> children;
+    action_timeline_data timeline;
 };
 
 struct text_region_attachment {
@@ -524,7 +526,7 @@ class action_timeline {
 
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(const action_timeline_data &data, stage &stage, timeline_evaluator *p_parent);
+    void init(std::vector<const action_timeline_data *> data, stage &stage, timeline_evaluator *p_parent);
 
     void fina();
 
@@ -537,12 +539,13 @@ class action_timeline {
     variant get_prev_value(const modifier_action &ac) const;
 
   private:
-    const action_timeline_data *_p_data;
-    std::vector<integer_t> _next_keyframe_indices;
-    std::vector<std::vector<action_timeline_keyframe>> _tracks;
+    std::vector<const action_timeline_data *> _data{};
+    number_t _effective_duration{0.0F};
+    std::vector<integer_t> _next_keyframe_indices{};
+    std::vector<std::vector<action_timeline_keyframe>> _tracks{};
 
-    stage *_p_stage;
-    timeline_evaluator *_p_timeline_evaluator;
+    stage *_p_stage{nullptr};
+    timeline_evaluator *_p_timeline_evaluator{nullptr};
 };
 
 class action {
@@ -643,7 +646,7 @@ class timeline_evaluator : public dirty_attribute_handler {
 class activity : public timeline_evaluator {
   public:
     [[nodiscard]] stage *get_stage() const;
-    void init(const activity_data &data, boolean_t keep_actor, stage &parent);
+    void init(const activity_data &data, boolean_t keep_actor, stage &sta, activity *p_parent);
     void fina();
     number_t update(number_t beat_time) override;
     variant get_initial_value(hash_t h_attribute_name) override;
@@ -652,7 +655,7 @@ class activity : public timeline_evaluator {
   private:
     const activity_data *_p_data{};
 
-    stage *_p_parent_stage{};
+    stage *_p_stage{};
     boolean_t _is_valid{false};
 
     action_timeline _timeline;
@@ -668,12 +671,13 @@ class actor : public dirty_attribute_handler {
     attribute_registry attributes;
 
     [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
-    virtual ~actor() = default;
+    boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 
 #ifndef SWIG
     [[nodiscard]] const actor_data &get_data() const;
-    void init(const actor_data &data);
+    void init(const actor_data &data, stage &sta, activity *p_parent);
     void fina();
+    number_t update_children(number_t beat_time);
 
   private:
     const text_t POSITION_NAME = "position";
@@ -681,6 +685,9 @@ class actor : public dirty_attribute_handler {
     const text_t ROTATION_NAME = "rotation";
 
     const actor_data *_p_data;
+    std::map<integer_t, activity> _children;
+    stage *_p_stage{nullptr};
+    activity *_p_parent{nullptr};
 #endif
 };
 
@@ -751,7 +758,7 @@ class dialog {
 class stage {
   public:
     [[nodiscard]] virtual dialog &get_main_dialog() const = 0;
-    virtual actor &allocate_actor(integer_t aid, hash_t h_actor_type) = 0;
+    virtual actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) = 0;
     [[nodiscard]] virtual actor *get_actor(integer_t aid) = 0;
     virtual void collect_actor(integer_t aid) = 0;
     void advance();
@@ -778,7 +785,7 @@ class stage {
     manager *_p_parent_backend{nullptr};
     dialog *_p_main_dialog{nullptr};
 
-    std::map<integer_t, activity> _activities;
+    actor _root_actor{};
 #endif
 };
 

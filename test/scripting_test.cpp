@@ -2,8 +2,8 @@
 // Created by LENOVO on 2025/4/3.
 //
 
+#include "camellia.h"
 #include "gtest/gtest.h"
-#include "helper/scripting_helper.h"
 
 using namespace camellia;
 
@@ -67,7 +67,7 @@ TEST(scripting_text_suite, js_value_from_to_value) {
     res = engine.guarded_evaluate("val", variant::BYTES);
     ASSERT_EQ(res.get_value_type(), variant::BYTES);
 
-    auto& bs = res.get_bytes();
+    auto &bs = res.get_bytes();
     ASSERT_EQ(bs.size(), 4);
     ASSERT_EQ(bs[0], 0);
     ASSERT_EQ(bs[1], 1);
@@ -78,10 +78,10 @@ TEST(scripting_text_suite, js_value_from_to_value) {
 TEST(scripting_text_suite, invoke) {
     auto engine = scripting_helper::engine();
 
-    engine.guarded_evaluate(
-            "function run(b) {\n"
-            "  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];\n"
-            "}\n", variant::VOID);
+    engine.guarded_evaluate("function run(b) {\n"
+                            "  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];\n"
+                            "}\n",
+                            variant::VOID);
 
     engine.set_property("a", variant(vector3(1.0F, 1.0F, 4.0F)));
 
