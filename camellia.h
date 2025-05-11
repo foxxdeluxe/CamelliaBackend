@@ -72,7 +72,7 @@ class manager {
   public:
     enum log_type { LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
-    virtual void log(log_type type, const text_t &msg) const = 0;
+    virtual void log(const text_t &msg, log_type type = log_type::LOG_INFO) const = 0;
     virtual ~manager() = default;
 
     void register_stage_data(hash_t h_stage_name, const stage_data &data);
