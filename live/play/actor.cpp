@@ -30,13 +30,14 @@ void actor::init(const actor_data &data, stage &sta, activity *p_parent) {
     {
         auto it = _children.begin();
         while (it != _children.end()) {
-            if (data.children.contains(it->first))
-                ++it;
-            else {
+            if (data.children.contains(it->first)) {
+                it->second.fina(true);
+            } else {
                 // remove redundant activity instances
-                it->second.fina();
-                _children.erase(it++);
+                it->second.fina(false);
+                _children.erase(it);
             }
+            ++it;
         }
     }
 
@@ -47,12 +48,12 @@ void actor::init(const actor_data &data, stage &sta, activity *p_parent) {
 
             try {
                 if (i != _children.end()) {
-                    i->second.init(it->second, true, *_p_stage, p_parent);
+                    i->second.init(it->second, it->first, true, *_p_stage, p_parent);
                 } else {
                     // add new activity instances
 
                     _children[it->first] = activity();
-                    _children[it->first].init(it->second, false, *_p_stage, p_parent);
+                    _children[it->first].init(it->second, it->first, false, *_p_stage, p_parent);
                 }
             } catch (const std::runtime_error &e) {
                 // some activities failed to initialize and are not in a valid state
@@ -72,12 +73,18 @@ number_t actor::update_children(number_t beat_time) {
     return time_to_end;
 }
 
-void actor::fina() {
+void actor::fina(boolean_t keep_children) {
     _p_data = nullptr;
 
     for (auto &child : _children) {
-        child.second.fina();
+        child.second.fina(keep_children);
     }
+
+    if (!keep_children) {
+        _children.clear();
+    }
+
+    attributes.clear();
 }
 } // namespace camellia
 #undef CLASS_NAME

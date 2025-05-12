@@ -41,6 +41,7 @@ namespace camellia {
 %shared_ptr(camellia::continuous_action_data)
 %shared_ptr(camellia::modifier_action_data)
 %shared_ptr(camellia::instant_action_data)
+%shared_ptr(camellia::stage_data)
 
 namespace std {
         %template(TextValueMap) map<camellia::text_t, camellia::variant>;

@@ -69,18 +69,18 @@ class timeline_evaluator;
 
 /* MANAGER */
 class manager {
-  public:
+public:
     enum log_type { LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
     virtual void log(const text_t &msg, log_type type = log_type::LOG_INFO) const = 0;
     virtual ~manager() = default;
 
-    void register_stage_data(hash_t h_stage_name, const stage_data &data);
+    void register_stage_data(hash_t h_stage_name, std::shared_ptr<stage_data> data);
     void configure_stage(stage &s, hash_t h_stage_name);
     void clean_stage(stage &s) const;
 #ifndef SWIG
-  private:
-    std::unordered_map<hash_t, stage_data> _stage_data_map{};
+private:
+    std::unordered_map<hash_t, std::shared_ptr<stage_data>> _stage_data_map{};
 #endif
 };
 
@@ -159,7 +159,7 @@ struct vector4 {
 };
 
 class variant {
-  public:
+public:
     enum types { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES };
 
     static variant &get_default(types type);
@@ -232,7 +232,7 @@ class variant {
     explicit(false) variant(const bytes_t &b);
     explicit(false) variant(bytes_t &&b);
 
-  private:
+private:
     types _type;
     obj_union _obj{};
 
@@ -244,13 +244,13 @@ class variant {
 /* ATTRIBUTE REGISTRY */
 
 class dirty_attribute_handler {
-  public:
+public:
     virtual boolean_t handle_dirty_attribute(hash_t h_key, const variant &val) = 0;
     virtual ~dirty_attribute_handler() = default;
 };
 
 class attribute_registry {
-  public:
+public:
     void add(hash_t h_key, const variant &val);
 
     boolean_t contains_key(hash_t h_key);
@@ -274,7 +274,7 @@ class attribute_registry {
 #ifndef SWIG
     void set(hash_t h_key, variant &&val);
 
-  private:
+private:
     std::map<hash_t, variant> _attributes;
     std::unordered_set<hash_t> _dirty_attributes;
 #endif
@@ -337,20 +337,22 @@ struct curve_data {
 };
 
 struct activity_data {
-    hash_t h_actor_id;
-    action_timeline_data timeline;
-    std::map<hash_t, variant> initial_attributes;
+    integer_t id{-1};
+
+    hash_t h_actor_id{0ULL};
+    action_timeline_data timeline{};
+    std::map<hash_t, variant> initial_attributes{};
 };
 
 struct actor_data {
-    integer_t h_actor_type;
+    integer_t h_actor_type{0};
 
     // actors can share names, so a unique id is needed
-    hash_t h_actor_id;
+    hash_t h_actor_id{0ULL};
 
-    std::map<hash_t, variant> default_attributes;
-    std::map<integer_t, activity_data> children;
-    action_timeline_data timeline;
+    std::map<hash_t, variant> default_attributes{};
+    std::map<integer_t, activity_data> children{};
+    action_timeline_data timeline{};
 };
 
 struct text_region_attachment {
@@ -380,7 +382,7 @@ struct text_region_data {
 };
 
 struct dialog_data {
-    hash_t h_character_id{};
+    hash_t h_actor_id{};
     std::vector<text_region_data> regions{};
     action_timeline_data region_life_timeline{.effective_duration = -1.0F};
 };
@@ -449,7 +451,7 @@ hash_t calc_hash(const std::string &str);
 
 namespace scripting_helper {
 class engine {
-  public:
+public:
     engine();
     ~engine();
 
@@ -459,18 +461,18 @@ class engine {
 
 #ifndef SWIG
     class scripting_engine_error : public std::exception {
-      public:
+    public:
         [[nodiscard]] const char *what() const noexcept override;
         explicit scripting_engine_error(text_t &&msg);
         explicit scripting_engine_error(variant &&err);
 
-      private:
+    private:
         text_t msg;
     };
     variant guarded_invoke(JSValue &this_value, const std::string &func_name, int argc, variant *argv, variant::types result_type);
     void set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val);
 
-  private:
+private:
     static JSRuntime *_p_runtime;
 
     JSContext *_p_context;
@@ -488,7 +490,7 @@ class engine {
 
 #ifndef SWIG
 class action_timeline_keyframe {
-  public:
+public:
     [[nodiscard]] number_t get_time() const;
 
     [[nodiscard]] number_t get_preferred_duration() const;
@@ -511,7 +513,7 @@ class action_timeline_keyframe {
 
     [[nodiscard]] variant query_param(const text_t &key) const;
 
-  private:
+private:
     const action_timeline_keyframe_data *_data{};
     action_timeline *_parent_timeline{};
     number_t _actual_duration{};
@@ -519,7 +521,7 @@ class action_timeline_keyframe {
 };
 
 class action_timeline {
-  public:
+public:
     [[nodiscard]] stage &get_stage() const;
 
     [[nodiscard]] timeline_evaluator *get_timeline_evaluator() const;
@@ -538,7 +540,7 @@ class action_timeline {
 
     variant get_prev_value(const modifier_action &ac) const;
 
-  private:
+private:
     std::vector<const action_timeline_data *> _data{};
     number_t _effective_duration{0.0F};
     std::vector<integer_t> _next_keyframe_indices{};
@@ -549,7 +551,7 @@ class action_timeline {
 };
 
 class action {
-  public:
+public:
     static action *allocate_action(const action_data *p_data);
 
     static void collect_action(const action *action);
@@ -566,23 +568,23 @@ class action {
 
     virtual ~action() = default;
 
-  protected:
+protected:
     const action_data *p_base_data{};
 
-  private:
+private:
     integer_t track_index{-1}, index{-1};
 };
 
 class continuous_action : public action {
-  public:
+public:
 };
 
 class instant_action : public action {
-  public:
+public:
 };
 
 class modifier_action : public continuous_action {
-  public:
+public:
     [[nodiscard]] action_data::action_types get_type() const override;
 
     [[nodiscard]] const modifier_action_data *get_data() const;
@@ -609,7 +611,7 @@ class modifier_action : public continuous_action {
 
     variant final_value;
 
-  private:
+private:
     const text_t RUN_NAME = "run";
     const text_t TIME_NAME = "time";
     const text_t DURATION_NAME = "duration";
@@ -627,47 +629,46 @@ class modifier_action : public continuous_action {
 #endif
 
 class uninitialized_exception : public std::exception {
-  public:
+public:
     [[nodiscard]] const char *what() const noexcept override;
 
     explicit uninitialized_exception(const text_t &class_name);
 
-  private:
+private:
     text_t _msg;
 };
 
 class timeline_evaluator : public dirty_attribute_handler {
-  public:
+public:
     virtual number_t update(number_t timeline_time) = 0;
     virtual variant get_initial_value(hash_t h_attribute_name) = 0;
 };
 
 #ifndef SWIG
 class activity : public timeline_evaluator {
-  public:
+public:
     [[nodiscard]] stage *get_stage() const;
-    void init(const activity_data &data, boolean_t keep_actor, stage &sta, activity *p_parent);
-    void fina();
+    void init(const activity_data &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity);
+    void fina(boolean_t keep_actor);
     number_t update(number_t beat_time) override;
     variant get_initial_value(hash_t h_attribute_name) override;
     boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 
-  private:
-    const activity_data *_p_data{};
+private:
+    const activity_data *_p_data{nullptr};
 
-    stage *_p_stage{};
+    stage *_p_stage{nullptr};
     boolean_t _is_valid{false};
 
-    action_timeline _timeline;
-    std::map<hash_t, variant> _initial_attributes;
+    action_timeline _timeline{};
+    std::map<hash_t, variant> _initial_attributes{};
 
-    static integer_t next_aid;
     integer_t _aid{-1};
 };
 #endif
 
 class actor : public dirty_attribute_handler {
-  public:
+public:
     attribute_registry attributes;
 
     [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
@@ -676,14 +677,14 @@ class actor : public dirty_attribute_handler {
 #ifndef SWIG
     [[nodiscard]] const actor_data &get_data() const;
     void init(const actor_data &data, stage &sta, activity *p_parent);
-    void fina();
+    void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time);
 
-  private:
-    const text_t POSITION_NAME = "position";
-    const text_t SCALE_NAME = "scale";
-    const text_t ROTATION_NAME = "rotation";
+    constexpr static text_t POSITION_NAME = "position";
+    constexpr static text_t SCALE_NAME = "scale";
+    constexpr static text_t ROTATION_NAME = "rotation";
 
+private:
     const actor_data *_p_data;
     std::map<integer_t, activity> _children;
     stage *_p_stage{nullptr};
@@ -692,7 +693,7 @@ class actor : public dirty_attribute_handler {
 };
 
 class text_region : public timeline_evaluator {
-  public:
+public:
     [[nodiscard]] text_t get_current_text() const;
     [[nodiscard]] text_t get_full_text() const;
     [[nodiscard]] boolean_t get_is_visible() const;
@@ -709,7 +710,7 @@ class text_region : public timeline_evaluator {
     virtual void init(const text_region_data &data, dialog &parent);
     virtual void fina();
 
-  private:
+private:
     const hash_t H_TEXT_NAME = algorithm_helper::calc_hash("text");
 
     const text_t FULL_TEXT_LENGTH_NAME = "full_text_length";
@@ -731,7 +732,7 @@ class text_region : public timeline_evaluator {
 };
 
 class dialog {
-  public:
+public:
     virtual text_region &append_text_region() = 0;
     [[nodiscard]] virtual text_region *get_text_region(size_t index) = 0;
     [[nodiscard]] virtual size_t get_text_region_count() = 0;
@@ -745,7 +746,7 @@ class dialog {
     void fina();
     void advance(const dialog_data &data);
 
-  private:
+private:
     const dialog_data *_current{};
     stage *_parent_stage{};
 
@@ -756,8 +757,8 @@ class dialog {
 };
 
 class stage {
-  public:
-    [[nodiscard]] virtual dialog &get_main_dialog() const = 0;
+public:
+    [[nodiscard]] virtual dialog &get_main_dialog() = 0;
     virtual actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) = 0;
     [[nodiscard]] virtual actor *get_actor(integer_t aid) = 0;
     virtual void collect_actor(integer_t aid) = 0;
@@ -773,7 +774,7 @@ class stage {
     const std::string *get_script_code(hash_t h_script_name) const;
     void set_beat(const beat_data *beat);
 
-  private:
+private:
     const stage_data *_scenario{};
 
     const beat_data *_current_beat{nullptr};
@@ -785,7 +786,9 @@ class stage {
     manager *_p_parent_backend{nullptr};
     dialog *_p_main_dialog{nullptr};
 
-    actor _root_actor{};
+    activity _root_activity{};
+    static activity_data _root_activity_data;
+    actor_data _root_actor_data{};
 #endif
 };
 
@@ -836,7 +839,7 @@ template <> struct std::formatter<camellia::variant::types> {
         return fmt.format(s, ctx);
     }
 
-  private:
+private:
     std::formatter<std::string> fmt;
 };
 #endif
@@ -857,7 +860,7 @@ template <> struct std::formatter<camellia::action_data::action_types> {
         return fmt.format(s, ctx);
     }
 
-  private:
+private:
     std::formatter<std::string> fmt;
 };
 #endif

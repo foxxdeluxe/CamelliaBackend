@@ -10,23 +10,21 @@
 
 namespace camellia {
 
-integer_t activity::next_aid = 0;
-
 stage *activity::get_stage() const { return _p_stage; }
 
-void activity::init(const activity_data &data, boolean_t keep_actor, stage &sta, activity *p_parent) {
+void activity::init(const activity_data &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity) {
     _p_data = &data;
     _p_stage = &sta;
+    _aid = aid;
 
     actor *p_actor;
     if (!keep_actor) {
-        _aid = next_aid++;
         const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);
         THROW_IF_NULL(actor_data, std::format("Actor data not found.\n"
                                               "Actor = {}, Activity = {}",
-                                              actor_data->h_actor_id, _aid));
+                                              _p_data->h_actor_id, _aid));
 
-        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent->_aid);
+        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent_activity == nullptr ? -1 : p_parent_activity->_aid);
         p_actor->init(*actor_data, *_p_stage, this);
     } else if ((p_actor = sta.get_actor(_aid)) == nullptr) {
         throw std::runtime_error(std::format("Could not keep actor if it doesn't exist.\n"
@@ -43,13 +41,15 @@ void activity::init(const activity_data &data, boolean_t keep_actor, stage &sta,
     _is_valid = true;
 }
 
-void activity::fina() {
+void activity::fina(boolean_t keep_actor) {
     _is_valid = false;
 
-    auto p_actor = _p_stage->get_actor(_aid);
-    if (p_actor != nullptr) {
-        p_actor->fina();
-        _p_stage->collect_actor(_aid);
+    if (!keep_actor) {
+        auto p_actor = _p_stage->get_actor(_aid);
+        if (p_actor != nullptr) {
+            p_actor->fina(false);
+            _p_stage->collect_actor(_aid);
+        }
     }
 
     _timeline.fina();

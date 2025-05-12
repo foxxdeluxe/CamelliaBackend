@@ -6,13 +6,21 @@
 
 namespace camellia {
 
+activity_data stage::_root_activity_data{.id = 0};
+
 void stage::set_beat(const beat_data *beat) {
     _current_beat = beat;
     _beat_begin_time = _stage_time;
 
+    _root_actor_data.children = beat->activities;
+    auto actor = get_actor(0);
+    actor->fina(true);
+    actor->init(_root_actor_data, *this, &_root_activity);
+
+    _root_activity.fina(true);
+    _root_activity.init(_root_activity_data, 0, true, *this, nullptr);
+
     get_main_dialog().advance(beat->dialog);
-    actor_data root_data{.h_actor_type = 0u, .h_actor_id = 0u, .default_attributes = {}, .children = beat->activities};
-    _root_actor.init(root_data, *this, nullptr);
 }
 
 void stage::advance() {
@@ -42,6 +50,10 @@ void stage::init(const stage_data &data, manager &parent) {
 
     get_main_dialog().init(*this);
 
+    // allocate the dummy actor to be used as the parent of all actors in a beat
+    // the root actor is managed by the stage itself, instead of the activity
+    allocate_actor(0, 0ULL, -1);
+
     _p_parent_backend = &parent;
 }
 
@@ -49,7 +61,9 @@ void stage::fina() {
     _scenario = nullptr;
 
     get_main_dialog().fina();
-    _root_actor.fina();
+
+    collect_actor(0);
+    _root_activity.fina(true);
 
     _p_parent_backend = nullptr;
 }
@@ -58,7 +72,7 @@ number_t stage::update(const number_t stage_time) {
     _stage_time = stage_time;
     const auto beat_time = stage_time - _beat_begin_time;
 
-    _time_to_end = std::max(get_main_dialog().update(beat_time), _root_actor.update_children(beat_time));
+    _time_to_end = std::max(get_main_dialog().update(beat_time), _root_activity.update(beat_time));
     return _time_to_end;
 }
 
