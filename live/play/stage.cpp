@@ -80,4 +80,6 @@ const std::string *stage::get_script_code(const hash_t h_script_name) const {
     const auto it = _scenario->scripts.find(h_script_name);
     return it == _scenario->scripts.end() ? nullptr : &it->second;
 }
+
+manager &stage::get_parent_manager() { return *_p_parent_backend; }
 } // namespace camellia

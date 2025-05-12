@@ -764,6 +764,7 @@ public:
     virtual void collect_actor(integer_t aid) = 0;
     void advance();
     virtual number_t update(number_t stage_time);
+    [[nodiscard]] manager &get_parent_manager();
     virtual ~stage() = default;
 
 #ifndef SWIG
