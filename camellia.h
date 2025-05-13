@@ -357,9 +357,9 @@ struct actor_data {
 
 struct text_region_attachment {
     struct attachment_layout {
-        enum modes { SEPARATE_LINES, ENVELOPE_LINES };
+        enum modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
 
-        modes mode{SEPARATE_LINES};
+        modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
         vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
         number_t rotation{0.0F};
     };
