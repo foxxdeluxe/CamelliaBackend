@@ -75,7 +75,7 @@ public:
     virtual void log(const text_t &msg, log_type type = log_type::LOG_INFO) const = 0;
     virtual ~manager() = default;
 
-    void register_stage_data(hash_t h_stage_name, std::shared_ptr<stage_data> data);
+    void register_stage_data(std::shared_ptr<stage_data> data);
     void configure_stage(stage &s, hash_t h_stage_name);
     void clean_stage(stage &s) const;
 #ifndef SWIG
@@ -395,6 +395,8 @@ struct beat_data {
 };
 
 struct stage_data {
+    hash_t h_stage_name{0ULL};
+
     std::vector<beat_data> beats{};
     std::map<hash_t, text_t> scripts{};
     std::map<hash_t, actor_data> actors{};

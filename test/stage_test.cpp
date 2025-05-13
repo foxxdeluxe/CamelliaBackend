@@ -128,6 +128,7 @@ TEST_F(stage_test, simulation) {
     test_beat_1.dialog = test_beat_1_dialog_1;
 
     stage_data data{
+        .h_stage_name = algorithm_helper::calc_hash("test_stage_1"),
         .beats = {test_beat_1},
         .scripts =
             {
