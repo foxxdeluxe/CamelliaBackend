@@ -283,18 +283,17 @@ private:
 struct action_data {
     enum action_types {
         // negative types are instant actions
-        ACTION_MODIFIER = 1
+        INVALID_MODIFIER = 0,
         // positive types are continuous actions
+        ACTION_MODIFIER = 1
     };
 
     hash_t h_action_name{0ULL};
     std::map<text_t, variant> default_params{};
 
-    [[nodiscard]] virtual action_types get_action_type() const = 0;
+    [[nodiscard]] virtual action_types get_action_type() const { return INVALID_MODIFIER; }
 
     virtual ~action_data() = default;
-
-protected:
     action_data() = default;
     action_data(const action_data &other) = default;
 };
@@ -317,7 +316,6 @@ struct action_timeline_data {
 };
 
 struct continuous_action_data : public action_data {
-protected:
     continuous_action_data() = default;
     continuous_action_data(const continuous_action_data &other) = default;
 };
@@ -336,7 +334,6 @@ struct modifier_action_data : public continuous_action_data {
 };
 
 struct instant_action_data : public action_data {
-protected:
     instant_action_data() = default;
     instant_action_data(const instant_action_data &other) = default;
 };
