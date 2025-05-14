@@ -293,6 +293,10 @@ struct action_data {
     [[nodiscard]] virtual action_types get_action_type() const = 0;
 
     virtual ~action_data() = default;
+
+protected:
+    action_data() = default;
+    action_data(const action_data &other) = default;
 };
 
 struct action_timeline_keyframe_data {
@@ -300,19 +304,23 @@ struct action_timeline_keyframe_data {
     number_t preferred_duration_signed{0.0F};
 
     hash_t h_action_name{0ULL};
-    std::map<text_t, variant> override_params{};
+    std::map<text_t, variant> override_params;
 };
 
 struct action_timeline_track_data {
-    std::vector<std::shared_ptr<action_timeline_keyframe_data>> keyframes{};
+    std::vector<std::shared_ptr<action_timeline_keyframe_data>> keyframes;
 };
 
 struct action_timeline_data {
-    std::vector<std::shared_ptr<action_timeline_track_data>> tracks{};
+    std::vector<std::shared_ptr<action_timeline_track_data>> tracks;
     number_t effective_duration{0.0F};
 };
 
-struct continuous_action_data : public action_data {};
+struct continuous_action_data : public action_data {
+protected:
+    continuous_action_data() = default;
+    continuous_action_data(const continuous_action_data &other) = default;
+};
 
 struct modifier_action_data : public continuous_action_data {
     hash_t h_attribute_name{0ULL};
@@ -322,9 +330,16 @@ struct modifier_action_data : public continuous_action_data {
     [[nodiscard]] action_types get_action_type() const override { return action_data::ACTION_MODIFIER; }
 
     ~modifier_action_data() override = default;
+
+    modifier_action_data() = default;
+    modifier_action_data(const modifier_action_data &other) : continuous_action_data(other) {}
 };
 
-struct instant_action_data : public action_data {};
+struct instant_action_data : public action_data {
+protected:
+    instant_action_data() = default;
+    instant_action_data(const instant_action_data &other) = default;
+};
 
 struct curve_point_data {
     vector2 position{0.0F, 0.0F};
@@ -333,7 +348,7 @@ struct curve_point_data {
 };
 
 struct curve_data {
-    std::vector<std::shared_ptr<curve_point_data>> points{};
+    std::vector<std::shared_ptr<curve_point_data>> points;
 };
 
 struct activity_data {
@@ -361,6 +376,8 @@ struct text_region_attachment {
     modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
     vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
     number_t rotation{0.0F};
+
+    text_region_attachment() = delete;
 };
 
 struct text_region_attachment_text : public text_region_attachment {
@@ -379,7 +396,7 @@ struct text_region_data {
 
 struct dialog_data {
     hash_t h_actor_id{};
-    std::vector<std::shared_ptr<text_region_data>> regions{};
+    std::vector<std::shared_ptr<text_region_data>> regions;
     std::shared_ptr<action_timeline_data> region_life_timeline{std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F})};
 };
 
@@ -393,14 +410,25 @@ struct beat_data {
 struct stage_data {
     hash_t h_stage_name{0ULL};
 
-    std::vector<std::shared_ptr<beat_data>> beats{};
-    std::map<hash_t, text_t> scripts{};
-    std::map<hash_t, std::shared_ptr<actor_data>> actors{};
+    std::vector<std::shared_ptr<beat_data>> beats;
+    std::map<hash_t, text_t> scripts;
+    std::map<hash_t, std::shared_ptr<actor_data>> actors;
 
     // pointers in data structs must point to new-ed objects
-    std::map<hash_t, std::shared_ptr<action_data>> actions{};
+    std::map<hash_t, std::shared_ptr<action_data>> actions;
 
     ~stage_data() = default;
+
+    stage_data() = default;
+    stage_data(const stage_data &other) : h_stage_name(other.h_stage_name), beats(other.beats), scripts(other.scripts), actors(other.actors) {
+        for (const auto &[h_action_name, p_action] : other.actions) {
+            switch (p_action->get_action_type()) {
+            case action_data::ACTION_MODIFIER:
+                actions[h_action_name] = std::make_shared<modifier_action_data>(*dynamic_cast<const modifier_action_data *>(p_action.get()));
+                break;
+            }
+        }
+    }
 };
 
 namespace algorithm_helper {
