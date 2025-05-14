@@ -30,7 +30,7 @@ number_t action_timeline_keyframe::get_actual_duration() const {
     return _actual_duration;
 }
 
-const action_timeline_keyframe_data *action_timeline_keyframe::get_data() const { return _data; }
+const std::shared_ptr<action_timeline_keyframe_data> action_timeline_keyframe::get_data() const { return _data; }
 
 const std::map<text_t, variant> *action_timeline_keyframe::get_override_params() const {
     RETURN_NULL_IF_NULL(_data);
@@ -41,7 +41,8 @@ action &action_timeline_keyframe::get_action() const { return *_p_action; }
 
 action_timeline &action_timeline_keyframe::get_timeline() const { return *_parent_timeline; }
 
-void action_timeline_keyframe::init(const action_timeline_keyframe_data *data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration) {
+void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyframe_data> data, action_timeline *parent, integer_t ti, integer_t i,
+                                    number_t actual_duration) {
 
     _data = data;
     _parent_timeline = parent;
@@ -85,23 +86,23 @@ timeline_evaluator *action_timeline::get_timeline_evaluator() const { return _p_
 
 number_t action_timeline::get_effective_duration() const { return _effective_duration; }
 
-void action_timeline::init(std::vector<const action_timeline_data *> data, stage &stage, timeline_evaluator *p_parent) {
+void action_timeline::init(std::vector<std::shared_ptr<action_timeline_data>> data, stage &stage, timeline_evaluator *p_parent) {
     _data = data;
     _p_stage = &stage;
     _p_timeline_evaluator = p_parent;
 
     for (const auto &d : data) {
         for (int t = 0; t < d->tracks.size(); t++) {
-            auto &track = d->tracks[t];
+            auto track = d->tracks[t];
             std::vector<action_timeline_keyframe> live_track;
-            for (int i = 0; i < track.keyframes.size(); i++) {
-                auto &keyframe = track.keyframes[i];
+            for (int i = 0; i < track->keyframes.size(); i++) {
+                auto keyframe = track->keyframes[i];
                 live_track.emplace_back();
                 auto &live_keyframe = live_track.back();
-                auto preferred_duration = std::fabsf(keyframe.preferred_duration_signed);
+                auto preferred_duration = std::fabsf(keyframe->preferred_duration_signed);
                 live_keyframe.init(
-                    &keyframe, this, t, i,
-                    (i >= track.keyframes.size() - 1 ? preferred_duration : std::min(track.keyframes[i + 1].time - keyframe.time, preferred_duration)));
+                    keyframe, this, t, i,
+                    (i >= track->keyframes.size() - 1 ? preferred_duration : std::min(track->keyframes[i + 1]->time - keyframe->time, preferred_duration)));
             }
 
             _tracks.push_back(std::move(live_track));

@@ -304,11 +304,11 @@ struct action_timeline_keyframe_data {
 };
 
 struct action_timeline_track_data {
-    std::vector<action_timeline_keyframe_data> keyframes{};
+    std::vector<std::shared_ptr<action_timeline_keyframe_data>> keyframes{};
 };
 
 struct action_timeline_data {
-    std::vector<action_timeline_track_data> tracks{};
+    std::vector<std::shared_ptr<action_timeline_track_data>> tracks{};
     number_t effective_duration{0.0F};
 };
 
@@ -333,14 +333,14 @@ struct curve_point_data {
 };
 
 struct curve_data {
-    std::vector<curve_point_data> points{};
+    std::vector<std::shared_ptr<curve_point_data>> points{};
 };
 
 struct activity_data {
     integer_t id{-1};
 
     hash_t h_actor_id{0ULL};
-    action_timeline_data timeline{};
+    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
     std::map<hash_t, variant> initial_attributes{};
 };
 
@@ -351,20 +351,16 @@ struct actor_data {
     hash_t h_actor_id{0ULL};
 
     std::map<hash_t, variant> default_attributes{};
-    std::map<integer_t, activity_data> children{};
-    action_timeline_data timeline{};
+    std::map<integer_t, std::shared_ptr<activity_data>> children{};
+    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
 };
 
 struct text_region_attachment {
-    struct attachment_layout {
-        enum modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
+    enum modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
 
-        modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
-        vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
-        number_t rotation{0.0F};
-    };
-
-    attachment_layout layout{};
+    modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
+    vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
+    number_t rotation{0.0F};
 };
 
 struct text_region_attachment_text : public text_region_attachment {
@@ -374,8 +370,8 @@ struct text_region_attachment_text : public text_region_attachment {
 struct text_region_data {
     integer_t id{};
     text_t text{};
-    std::vector<text_region_attachment> attachments{};
-    action_timeline_data timeline{};
+    std::vector<std::shared_ptr<text_region_attachment>> attachments{};
+    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
 
     number_t transition_duration{0.0F};
     hash_t h_transition_script_name{};
@@ -383,23 +379,23 @@ struct text_region_data {
 
 struct dialog_data {
     hash_t h_actor_id{};
-    std::vector<text_region_data> regions{};
-    action_timeline_data region_life_timeline{.effective_duration = -1.0F};
+    std::vector<std::shared_ptr<text_region_data>> regions{};
+    std::shared_ptr<action_timeline_data> region_life_timeline{std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F})};
 };
 
 struct beat_data {
-    dialog_data dialog;
+    std::shared_ptr<dialog_data> dialog{std::make_shared<dialog_data>()};
 
     // <actor_instance_id, data>
-    std::map<integer_t, activity_data> activities;
+    std::map<integer_t, std::shared_ptr<activity_data>> activities;
 };
 
 struct stage_data {
     hash_t h_stage_name{0ULL};
 
-    std::vector<beat_data> beats{};
+    std::vector<std::shared_ptr<beat_data>> beats{};
     std::map<hash_t, text_t> scripts{};
-    std::map<hash_t, actor_data> actors{};
+    std::map<hash_t, std::shared_ptr<actor_data>> actors{};
 
     // pointers in data structs must point to new-ed objects
     std::map<hash_t, std::shared_ptr<action_data>> actions{};
@@ -501,7 +497,7 @@ public:
 
     [[nodiscard]] number_t get_actual_duration() const;
 
-    [[nodiscard]] const action_timeline_keyframe_data *get_data() const;
+    [[nodiscard]] const std::shared_ptr<action_timeline_keyframe_data> get_data() const;
 
     [[nodiscard]] const std::map<text_t, variant> *get_override_params() const;
 
@@ -509,14 +505,14 @@ public:
 
     [[nodiscard]] action_timeline &get_timeline() const;
 
-    void init(const action_timeline_keyframe_data *data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
+    void init(const std::shared_ptr<action_timeline_keyframe_data> data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
 
     void fina();
 
     [[nodiscard]] variant query_param(const text_t &key) const;
 
 private:
-    const action_timeline_keyframe_data *_data{};
+    std::shared_ptr<action_timeline_keyframe_data> _data{};
     action_timeline *_parent_timeline{};
     number_t _actual_duration{};
     action *_p_action{};
@@ -530,7 +526,7 @@ public:
 
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(std::vector<const action_timeline_data *> data, stage &stage, timeline_evaluator *p_parent);
+    void init(std::vector<std::shared_ptr<action_timeline_data>> data, stage &stage, timeline_evaluator *p_parent);
 
     void fina();
 
@@ -543,7 +539,7 @@ public:
     variant get_prev_value(const modifier_action &ac) const;
 
 private:
-    std::vector<const action_timeline_data *> _data{};
+    std::vector<std::shared_ptr<action_timeline_data>> _data{};
     number_t _effective_duration{0.0F};
     std::vector<integer_t> _next_keyframe_indices{};
     std::vector<std::vector<action_timeline_keyframe>> _tracks{};
@@ -554,7 +550,7 @@ private:
 
 class action {
 public:
-    static action *allocate_action(const action_data *p_data);
+    static action *allocate_action(const std::shared_ptr<action_data> p_data);
 
     static void collect_action(const action *action);
 
@@ -562,7 +558,7 @@ public:
 
     [[nodiscard]] integer_t get_index() const;
 
-    virtual void init(const action_data *data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
+    virtual void init(const std::shared_ptr<action_data> data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
 
     virtual void fina();
 
@@ -571,7 +567,7 @@ public:
     virtual ~action() = default;
 
 protected:
-    const action_data *p_base_data{};
+    std::shared_ptr<action_data> p_base_data{};
 
 private:
     integer_t track_index{-1}, index{-1};
@@ -589,7 +585,7 @@ class modifier_action : public continuous_action {
 public:
     [[nodiscard]] action_data::action_types get_type() const override;
 
-    [[nodiscard]] const modifier_action_data *get_data() const;
+    [[nodiscard]] const std::shared_ptr<modifier_action_data> get_data() const;
 
     [[nodiscard]] hash_t get_name_hash() const;
 
@@ -603,7 +599,7 @@ public:
 
     [[nodiscard]] const std::map<text_t, variant> &get_default_params() const;
 
-    void init(const action_data *data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
 
     void fina() override;
 
@@ -650,14 +646,14 @@ public:
 class activity : public timeline_evaluator {
 public:
     [[nodiscard]] stage *get_stage() const;
-    void init(const activity_data &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity);
+    void init(const std::shared_ptr<activity_data> data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity);
     void fina(boolean_t keep_actor);
     number_t update(number_t beat_time) override;
     variant get_initial_value(hash_t h_attribute_name) override;
     boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 
 private:
-    const activity_data *_p_data{nullptr};
+    std::shared_ptr<activity_data> _p_data{nullptr};
 
     stage *_p_stage{nullptr};
     boolean_t _is_valid{false};
@@ -677,8 +673,8 @@ public:
     boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 
 #ifndef SWIG
-    [[nodiscard]] const actor_data &get_data() const;
-    void init(const actor_data &data, stage &sta, activity *p_parent);
+    [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
+    void init(const std::shared_ptr<actor_data> data, stage &sta, activity *p_parent);
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time);
 
@@ -687,7 +683,7 @@ public:
     constexpr static text_t ROTATION_NAME = "rotation";
 
 private:
-    const actor_data *_p_data;
+    std::shared_ptr<actor_data> _p_data;
     std::map<integer_t, activity> _children;
     stage *_p_stage{nullptr};
     activity *_p_parent{nullptr};
@@ -709,7 +705,7 @@ public:
 
 #ifndef SWIG
     [[nodiscard]] dialog *get_parent_dialog() const;
-    virtual void init(const text_region_data &data, dialog &parent);
+    virtual void init(const std::shared_ptr<text_region_data> data, dialog &parent);
     virtual void fina();
 
 private:
@@ -722,7 +718,7 @@ private:
     const text_t RUN_NAME = "run";
 
     action_timeline _timeline;
-    const text_region_data *_data;
+    std::shared_ptr<text_region_data> _data;
     dialog *_parent_dialog;
     scripting_helper::engine *_p_transition_script;
 
@@ -746,10 +742,10 @@ public:
     [[nodiscard]] stage &get_stage() const;
     void init(stage &st);
     void fina();
-    void advance(const dialog_data &data);
+    void advance(const std::shared_ptr<dialog_data> data);
 
 private:
-    const dialog_data *_current{};
+    std::shared_ptr<dialog_data> _current{};
     stage *_parent_stage{};
 
     action_timeline _region_life_timeline{};
@@ -770,17 +766,17 @@ public:
     virtual ~stage() = default;
 
 #ifndef SWIG
-    void init(const stage_data &data, manager &parent);
+    void init(const std::shared_ptr<stage_data> data, manager &parent);
     void fina();
-    [[nodiscard]] const actor_data *get_actor_data(hash_t h_id) const;
-    [[nodiscard]] const action_data *get_action_data(hash_t h_id) const;
+    [[nodiscard]] const std::shared_ptr<actor_data> get_actor_data(hash_t h_id) const;
+    [[nodiscard]] const std::shared_ptr<action_data> get_action_data(hash_t h_id) const;
     const std::string *get_script_code(hash_t h_script_name) const;
-    void set_beat(const beat_data *beat);
+    void set_beat(const std::shared_ptr<beat_data> beat);
 
 private:
-    const stage_data *_scenario{};
+    std::shared_ptr<stage_data> _scenario;
 
-    const beat_data *_current_beat{nullptr};
+    std::shared_ptr<beat_data> _current_beat{nullptr};
     integer_t _next_beat_index{0};
     boolean_t _is_initialized{false};
 
@@ -790,8 +786,8 @@ private:
     dialog *_p_main_dialog{nullptr};
 
     activity _root_activity{};
-    static activity_data _root_activity_data;
-    actor_data _root_actor_data{};
+    static std::shared_ptr<activity_data> _root_activity_data;
+    std::shared_ptr<actor_data> _root_actor_data{std::make_shared<actor_data>()};
 #endif
 };
 

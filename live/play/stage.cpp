@@ -6,13 +6,13 @@
 
 namespace camellia {
 
-activity_data stage::_root_activity_data{.id = 0};
+std::shared_ptr<activity_data> stage::_root_activity_data{std::make_shared<activity_data>(activity_data{.id = 0})};
 
-void stage::set_beat(const beat_data *beat) {
+void stage::set_beat(const std::shared_ptr<beat_data> beat) {
     _current_beat = beat;
     _beat_begin_time = _stage_time;
 
-    _root_actor_data.children = beat->activities;
+    _root_actor_data->children = beat->activities;
     auto actor = get_actor(0);
     actor->fina(true);
     actor->init(_root_actor_data, *this, &_root_activity);
@@ -30,23 +30,23 @@ void stage::advance() {
     } else {
         if (_next_beat_index >= _scenario->beats.size())
             return;
-        set_beat(&_scenario->beats[_next_beat_index]);
+        set_beat(_scenario->beats[_next_beat_index]);
         _next_beat_index++;
     }
 }
 
-const actor_data *stage::get_actor_data(const hash_t h_id) const {
+const std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
     const auto it = _scenario->actors.find(h_id);
-    return it == _scenario->actors.end() ? nullptr : &it->second;
+    return it == _scenario->actors.end() ? nullptr : it->second;
 }
 
-const action_data *stage::get_action_data(const hash_t h_id) const {
+const std::shared_ptr<action_data> stage::get_action_data(const hash_t h_id) const {
     const auto it = _scenario->actions.find(h_id);
-    return it == _scenario->actions.end() ? nullptr : it->second.get();
+    return it == _scenario->actions.end() ? nullptr : it->second;
 }
 
-void stage::init(const stage_data &data, manager &parent) {
-    _scenario = &data;
+void stage::init(const std::shared_ptr<stage_data> data, manager &parent) {
+    _scenario = data;
 
     get_main_dialog().init(*this);
 

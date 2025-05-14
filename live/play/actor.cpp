@@ -7,9 +7,9 @@
 #include "camellia.h"
 
 namespace camellia {
-const actor_data &actor::get_data() const {
+const std::shared_ptr<actor_data> &actor::get_data() const {
     THROW_UNINITIALIZED_IF_NULL(_p_data);
-    return *_p_data;
+    return _p_data;
 }
 
 const std::map<hash_t, variant> &actor::get_default_attributes() const {
@@ -19,18 +19,18 @@ const std::map<hash_t, variant> &actor::get_default_attributes() const {
 
 boolean_t actor::handle_dirty_attribute(hash_t key, const variant &val) { return true; }
 
-void actor::init(const actor_data &data, stage &sta, activity *p_parent) {
-    _p_data = &data;
+void actor::init(const std::shared_ptr<actor_data> data, stage &sta, activity *p_parent) {
+    _p_data = data;
     _p_stage = &sta;
 
-    for (auto &attribute : data.default_attributes) {
+    for (auto &attribute : data->default_attributes) {
         attributes.set(attribute.first, attribute.second);
     }
 
     {
         auto it = _children.begin();
         while (it != _children.end()) {
-            if (data.children.contains(it->first)) {
+            if (data->children.contains(it->first)) {
                 it->second.fina(true);
             } else {
                 // remove redundant activity instances
@@ -42,8 +42,8 @@ void actor::init(const actor_data &data, stage &sta, activity *p_parent) {
     }
 
     {
-        auto it = data.children.begin();
-        while (it != data.children.end()) {
+        auto it = data->children.begin();
+        while (it != data->children.end()) {
             auto i = _children.find(it->first);
 
             try {

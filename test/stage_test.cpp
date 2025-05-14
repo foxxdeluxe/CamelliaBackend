@@ -93,41 +93,41 @@ TEST_F(stage_test, simulation) {
     action_data_1->value_type = variant::VECTOR3;
     action_data_1->h_script_name = algorithm_helper::calc_hash("test_script_1");
 
-    auto test_actor_1_timeline_track = action_timeline_track_data();
-    test_actor_1_timeline_track.keyframes = {
-        action_timeline_keyframe_data{.time = 0.0F, .preferred_duration_signed = -10.0F, .h_action_name = action_data_1->h_action_name},
+    auto test_actor_1_timeline_track = std::make_shared<action_timeline_track_data>();
+    test_actor_1_timeline_track->keyframes = {
+        std::make_shared<action_timeline_keyframe_data>(
+            action_timeline_keyframe_data{.time = 0.0F, .preferred_duration_signed = -10.0F, .h_action_name = action_data_1->h_action_name}),
     };
 
-    auto test_actor_1_timeline = action_timeline_data();
-    test_actor_1_timeline.effective_duration = 10.0F;
-    test_actor_1_timeline.tracks = {test_actor_1_timeline_track};
+    auto test_actor_1_timeline = std::make_shared<action_timeline_data>();
+    test_actor_1_timeline->effective_duration = 10.0F;
+    test_actor_1_timeline->tracks = {test_actor_1_timeline_track};
 
-    auto actor_data_1 = actor_data();
-    actor_data_1.h_actor_type = algorithm_helper::calc_hash("test_actor_type_1");
-    actor_data_1.h_actor_id = algorithm_helper::calc_hash("test_actor_1");
-    actor_data_1.default_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)] = vector3(0.0F, 0.0F, 0.0F);
-    actor_data_1.default_attributes[algorithm_helper::calc_hash("name")] = TEXT("Test Actor 1");
-    actor_data_1.default_attributes[algorithm_helper::calc_hash("nickname")] = TEXT("An Actor For Testing");
+    auto actor_data_1 = std::make_shared<actor_data>();
+    actor_data_1->h_actor_type = algorithm_helper::calc_hash("test_actor_type_1");
+    actor_data_1->h_actor_id = algorithm_helper::calc_hash("test_actor_1");
+    actor_data_1->default_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)] = vector3(0.0F, 0.0F, 0.0F);
+    actor_data_1->default_attributes[algorithm_helper::calc_hash("name")] = TEXT("Test Actor 1");
+    actor_data_1->default_attributes[algorithm_helper::calc_hash("nickname")] = TEXT("An Actor For Testing");
+    actor_data_1->timeline = std::make_shared<action_timeline_data>();
 
-    auto test_beat_1_activity_1 = activity_data();
-    test_beat_1_activity_1.h_actor_id = actor_data_1.h_actor_id;
-    test_beat_1_activity_1.initial_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)] = vector3(0.0F, 1.0F, 0.0F);
-    test_beat_1_activity_1.timeline = test_actor_1_timeline;
-    test_beat_1_activity_1.id = 1;
+    auto test_beat_1_activity_1 = std::make_shared<activity_data>();
+    test_beat_1_activity_1->h_actor_id = actor_data_1->h_actor_id;
+    test_beat_1_activity_1->initial_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)] = vector3(0.0F, 1.0F, 0.0F);
+    test_beat_1_activity_1->timeline = test_actor_1_timeline;
+    test_beat_1_activity_1->id = 1;
 
-    auto test_beat_1_dialog_1 = dialog_data();
-    test_beat_1_dialog_1.h_actor_id = actor_data_1.h_actor_id;
-    test_beat_1_dialog_1.regions = {
-        text_region_data{
-            .text = TEXT("test_text_1"),
-        },
+    auto test_beat_1_dialog_1 = std::make_shared<dialog_data>();
+    test_beat_1_dialog_1->h_actor_id = actor_data_1->h_actor_id;
+    test_beat_1_dialog_1->regions = {
+        std::make_shared<text_region_data>(text_region_data{.text = TEXT("test_text_1")}),
     };
 
-    auto test_beat_1 = beat_data();
-    test_beat_1.activities = {{1, test_beat_1_activity_1}};
-    test_beat_1.dialog = test_beat_1_dialog_1;
+    auto test_beat_1 = std::make_shared<beat_data>();
+    test_beat_1->activities = {{1, test_beat_1_activity_1}};
+    test_beat_1->dialog = test_beat_1_dialog_1;
 
-    stage_data data{
+    auto data = std::make_shared<stage_data>(stage_data{
         .h_stage_name = algorithm_helper::calc_hash("test_stage_1"),
         .beats = {test_beat_1},
         .scripts =
@@ -139,13 +139,13 @@ TEST_F(stage_test, simulation) {
             },
         .actors =
             {
-                {actor_data_1.h_actor_id, actor_data_1},
+                {actor_data_1->h_actor_id, actor_data_1},
             },
         .actions =
             {
                 {action_data_1->h_action_name, action_data_1},
             },
-    };
+    });
 
     EXPECT_NO_THROW(_stage->init(data, *_manager));
 

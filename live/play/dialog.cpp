@@ -35,29 +35,29 @@ number_t text_region::get_transition_duration() const {
 
 number_t text_region::get_transition_speed() const { return 1.0F; }
 
-void text_region::init(const text_region_data &data, dialog &parent) {
-    _data = &data;
+void text_region::init(const std::shared_ptr<text_region_data> data, dialog &parent) {
+    _data = data;
     _parent_dialog = &parent;
 
     // set initial attributes
-    _initial_attributes[H_TEXT_NAME] = data.text;
+    _initial_attributes[H_TEXT_NAME] = data->text;
 
     _is_visible = false;
 
-    _timeline.init({&data.timeline}, parent.get_stage(), this);
+    _timeline.init({data->timeline}, parent.get_stage(), this);
 
-    if (data.h_transition_script_name != 0ULL) {
-        const auto p_transition_code = parent.get_stage().get_script_code(data.h_transition_script_name);
+    if (data->h_transition_script_name != 0ULL) {
+        const auto p_transition_code = parent.get_stage().get_script_code(data->h_transition_script_name);
         THROW_IF_NULL(p_transition_code, std::format("Could not find text region transition script.\n"
                                                      "Script = {}",
-                                                     data.h_transition_script_name));
+                                                     data->h_transition_script_name));
 
         try {
             _p_transition_script = new scripting_helper::engine();
 
-            _p_transition_script->set_property(FULL_TEXT_LENGTH_NAME, algorithm_helper::get_bbcode_string_length(data.text));
+            _p_transition_script->set_property(FULL_TEXT_LENGTH_NAME, algorithm_helper::get_bbcode_string_length(data->text));
             _p_transition_script->set_property(TRANSITION_SPEED_NAME, get_transition_speed());
-            _p_transition_script->set_property(ORIG_NAME, data.text);
+            _p_transition_script->set_property(ORIG_NAME, data->text);
             _p_transition_script->guarded_evaluate(*p_transition_code, variant::VOID);
         } catch (scripting_helper::engine::scripting_engine_error &err) {
             delete _p_transition_script;
@@ -65,7 +65,7 @@ void text_region::init(const text_region_data &data, dialog &parent) {
 
             throw std::runtime_error(std::format("Error while evaluating text region transition script.\n"
                                                  "Script = {}",
-                                                 data.h_transition_script_name));
+                                                 data->h_transition_script_name));
         }
     }
 }
@@ -159,12 +159,12 @@ void dialog::fina() {
     trim_text_regions(0);
 }
 
-void dialog::advance(const dialog_data &data) {
+void dialog::advance(const std::shared_ptr<dialog_data> data) {
     THROW_UNINITIALIZED_IF_NULL(_parent_stage);
-    _current = &data;
+    _current = data;
 
-    if (data.region_life_timeline.effective_duration >= 0.0F) {
-        _region_life_timeline.init({&data.region_life_timeline}, *_parent_stage, nullptr);
+    if (data->region_life_timeline->effective_duration >= 0.0F) {
+        _region_life_timeline.init({data->region_life_timeline}, *_parent_stage, nullptr);
         _use_life_timeline = true;
     } else {
         _use_life_timeline = false;
@@ -172,7 +172,7 @@ void dialog::advance(const dialog_data &data) {
 
     size_t i = 0;
     const auto region_count = get_text_region_count();
-    for (auto &region_data : data.regions) {
+    for (auto &region_data : data->regions) {
         if (i < region_count) {
             const auto p_tr = get_text_region(i);
             p_tr->fina();
