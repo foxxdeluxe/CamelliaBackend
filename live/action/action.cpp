@@ -129,6 +129,12 @@ void modifier_action::apply_modifier(const number_t action_time, std::map<hash_t
     attributes[get_attribute_name_hash()] = modify(action_time, it->second);
 }
 
+const char *modifier_action::TIME_NAME = "time";
+const char *modifier_action::DURATION_NAME = "duration";
+const char *modifier_action::PREV_NAME = "prev";
+const char *modifier_action::ORIG_NAME = "orig";
+const char *modifier_action::RUN_NAME = "run";
+
 variant modifier_action::modify(const number_t action_time, const variant &base_value) const {
     if (!_is_valid)
         return base_value;

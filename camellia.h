@@ -443,7 +443,9 @@ template <class T> integer_t lower_bound(const std::vector<T> &list, std::functi
     return l;
 }
 
-hash_t calc_hash(const std::string &str);
+hash_t calc_hash(const std::string &str) noexcept;
+
+hash_t calc_hash(const char *str) noexcept;
 
 } // namespace algorithm_helper
 
@@ -471,11 +473,12 @@ public:
     void set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val);
 
 private:
+    const static size_t RUNTIME_MEMORY_LIMIT;
     static JSRuntime *_p_runtime;
 
-    JSContext *_p_context;
-    JSAtom _length_atom;
-    JSValue _global_obj;
+    JSContext *_p_context{nullptr};
+    JSAtom _length_atom{};
+    JSValue _global_obj{};
 
     variant _js_value_to_value(const JSValue &js_value, variant::types result_type);
     JSValue _value_to_js_value(const variant &val);
@@ -610,11 +613,11 @@ public:
     variant final_value;
 
 private:
-    const text_t RUN_NAME = "run";
-    const text_t TIME_NAME = "time";
-    const text_t DURATION_NAME = "duration";
-    const text_t PREV_NAME = "prev";
-    const text_t ORIG_NAME = "orig";
+    const static char *RUN_NAME;
+    const static char *TIME_NAME;
+    const static char *DURATION_NAME;
+    const static char *PREV_NAME;
+    const static char *ORIG_NAME;
 
     boolean_t _is_valid{false};
 
@@ -701,7 +704,7 @@ public:
     number_t update(number_t region_time) override;
     variant get_initial_value(hash_t h_attribute_name) override;
     virtual boolean_t handle_visibility_update(boolean_t is_visible) = 0;
-    virtual ~text_region() = default;
+    ~text_region() override = default;
 
 #ifndef SWIG
     [[nodiscard]] dialog *get_parent_dialog() const;
@@ -709,13 +712,13 @@ public:
     virtual void fina();
 
 private:
-    const hash_t H_TEXT_NAME = algorithm_helper::calc_hash("text");
+    const static hash_t H_TEXT_NAME;
 
-    const text_t FULL_TEXT_LENGTH_NAME = "full_text_length";
-    const text_t TRANSITION_SPEED_NAME = "transition_speed";
-    const text_t ORIG_NAME = "orig";
-    const text_t TIME_NAME = "time";
-    const text_t RUN_NAME = "run";
+    const static char *FULL_TEXT_LENGTH_NAME;
+    const static char *TRANSITION_SPEED_NAME;
+    const static char *ORIG_NAME;
+    const static char *TIME_NAME;
+    const static char *RUN_NAME;
 
     action_timeline _timeline;
     std::shared_ptr<text_region_data> _data;

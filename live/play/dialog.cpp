@@ -83,6 +83,13 @@ void text_region::fina() {
     }
 }
 
+const hash_t text_region::H_TEXT_NAME = algorithm_helper::calc_hash("text");
+const char *text_region::FULL_TEXT_LENGTH_NAME = "full_text_length";
+const char *text_region::TRANSITION_SPEED_NAME = "transition_speed";
+const char *text_region::ORIG_NAME = "orig";
+const char *text_region::TIME_NAME = "time";
+const char *text_region::RUN_NAME = "run";
+
 number_t text_region::update(const number_t region_time) {
     RETURN_ZERO_IF_NULL(_data);
 
