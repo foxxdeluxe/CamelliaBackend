@@ -42,17 +42,29 @@ namespace camellia {
 %shared_ptr(camellia::modifier_action_data)
 %shared_ptr(camellia::instant_action_data)
 %shared_ptr(camellia::stage_data)
+%shared_ptr(camellia::action_timeline_keyframe_data)
+%shared_ptr(camellia::action_timeline_track_data)
+%shared_ptr(camellia::curve_point_data)
+%shared_ptr(camellia::action_timeline_data)
+%shared_ptr(camellia::activity_data)
+%shared_ptr(camellia::action_timeline_data)
+%shared_ptr(camellia::text_region_attachment)
+%shared_ptr(camellia::text_region_attachment_text)
+%shared_ptr(camellia::text_region_data)
+%shared_ptr(camellia::beat_data)
+%shared_ptr(camellia::actor_data)
+%shared_ptr(camellia::dialog_data)
 
 namespace std {
         %template(TextValueMap) map<camellia::text_t, camellia::variant>;
-        %template(KeyframeVector) vector<camellia::action_timeline_keyframe_data>;
-        %template(TrackVector) vector<camellia::action_timeline_track_data>;
-        %template(CurvePointDataVector) vector<camellia::curve_point_data>;
-        %template(ActivityMap) map<camellia::integer_t, camellia::activity_data>;
-        %template(AttachmentVector) vector<camellia::text_region_attachment>;
-        %template(TextRegionDataVector) vector<camellia::text_region_data>;
-        %template(BeatDataVector) vector<camellia::beat_data>;
-        %template(ActorDataMap) map<camellia::hash_t, camellia::actor_data>;
+        %template(KeyframeVector) vector<shared_ptr<camellia::action_timeline_keyframe_data>>;
+        %template(TrackVector) vector<shared_ptr<camellia::action_timeline_track_data>>;
+        %template(CurvePointDataVector) vector<shared_ptr<camellia::curve_point_data>>;
+        %template(ActivityMap) map<camellia::integer_t, shared_ptr<camellia::activity_data>>;
+        %template(AttachmentVector) vector<shared_ptr<camellia::text_region_attachment>>;
+        %template(TextRegionDataVector) vector<shared_ptr<camellia::text_region_data>>;
+        %template(BeatDataVector) vector<shared_ptr<camellia::beat_data>>;
+        %template(ActorDataMap) map<camellia::hash_t, shared_ptr<camellia::actor_data>>;
         %template(ActionDataMap) map<camellia::hash_t, shared_ptr<camellia::action_data>>;
         %template(ScriptMap) map<camellia::hash_t, camellia::text_t>;
         %template(HashVariantMap) map<camellia::hash_t, camellia::variant>;
