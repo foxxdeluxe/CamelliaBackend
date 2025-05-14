@@ -368,17 +368,28 @@ struct actor_data {
 };
 
 struct text_region_attachment {
-    enum modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
+    enum attachment_types { INVALID_ATTACHMENT, TEXT_ATTACHMENT };
+    enum layout_modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
 
-    modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
+    layout_modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
     vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
     number_t rotation{0.0F};
 
-    text_region_attachment() = delete;
+    [[nodiscard]] virtual attachment_types get_attachment_type() const { return INVALID_ATTACHMENT; }
+
+    virtual ~text_region_attachment() = default;
+    text_region_attachment() = default;
+    text_region_attachment(const text_region_attachment &other) = default;
 };
 
 struct text_region_attachment_text : public text_region_attachment {
     text_t text;
+
+    [[nodiscard]] attachment_types get_attachment_type() const override { return TEXT_ATTACHMENT; }
+
+    ~text_region_attachment_text() override = default;
+    text_region_attachment_text() = default;
+    text_region_attachment_text(const text_region_attachment_text &other) = default;
 };
 
 struct text_region_data {
