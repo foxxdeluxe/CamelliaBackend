@@ -341,17 +341,17 @@ struct activity_data {
 
     hash_t h_actor_id{0ULL};
     std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
-    std::map<hash_t, variant> initial_attributes{};
+    std::map<hash_t, variant> initial_attributes;
 };
 
 struct actor_data {
-    integer_t h_actor_type{0};
+    hash_t h_actor_type{0ULL};
 
     // actors can share names, so a unique id is needed
     hash_t h_actor_id{0ULL};
 
-    std::map<hash_t, variant> default_attributes{};
-    std::map<integer_t, std::shared_ptr<activity_data>> children{};
+    std::map<hash_t, variant> default_attributes;
+    std::map<integer_t, std::shared_ptr<activity_data>> children;
     std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
 };
 
@@ -364,13 +364,13 @@ struct text_region_attachment {
 };
 
 struct text_region_attachment_text : public text_region_attachment {
-    text_t text{};
+    text_t text;
 };
 
 struct text_region_data {
     integer_t id{};
-    text_t text{};
-    std::vector<std::shared_ptr<text_region_attachment>> attachments{};
+    text_t text;
+    std::vector<std::shared_ptr<text_region_attachment>> attachments;
     std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
 
     number_t transition_duration{0.0F};
@@ -833,7 +833,7 @@ template <> struct std::formatter<camellia::variant::types> {
             s = "BYTES";
             break;
         default:
-            s = t;
+            s = "UNKNOWN";
         }
         return fmt.format(s, ctx);
     }
@@ -854,7 +854,7 @@ template <> struct std::formatter<camellia::action_data::action_types> {
             s = "ACTION_MODIFIER";
             break;
         default:
-            s = t;
+            s = "UNKNOWN";
         }
         return fmt.format(s, ctx);
     }
