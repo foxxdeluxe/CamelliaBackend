@@ -50,25 +50,23 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     data->assert_valid();
 
     _scenario = data;
+    _p_parent_backend = &parent;
 
     get_main_dialog().init(*this);
 
     // allocate the dummy actor to be used as the parent of all actors in a beat
     // the root actor is managed by the stage itself, instead of the activity
     allocate_actor(0, 0ULL, -1);
-
-    _p_parent_backend = &parent;
 }
 
 void stage::fina() {
-    _scenario = nullptr;
-
     get_main_dialog().fina();
 
     collect_actor(0);
     _root_activity.fina(true);
 
     _p_parent_backend = nullptr;
+    _scenario = nullptr;
 }
 
 number_t stage::update(const number_t stage_time) {
