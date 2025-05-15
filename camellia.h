@@ -812,15 +812,15 @@ private:
     const static char *TIME_NAME;
     const static char *RUN_NAME;
 
-    action_timeline _timeline;
-    std::shared_ptr<text_region_data> _data;
-    dialog *_parent_dialog;
-    scripting_helper::engine *_p_transition_script;
+    action_timeline _timeline{};
+    std::shared_ptr<text_region_data> _data{nullptr};
+    dialog *_parent_dialog{nullptr};
+    scripting_helper::engine *_p_transition_script{nullptr};
 
     std::map<hash_t, variant> _initial_attributes;
-    attribute_registry _attributes;
+    attribute_registry _attributes{};
 
-    boolean_t _is_visible, _last_is_visible;
+    boolean_t _is_visible{false}, _last_is_visible{false};
 #endif
 };
 
