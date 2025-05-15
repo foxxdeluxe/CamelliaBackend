@@ -449,10 +449,7 @@ struct dialog_data {
     std::vector<std::shared_ptr<text_region_data>> regions;
     std::shared_ptr<action_timeline_data> region_life_timeline{nullptr};
 
-    void assert_valid() const {
-        assert(h_actor_id != 0ULL);
-        assert(region_life_timeline != nullptr);
-    }
+    void assert_valid() const { assert(region_life_timeline != nullptr); }
 };
 
 struct beat_data {
