@@ -397,7 +397,6 @@ struct actor_data {
     std::shared_ptr<action_timeline_data> timeline{nullptr};
 
     void assert_valid() const {
-        assert(h_actor_type != 0ULL);
         assert(h_actor_id != 0ULL);
         assert(timeline != nullptr);
     }
@@ -871,7 +870,6 @@ public:
 
 private:
     const static hash_t H_ROOT_ACTOR_ID;
-    const static char *DUMMY_ACTOR_TYPE;
 
     std::shared_ptr<stage_data> _scenario;
 
@@ -887,8 +885,8 @@ private:
     activity _root_activity{};
     std::shared_ptr<activity_data> _root_activity_data{
         std::make_shared<activity_data>(activity_data{.id = 0, .h_actor_id = H_ROOT_ACTOR_ID, .timeline = std::make_shared<action_timeline_data>()})};
-    std::shared_ptr<actor_data> _root_actor_data{std::make_shared<actor_data>(actor_data{
-        .h_actor_type = algorithm_helper::calc_hash(DUMMY_ACTOR_TYPE), .h_actor_id = H_ROOT_ACTOR_ID, .timeline = std::make_shared<action_timeline_data>()})};
+    std::shared_ptr<actor_data> _root_actor_data{
+        std::make_shared<actor_data>(actor_data{.h_actor_type = 0ULL, .h_actor_id = H_ROOT_ACTOR_ID, .timeline = std::make_shared<action_timeline_data>()})};
 #endif
 };
 
