@@ -120,38 +120,35 @@ TEST_F(stage_test, simulation) {
     auto test_beat_1_dialog_1 = std::make_shared<dialog_data>();
     test_beat_1_dialog_1->h_actor_id = actor_data_1->h_actor_id;
     test_beat_1_dialog_1->regions = {
-        std::make_shared<text_region_data>(text_region_data{.text = TEXT("test_text_1")}),
+        std::make_shared<text_region_data>(text_region_data{.text = TEXT("test_text_1"), .timeline = std::make_shared<action_timeline_data>()}),
     };
+    test_beat_1_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
 
     auto test_beat_1 = std::make_shared<beat_data>();
     test_beat_1->activities = {{1, test_beat_1_activity_1}};
     test_beat_1->dialog = test_beat_1_dialog_1;
 
-    auto data = std::make_shared<stage_data>(stage_data{
-        .h_stage_name = algorithm_helper::calc_hash("test_stage_1"),
-        .beats = {test_beat_1},
-        .scripts =
-            {
-                {
-                    action_data_1->h_script_name,
-                    script_1,
-                },
-            },
-        .actors =
-            {
-                {actor_data_1->h_actor_id, actor_data_1},
-            },
-        .actions =
-            {
-                {action_data_1->h_action_name, action_data_1},
-            },
-    });
+    auto data = std::make_shared<stage_data>();
+    data->h_stage_name = algorithm_helper::calc_hash("test_stage_1");
+    data->beats = {test_beat_1};
+    data->scripts = {
+        {
+            action_data_1->h_script_name,
+            script_1,
+        },
+    };
+    data->actors = {
+        {actor_data_1->h_actor_id, actor_data_1},
+    };
+    data->actions = {
+        {action_data_1->h_action_name, action_data_1},
+    };
 
     EXPECT_NO_THROW(_stage->init(data, *_manager));
 
     EXPECT_NO_THROW(_stage->advance());
 
-    auto p_actor = dynamic_cast<mock_actor *>(_stage->get_actor(1));
+    auto *p_actor = dynamic_cast<mock_actor *>(_stage->get_actor(1));
 
     EXPECT_NO_THROW(_stage->update(1.0F));
     EXPECT_TRUE(p_actor->known_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)].approx_equals(vector3(.1F, .2F, .3F)));
@@ -159,10 +156,10 @@ TEST_F(stage_test, simulation) {
     EXPECT_NO_THROW(_stage->update(11.0F));
     EXPECT_TRUE(p_actor->known_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)].approx_equals(vector3(1.0F, 2.0F, 3.0F)));
 
-    auto p_dialog = dynamic_cast<mock_dialog *>(&_stage->get_main_dialog());
+    auto *p_dialog = dynamic_cast<mock_dialog *>(&_stage->get_main_dialog());
     EXPECT_EQ(p_dialog->get_text_region_count(), 1);
 
-    auto p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
+    auto *p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
     EXPECT_EQ(p_text_region->get_current_text(), TEXT("test_text_1"));
 
     EXPECT_NO_THROW(_stage->fina());

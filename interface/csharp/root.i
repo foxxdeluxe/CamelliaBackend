@@ -34,7 +34,8 @@ namespace camellia {
         struct continuous_action_data;
         struct modifier_action_data;
         struct instant_action_data;
-        struct text_region_attachment;
+        struct text_region_attachment_data;
+        struct text_region_attachment_text_data;
 }
 
 %shared_ptr(camellia::action_data)
@@ -48,8 +49,8 @@ namespace camellia {
 %shared_ptr(camellia::action_timeline_data)
 %shared_ptr(camellia::activity_data)
 %shared_ptr(camellia::action_timeline_data)
-%shared_ptr(camellia::text_region_attachment)
-%shared_ptr(camellia::text_region_attachment_text)
+%shared_ptr(camellia::text_region_attachment_data)
+%shared_ptr(camellia::text_region_attachment_text_data)
 %shared_ptr(camellia::text_region_data)
 %shared_ptr(camellia::beat_data)
 %shared_ptr(camellia::actor_data)
@@ -61,7 +62,7 @@ namespace std {
         %template(TrackVector) vector<shared_ptr<camellia::action_timeline_track_data>>;
         %template(CurvePointDataVector) vector<shared_ptr<camellia::curve_point_data>>;
         %template(ActivityMap) map<camellia::integer_t, shared_ptr<camellia::activity_data>>;
-        %template(AttachmentVector) vector<shared_ptr<camellia::text_region_attachment>>;
+        %template(AttachmentVector) vector<shared_ptr<camellia::text_region_attachment_data>>;
         %template(TextRegionDataVector) vector<shared_ptr<camellia::text_region_data>>;
         %template(BeatDataVector) vector<shared_ptr<camellia::beat_data>>;
         %template(ActorDataMap) map<camellia::hash_t, shared_ptr<camellia::actor_data>>;

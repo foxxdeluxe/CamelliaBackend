@@ -15,7 +15,7 @@ integer_t text_region::get_id() const {
 }
 
 text_t text_region::get_current_text() const {
-    const auto val = _attributes.get(H_TEXT_NAME);
+    const auto *const val = _attributes.get(H_TEXT_NAME);
     return val != nullptr && val->get_value_type() == variant::TEXT ? val->get_text() : text_t();
 }
 
@@ -35,7 +35,9 @@ number_t text_region::get_transition_duration() const {
 
 number_t text_region::get_transition_speed() const { return 1.0F; }
 
-void text_region::init(const std::shared_ptr<text_region_data> data, dialog &parent) {
+void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &parent) {
+    data->assert_valid();
+
     _data = data;
     _parent_dialog = &parent;
 
@@ -47,7 +49,7 @@ void text_region::init(const std::shared_ptr<text_region_data> data, dialog &par
     _timeline.init({data->timeline}, parent.get_stage(), this);
 
     if (data->h_transition_script_name != 0ULL) {
-        const auto p_transition_code = parent.get_stage().get_script_code(data->h_transition_script_name);
+        const auto *const p_transition_code = parent.get_stage().get_script_code(data->h_transition_script_name);
         THROW_IF_NULL(p_transition_code, std::format("Could not find text region transition script.\n"
                                                      "Script = {}",
                                                      data->h_transition_script_name));
@@ -113,11 +115,11 @@ number_t text_region::update(const number_t region_time) {
             }
         }
 
-        for (auto &keyframe : keyframes) {
+        for (const auto &keyframe : keyframes) {
             auto &ac = keyframe->get_action();
             switch (ac.get_type()) {
             case action_data::action_types::ACTION_MODIFIER: {
-                const auto ma = dynamic_cast<modifier_action *>(&ac);
+                auto *const ma = dynamic_cast<modifier_action *>(&ac);
                 if (const auto action_time = region_time - keyframe->get_time(); action_time <= keyframe->get_time()) {
 
                     ma->apply_modifier(action_time, temp_attributes);
@@ -166,8 +168,9 @@ void dialog::fina() {
     trim_text_regions(0);
 }
 
-void dialog::advance(const std::shared_ptr<dialog_data> data) {
+void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     THROW_UNINITIALIZED_IF_NULL(_parent_stage);
+    data->assert_valid();
     _current = data;
 
     if (data->region_life_timeline->effective_duration >= 0.0F) {
@@ -181,7 +184,7 @@ void dialog::advance(const std::shared_ptr<dialog_data> data) {
     const auto region_count = get_text_region_count();
     for (auto &region_data : data->regions) {
         if (i < region_count) {
-            const auto p_tr = get_text_region(i);
+            auto *const p_tr = get_text_region(i);
             p_tr->fina();
             p_tr->init(region_data, *this);
         } else {
@@ -192,8 +195,9 @@ void dialog::advance(const std::shared_ptr<dialog_data> data) {
         i++;
     }
 
-    if (i >= region_count)
+    if (i >= region_count) {
         return; // using the old count, but the result is still the same
+    }
     for (auto j = i; j < region_count; j++) {
         get_text_region(j)->fina();
     }
@@ -216,12 +220,13 @@ number_t dialog::update(number_t beat_time) {
         }
 
         for (size_t i = 0; i < get_text_region_count(); i++) {
-            const auto p_region = get_text_region(i);
+            auto *const p_region = get_text_region(i);
             auto it = time_dict.find(p_region->get_id());
-            if (it == time_dict.end())
+            if (it == time_dict.end()) {
                 p_region->update(_hide_inactive_regions ? -1.0F : 0.0F);
-            else
+            } else {
                 p_region->update(it->second);
+            }
         }
 
         return _region_life_timeline.get_effective_duration() - beat_time;
@@ -230,7 +235,7 @@ number_t dialog::update(number_t beat_time) {
     // not using life timeline
     auto time_left = beat_time;
     for (size_t i = 0; i < get_text_region_count(); i++) {
-        const auto p_region = get_text_region(i);
+        auto *const p_region = get_text_region(i);
         p_region->update(_hide_inactive_regions ? time_left : std::max(0.0F, time_left));
         time_left -= p_region->get_transition_duration();
     }

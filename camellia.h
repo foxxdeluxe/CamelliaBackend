@@ -3,6 +3,7 @@
 
 #include "camellia_typedef.h"
 #include "quickjs/quickjs.h"
+#include <cassert>
 #include <format>
 #include <functional>
 #include <map>
@@ -10,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #define RETURN_IF_NULL(P, X)                                                                                                                                   \
@@ -48,8 +50,8 @@ struct curve_data;
 struct activity_data;
 struct actor_data;
 struct beat_data;
-struct text_region_attachment;
-struct text_region_attachment_text;
+struct text_region_attachment_data;
+struct text_region_attachment_text_data;
 struct text_region_data;
 struct dialog_data;
 struct stage_data;
@@ -289,13 +291,15 @@ struct action_data {
     };
 
     hash_t h_action_name{0ULL};
-    std::map<text_t, variant> default_params{};
+    std::map<text_t, variant> default_params;
 
     [[nodiscard]] virtual action_types get_action_type() const { return INVALID_MODIFIER; }
 
     virtual ~action_data() = default;
     action_data() = default;
     action_data(const action_data &other) = default;
+
+    void assert_valid() const { assert(h_action_name != 0ULL); }
 };
 
 struct action_timeline_keyframe_data {
@@ -304,20 +308,28 @@ struct action_timeline_keyframe_data {
 
     hash_t h_action_name{0ULL};
     std::map<text_t, variant> override_params;
+
+    void assert_valid() const { assert(h_action_name != 0ULL); }
 };
 
 struct action_timeline_track_data {
     std::vector<std::shared_ptr<action_timeline_keyframe_data>> keyframes;
+
+    void assert_valid() const {}
 };
 
 struct action_timeline_data {
     std::vector<std::shared_ptr<action_timeline_track_data>> tracks;
     number_t effective_duration{0.0F};
+
+    void assert_valid() const {}
 };
 
 struct continuous_action_data : public action_data {
     continuous_action_data() = default;
     continuous_action_data(const continuous_action_data &other) = default;
+
+    void assert_valid() const { action_data::assert_valid(); }
 };
 
 struct modifier_action_data : public continuous_action_data {
@@ -331,29 +343,47 @@ struct modifier_action_data : public continuous_action_data {
 
     modifier_action_data() = default;
     modifier_action_data(const modifier_action_data &other) : continuous_action_data(other) {}
+
+    void assert_valid() const {
+        continuous_action_data::assert_valid();
+        assert(h_attribute_name != 0ULL);
+        assert(value_type != variant::VOID);
+        assert(h_script_name != 0ULL);
+    }
 };
 
 struct instant_action_data : public action_data {
     instant_action_data() = default;
     instant_action_data(const instant_action_data &other) = default;
+
+    void assert_valid() const { action_data::assert_valid(); }
 };
 
 struct curve_point_data {
     vector2 position{0.0F, 0.0F};
     number_t left_tangent{0.0F};
     number_t right_tangent{0.0F};
+
+    void assert_valid() const {}
 };
 
 struct curve_data {
     std::vector<std::shared_ptr<curve_point_data>> points;
+
+    void assert_valid() const {}
 };
 
 struct activity_data {
     integer_t id{-1};
 
     hash_t h_actor_id{0ULL};
-    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
+    std::shared_ptr<action_timeline_data> timeline{nullptr};
     std::map<hash_t, variant> initial_attributes;
+
+    void assert_valid() const {
+        assert(h_actor_id != 0ULL);
+        assert(timeline != nullptr);
+    }
 };
 
 struct actor_data {
@@ -364,10 +394,16 @@ struct actor_data {
 
     std::map<hash_t, variant> default_attributes;
     std::map<integer_t, std::shared_ptr<activity_data>> children;
-    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
+    std::shared_ptr<action_timeline_data> timeline{nullptr};
+
+    void assert_valid() const {
+        assert(h_actor_type != 0ULL);
+        assert(h_actor_id != 0ULL);
+        assert(timeline != nullptr);
+    }
 };
 
-struct text_region_attachment {
+struct text_region_attachment_data {
     enum attachment_types { INVALID_ATTACHMENT, TEXT_ATTACHMENT };
     enum layout_modes { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
 
@@ -377,42 +413,55 @@ struct text_region_attachment {
 
     [[nodiscard]] virtual attachment_types get_attachment_type() const { return INVALID_ATTACHMENT; }
 
-    virtual ~text_region_attachment() = default;
-    text_region_attachment() = default;
-    text_region_attachment(const text_region_attachment &other) = default;
+    virtual ~text_region_attachment_data() = default;
+    text_region_attachment_data() = default;
+    text_region_attachment_data(const text_region_attachment_data &other) = default;
+
+    void assert_valid() const {}
 };
 
-struct text_region_attachment_text : public text_region_attachment {
+struct text_region_attachment_text_data : public text_region_attachment_data {
     text_t text;
 
     [[nodiscard]] attachment_types get_attachment_type() const override { return TEXT_ATTACHMENT; }
 
-    ~text_region_attachment_text() override = default;
-    text_region_attachment_text() = default;
-    text_region_attachment_text(const text_region_attachment_text &other) = default;
+    ~text_region_attachment_text_data() override = default;
+    text_region_attachment_text_data() = default;
+    text_region_attachment_text_data(const text_region_attachment_text_data &other) = default;
+
+    void assert_valid() const {}
 };
 
 struct text_region_data {
-    integer_t id{};
+    integer_t id{0};
     text_t text;
-    std::vector<std::shared_ptr<text_region_attachment>> attachments;
-    std::shared_ptr<action_timeline_data> timeline{std::make_shared<action_timeline_data>()};
+    std::vector<std::shared_ptr<text_region_attachment_data>> attachments;
+    std::shared_ptr<action_timeline_data> timeline{nullptr};
 
     number_t transition_duration{0.0F};
     hash_t h_transition_script_name{};
+
+    void assert_valid() const { assert(timeline != nullptr); }
 };
 
 struct dialog_data {
-    hash_t h_actor_id{};
+    hash_t h_actor_id{0ULL};
     std::vector<std::shared_ptr<text_region_data>> regions;
-    std::shared_ptr<action_timeline_data> region_life_timeline{std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F})};
+    std::shared_ptr<action_timeline_data> region_life_timeline{nullptr};
+
+    void assert_valid() const {
+        assert(h_actor_id != 0ULL);
+        assert(region_life_timeline != nullptr);
+    }
 };
 
 struct beat_data {
-    std::shared_ptr<dialog_data> dialog{std::make_shared<dialog_data>()};
+    std::shared_ptr<dialog_data> dialog{nullptr};
 
     // <actor_instance_id, data>
     std::map<integer_t, std::shared_ptr<activity_data>> activities;
+
+    void assert_valid() const { assert(dialog != nullptr); }
 };
 
 struct stage_data {
@@ -434,9 +483,14 @@ struct stage_data {
             case action_data::ACTION_MODIFIER:
                 actions[h_action_name] = std::make_shared<modifier_action_data>(*dynamic_cast<const modifier_action_data *>(p_action.get()));
                 break;
+            default:
+                // omit unsupported action types
+                break;
             }
         }
     }
+
+    void assert_valid() const { assert(h_stage_name != 0ULL); }
 };
 
 namespace algorithm_helper {
@@ -444,15 +498,18 @@ boolean_t approx_equals(number_t a, number_t b);
 integer_t get_bbcode_string_length(const text_t &bbcode);
 
 template <typename T> integer_t compare_to(T a, T b) {
-    if (a > b)
+    if (a > b) {
         return 1;
-    if (a < b)
+    }
+    if (a < b) {
         return -1;
+    }
     return 0;
 }
 
 template <class T> integer_t upper_bound(const std::vector<T> &list, std::function<integer_t(const T &)> cmp) {
-    integer_t l = 0, r = list.size();
+    integer_t l = 0;
+    integer_t r = list.size();
 
     while (l < r) {
         auto m = (l + r) / 2;
@@ -466,7 +523,8 @@ template <class T> integer_t upper_bound(const std::vector<T> &list, std::functi
 }
 
 template <class T> integer_t lower_bound(const std::vector<T> &list, std::function<integer_t(const T &)> cmp) {
-    integer_t l = 0, r = list.size();
+    integer_t l = 0;
+    integer_t r = list.size();
 
     while (l < r) {
         auto m = (l + r) / 2;
@@ -544,7 +602,7 @@ public:
 
     [[nodiscard]] action_timeline &get_timeline() const;
 
-    void init(const std::shared_ptr<action_timeline_keyframe_data> data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
+    void init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
 
     void fina();
 
@@ -565,7 +623,7 @@ public:
 
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(std::vector<std::shared_ptr<action_timeline_data>> data, stage &stage, timeline_evaluator *p_parent);
+    void init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, timeline_evaluator *p_parent);
 
     void fina();
 
@@ -597,7 +655,7 @@ public:
 
     [[nodiscard]] integer_t get_index() const;
 
-    virtual void init(const std::shared_ptr<action_data> data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
+    virtual void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
 
     virtual void fina();
 
@@ -614,10 +672,12 @@ private:
 
 class continuous_action : public action {
 public:
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
 };
 
 class instant_action : public action {
 public:
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
 };
 
 class modifier_action : public continuous_action {
@@ -638,11 +698,11 @@ public:
 
     [[nodiscard]] const std::map<text_t, variant> &get_default_params() const;
 
-    void init(const std::shared_ptr<action_data> data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
 
     void fina() override;
 
-    variant apply_modifier(number_t action_time, hash_t h_attribute_name, const variant &val) const;
+    [[nodiscard]] variant apply_modifier(number_t action_time, hash_t h_attribute_name, const variant &val) const;
 
     void apply_modifier(number_t action_time, std::map<hash_t, variant> &attributes) const;
 
@@ -661,7 +721,7 @@ private:
     action_timeline *_p_timeline{nullptr};
     scripting_helper::engine *_p_script{nullptr};
 
-    variant modify(number_t action_time, const variant &base_value) const;
+    [[nodiscard]] variant modify(number_t action_time, const variant &base_value) const;
 };
 #endif
 
@@ -685,7 +745,7 @@ public:
 class activity : public timeline_evaluator {
 public:
     [[nodiscard]] stage *get_stage() const;
-    void init(const std::shared_ptr<activity_data> data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity);
+    void init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity);
     void fina(boolean_t keep_actor);
     number_t update(number_t beat_time) override;
     variant get_initial_value(hash_t h_attribute_name) override;
@@ -744,7 +804,7 @@ public:
 
 #ifndef SWIG
     [[nodiscard]] dialog *get_parent_dialog() const;
-    virtual void init(const std::shared_ptr<text_region_data> data, dialog &parent);
+    virtual void init(const std::shared_ptr<text_region_data> &data, dialog &parent);
     virtual void fina();
 
 private:
@@ -781,7 +841,7 @@ public:
     [[nodiscard]] stage &get_stage() const;
     void init(stage &st);
     void fina();
-    void advance(const std::shared_ptr<dialog_data> data);
+    void advance(const std::shared_ptr<dialog_data> &data);
 
 private:
     std::shared_ptr<dialog_data> _current{};
@@ -805,14 +865,17 @@ public:
     virtual ~stage() = default;
 
 #ifndef SWIG
-    void init(const std::shared_ptr<stage_data> data, manager &parent);
+    void init(const std::shared_ptr<stage_data> &data, manager &parent);
     void fina();
     [[nodiscard]] const std::shared_ptr<actor_data> get_actor_data(hash_t h_id) const;
     [[nodiscard]] const std::shared_ptr<action_data> get_action_data(hash_t h_id) const;
-    const std::string *get_script_code(hash_t h_script_name) const;
-    void set_beat(const std::shared_ptr<beat_data> beat);
+    [[nodiscard]] const std::string *get_script_code(hash_t h_script_name) const;
+    void set_beat(const std::shared_ptr<beat_data> &beat);
 
 private:
+    const static hash_t H_ROOT_ACTOR_ID;
+    const static char *DUMMY_ACTOR_TYPE;
+
     std::shared_ptr<stage_data> _scenario;
 
     std::shared_ptr<beat_data> _current_beat{nullptr};
@@ -825,8 +888,10 @@ private:
     dialog *_p_main_dialog{nullptr};
 
     activity _root_activity{};
-    static std::shared_ptr<activity_data> _root_activity_data;
-    std::shared_ptr<actor_data> _root_actor_data{std::make_shared<actor_data>()};
+    std::shared_ptr<activity_data> _root_activity_data{
+        std::make_shared<activity_data>(activity_data{.id = 0, .h_actor_id = H_ROOT_ACTOR_ID, .timeline = std::make_shared<action_timeline_data>()})};
+    std::shared_ptr<actor_data> _root_actor_data{std::make_shared<actor_data>(actor_data{
+        .h_actor_type = algorithm_helper::calc_hash(DUMMY_ACTOR_TYPE), .h_actor_id = H_ROOT_ACTOR_ID, .timeline = std::make_shared<action_timeline_data>()})};
 #endif
 };
 

@@ -26,7 +26,8 @@ integer_t action::get_track_index() const { return track_index; }
 
 integer_t action::get_index() const { return index; }
 
-void action::init(const std::shared_ptr<action_data> data, action_timeline_keyframe *parent, const integer_t ti, const integer_t i) {
+void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent, const integer_t ti, const integer_t i) {
+    data->assert_valid();
 
     track_index = ti;
     index = i;
@@ -37,6 +38,16 @@ void action::fina() {
     track_index = -1;
     index = -1;
     p_base_data = nullptr;
+}
+
+void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+    data->assert_valid();
+    action::init(data, p_parent, ti, i);
+}
+
+void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+    data->assert_valid();
+    action::init(data, p_parent, ti, i);
 }
 
 action_data::action_types modifier_action::get_type() const { return action_data::action_types::ACTION_MODIFIER; }
@@ -55,8 +66,8 @@ variant::types modifier_action::get_value_type() const { return get_data()->valu
 
 const std::map<text_t, variant> &modifier_action::get_default_params() const { return get_data()->default_params; }
 
-void modifier_action::init(const std::shared_ptr<action_data> data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-
+void modifier_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+    data->assert_valid();
     continuous_action::init(data, p_parent, ti, i);
 
     // guaranteed not to be nullptr by allocate_action

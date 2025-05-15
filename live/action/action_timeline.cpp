@@ -41,8 +41,9 @@ action &action_timeline_keyframe::get_action() const { return *_p_action; }
 
 action_timeline &action_timeline_keyframe::get_timeline() const { return *_parent_timeline; }
 
-void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyframe_data> data, action_timeline *parent, integer_t ti, integer_t i,
+void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i,
                                     number_t actual_duration) {
+    data->assert_valid();
 
     _data = data;
     _parent_timeline = parent;
@@ -86,7 +87,7 @@ timeline_evaluator *action_timeline::get_timeline_evaluator() const { return _p_
 
 number_t action_timeline::get_effective_duration() const { return _effective_duration; }
 
-void action_timeline::init(std::vector<std::shared_ptr<action_timeline_data>> data, stage &stage, timeline_evaluator *p_parent) {
+void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, timeline_evaluator *p_parent) {
     _data = data;
     _p_stage = &stage;
     _p_timeline_evaluator = p_parent;

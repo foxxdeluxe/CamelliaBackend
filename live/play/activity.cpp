@@ -12,7 +12,9 @@ namespace camellia {
 
 stage *activity::get_stage() const { return _p_stage; }
 
-void activity::init(const std::shared_ptr<activity_data> data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity) {
+void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity) {
+    data->assert_valid();
+
     _p_data = data;
     _p_stage = &sta;
     _aid = aid;
@@ -26,10 +28,13 @@ void activity::init(const std::shared_ptr<activity_data> data, integer_t aid, bo
 
         p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent_activity == nullptr ? -1 : p_parent_activity->_aid);
         p_actor->init(actor_data, *_p_stage, this);
-    } else if ((p_actor = sta.get_actor(_aid)) == nullptr) {
-        throw std::runtime_error(std::format("Could not keep actor if it doesn't exist.\n"
-                                             "Activity = {}",
-                                             _aid));
+    } else {
+        p_actor = sta.get_actor(_aid);
+        if (p_actor == nullptr) {
+            throw std::runtime_error(std::format("Could not keep actor if it doesn't exist.\n"
+                                                 "Activity = {}",
+                                                 _aid));
+        }
     }
 
     _timeline.init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
