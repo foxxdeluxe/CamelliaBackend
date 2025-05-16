@@ -36,7 +36,7 @@ integer_t get_bbcode_string_length(const text_t &bbcode) {
     return res;
 }
 
-hash_t calc_hash(const std::string &str) noexcept { return XXH64(str.data(), str.length(), XXHASH_SEED); }
+hash_t calc_hash(const std::string &str) noexcept { return XXH3_64bits_withSeed(str.data(), str.length(), XXHASH_SEED); }
 
-hash_t calc_hash(const char *str) noexcept { return XXH64(str, strlen(str), XXHASH_SEED); }
+hash_t calc_hash(const char *str) noexcept { return XXH3_64bits_withSeed(str, strlen(str), XXHASH_SEED); }
 } // namespace camellia::algorithm_helper
