@@ -754,7 +754,6 @@ private:
     boolean_t _is_valid{false};
 
     action_timeline _timeline{};
-    std::map<hash_t, variant> _initial_attributes{};
 
     integer_t _aid{-1};
 };

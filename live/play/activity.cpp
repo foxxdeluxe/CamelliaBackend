@@ -39,10 +39,6 @@ void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, b
 
     _timeline.init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
 
-    for (auto &attribute : data->initial_attributes) {
-        _initial_attributes[attribute.first] = attribute.second;
-    }
-
     _is_valid = true;
 }
 
@@ -50,7 +46,7 @@ void activity::fina(boolean_t keep_actor) {
     _is_valid = false;
 
     if (!keep_actor) {
-        auto p_actor = _p_stage->get_actor(_aid);
+        auto *p_actor = _p_stage->get_actor(_aid);
         if (p_actor != nullptr) {
             p_actor->fina(false);
             _p_stage->collect_actor(_aid);
@@ -58,27 +54,31 @@ void activity::fina(boolean_t keep_actor) {
     }
 
     _timeline.fina();
-    _initial_attributes.clear();
 
     _p_stage = nullptr;
     _p_data = nullptr;
 }
 
 number_t activity::update(number_t beat_time) {
-    if (!_is_valid)
+    if (!_is_valid) {
         return 0.0F;
+    }
     RETURN_ZERO_IF_NULL(_p_data);
 
-    auto p_actor = _p_stage->get_actor(_aid);
+    auto *p_actor = _p_stage->get_actor(_aid);
     RETURN_ZERO_IF_NULL(p_actor);
 
     auto candidates = _timeline.update(beat_time);
-    auto temp_attributes = std::map<hash_t, variant>(_initial_attributes);
+    auto temp_attributes = std::map<hash_t, variant>(p_actor->get_data()->default_attributes);
+    for (auto &attribute : _p_data->initial_attributes) {
+        temp_attributes[attribute.first] = attribute.second;
+    }
 
-    for (auto keyframe : candidates) {
-        if (keyframe->get_action().get_type() != action_data::action_types::ACTION_MODIFIER)
+    for (const auto *keyframe : candidates) {
+        if (keyframe->get_action().get_type() != action_data::action_types::ACTION_MODIFIER) {
             continue;
-        auto ma = dynamic_cast<modifier_action *>(&keyframe->get_action());
+        }
+        auto *ma = dynamic_cast<modifier_action *>(&keyframe->get_action());
         auto action_time = beat_time - keyframe->get_time();
 
         if (action_time <= keyframe->get_preferred_duration()) {
@@ -95,19 +95,22 @@ number_t activity::update(number_t beat_time) {
 }
 
 variant activity::get_initial_value(hash_t h_attribute_name) {
-    if (!_is_valid)
+    if (!_is_valid) {
         return {};
+    }
 
-    const auto p_actor = _p_stage->get_actor(_aid);
+    auto *const p_actor = _p_stage->get_actor(_aid);
     THROW_IF_NULL(p_actor, std::format("Actor instance not found.\n"
                                        "Activity = {}",
                                        _aid));
 
-    if (const auto it = _p_data->initial_attributes.find(h_attribute_name); it != _p_data->initial_attributes.end())
+    if (const auto it = _p_data->initial_attributes.find(h_attribute_name); it != _p_data->initial_attributes.end()) {
         return it->second;
+    }
 
-    if (const auto it = p_actor->get_default_attributes().find(h_attribute_name); it != p_actor->get_default_attributes().end())
+    if (const auto it = p_actor->get_default_attributes().find(h_attribute_name); it != p_actor->get_default_attributes().end()) {
         return it->second;
+    }
 
     // TODO: Report warning
     return {};
