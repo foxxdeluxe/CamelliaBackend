@@ -777,7 +777,7 @@ public:
     constexpr static text_t ROTATION_NAME = "rotation";
 
 private:
-    std::shared_ptr<actor_data> _p_data;
+    std::shared_ptr<actor_data> _p_data{nullptr};
     std::map<integer_t, activity> _children;
     stage *_p_stage{nullptr};
     activity *_p_parent{nullptr};

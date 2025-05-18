@@ -14,6 +14,7 @@ void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
 
     _root_actor_data->children = beat->activities;
     auto *actor = get_actor(0);
+
     actor->fina(true);
     actor->init(_root_actor_data, *this, &_root_activity);
 
@@ -37,6 +38,9 @@ void stage::advance() {
 }
 
 const std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
+    if (h_id == H_ROOT_ACTOR_ID) {
+        return _root_actor_data;
+    }
     const auto it = _scenario->actors.find(h_id);
     return it == _scenario->actors.end() ? nullptr : it->second;
 }
@@ -52,18 +56,15 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     _scenario = data;
     _p_parent_backend = &parent;
 
-    get_main_dialog().init(*this);
+    _root_activity.init(_root_activity_data, 0, false, *this, nullptr);
 
-    // allocate the dummy actor to be used as the parent of all actors in a beat
-    // the root actor is managed by the stage itself, instead of the activity
-    allocate_actor(0, 0ULL, -1);
+    get_main_dialog().init(*this);
 }
 
 void stage::fina() {
     get_main_dialog().fina();
 
-    collect_actor(0);
-    _root_activity.fina(true);
+    _root_activity.fina(false);
 
     _p_parent_backend = nullptr;
     _scenario = nullptr;
