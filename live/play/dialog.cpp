@@ -106,7 +106,7 @@ number_t text_region::update(const number_t region_time) {
 
         if (_p_transition_script != nullptr) {
             try {
-                _p_transition_script->set_property(TIME_NAME, region_time * get_transition_speed());
+                _p_transition_script->set_property(TIME_NAME, region_time);
                 const auto text = _p_transition_script->guarded_invoke(RUN_NAME, 0, nullptr, variant::TEXT);
                 temp_attributes[H_TEXT_NAME] = text;
             } catch (scripting_helper::engine::scripting_engine_error &ex) {
