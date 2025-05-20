@@ -9,7 +9,6 @@ namespace camellia {
 const hash_t stage::H_ROOT_ACTOR_ID = 2007ULL; // ROOT
 
 void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
-    _stage_time = 0.0F;
     _current_beat = beat;
     _beat_begin_time = _stage_time;
 
