@@ -768,7 +768,7 @@ public:
 
 #ifndef SWIG
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
-    void init(const std::shared_ptr<actor_data> data, stage &sta, activity *p_parent);
+    void init(const std::shared_ptr<actor_data> &data, stage &sta, activity *p_parent);
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time);
 

@@ -19,7 +19,7 @@ const std::map<hash_t, variant> &actor::get_default_attributes() const {
 
 boolean_t actor::handle_dirty_attribute(hash_t key, const variant &val) { return true; }
 
-void actor::init(const std::shared_ptr<actor_data> data, stage &sta, activity *p_parent) {
+void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity *p_parent) {
     data->assert_valid();
 
     _p_data = data;
@@ -78,11 +78,10 @@ number_t actor::update_children(number_t beat_time) {
 void actor::fina(boolean_t keep_children) {
     _p_data = nullptr;
 
-    for (auto &child : _children) {
-        child.second.fina(keep_children);
-    }
-
     if (!keep_children) {
+        for (auto &child : _children) {
+            child.second.fina(false);
+        }
         _children.clear();
     }
 
