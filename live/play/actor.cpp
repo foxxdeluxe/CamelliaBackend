@@ -34,12 +34,12 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity *
         while (it != _children.end()) {
             if (data->children.contains(it->first)) {
                 it->second.fina(true);
+                ++it;
             } else {
                 // remove redundant activity instances
                 it->second.fina(false);
-                _children.erase(it);
+                it = _children.erase(it);
             }
-            ++it;
         }
     }
 

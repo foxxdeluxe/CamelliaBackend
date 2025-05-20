@@ -128,9 +128,20 @@ TEST_F(stage_test, simulation) {
     test_beat_1->activities = {{1, test_beat_1_activity_1}};
     test_beat_1->dialog = test_beat_1_dialog_1;
 
+    auto test_beat_2_dialog_1 = std::make_shared<dialog_data>();
+    test_beat_2_dialog_1->h_actor_id = 0ULL;
+    test_beat_2_dialog_1->regions = {
+        std::make_shared<text_region_data>(text_region_data{.text = TEXT("test_text_2"), .timeline = std::make_shared<action_timeline_data>()}),
+    };
+    test_beat_2_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
+
+    auto test_beat_2 = std::make_shared<beat_data>();
+    test_beat_2->activities = {};
+    test_beat_2->dialog = test_beat_2_dialog_1;
+
     auto data = std::make_shared<stage_data>();
     data->h_stage_name = algorithm_helper::calc_hash("test_stage_1");
-    data->beats = {test_beat_1};
+    data->beats = {test_beat_1, test_beat_2};
     data->scripts = {
         {
             action_data_1->h_script_name,
@@ -161,6 +172,15 @@ TEST_F(stage_test, simulation) {
 
     auto *p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
     EXPECT_EQ(p_text_region->get_current_text(), TEXT("test_text_1"));
+
+    EXPECT_NO_THROW(_stage->advance());
+    EXPECT_NO_THROW(_stage->update(0.0F));
+
+    p_dialog = dynamic_cast<mock_dialog *>(&_stage->get_main_dialog());
+    EXPECT_EQ(p_dialog->get_text_region_count(), 1);
+
+    p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
+    EXPECT_EQ(p_text_region->get_current_text(), TEXT("test_text_2"));
 
     EXPECT_NO_THROW(_stage->fina());
 }
