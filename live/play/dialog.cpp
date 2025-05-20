@@ -65,9 +65,10 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
             delete _p_transition_script;
             _p_transition_script = nullptr;
 
-            throw std::runtime_error(std::format("Error while evaluating text region transition script.\n"
+            throw std::runtime_error(std::format("Error while evaluating text region transition script:\n"
+                                                 "{}\n"
                                                  "Script = {}",
-                                                 data->h_transition_script_name));
+                                                 err.what(), data->h_transition_script_name));
         }
     }
 }
@@ -110,8 +111,9 @@ number_t text_region::update(const number_t region_time) {
                 temp_attributes[H_TEXT_NAME] = text;
             } catch (scripting_helper::engine::scripting_engine_error &ex) {
                 throw std::runtime_error(std::format("Error while invoking function 'run()' text region transition script.\n"
+                                                     "{}\n"
                                                      "Script = {}",
-                                                     _data->h_transition_script_name));
+                                                     ex.what(), _data->h_transition_script_name));
             }
         }
 

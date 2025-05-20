@@ -660,7 +660,7 @@ public:
     virtual ~action() = default;
 
 protected:
-    std::shared_ptr<action_data> p_base_data{};
+    std::shared_ptr<action_data> p_base_data{nullptr};
 
 private:
     integer_t track_index{-1}, index{-1};

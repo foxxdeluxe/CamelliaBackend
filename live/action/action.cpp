@@ -162,9 +162,9 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
     } catch (scripting_helper::engine::scripting_engine_error &err) {
         const auto data = get_data();
         throw std::runtime_error(std::format("Error while invoking function 'run()' of the modifier action script.\n"
-                                             "Script = {}, Action = {}\n"
-                                             "{}",
-                                             data->h_script_name, data->h_action_name, err.what()));
+                                             "{}\n"
+                                             "Script = {}, Action = {}",
+                                             err.what(), data->h_script_name, data->h_action_name));
     }
 }
 } // namespace camellia
