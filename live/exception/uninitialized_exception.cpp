@@ -3,11 +3,9 @@
 //
 
 #include "camellia.h"
-#include <format>
-
 
 namespace camellia {
-uninitialized_exception::uninitialized_exception(const text_t &class_name) { _msg = class_name + " is uninitialized."; }
+uninitialized_exception::uninitialized_exception(const std::string_view &class_name) : _msg(text_t(class_name) + " is uninitialized.") {}
 
 const char *uninitialized_exception::what() const noexcept { return _msg.c_str(); }
 } // namespace camellia

@@ -6,45 +6,37 @@
 
 #include "camellia.h"
 
-#define CLASS_NAME "activity"
-
 namespace camellia {
 
-stage *activity::get_stage() const { return _p_stage; }
+stage &activity::get_stage() const {
+    REQUIRES_NOT_NULL(_p_stage);
+    return *_p_stage;
+}
 
-void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, activity *p_parent_activity) {
-    data->assert_valid();
+void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, actor *p_parent) {
+    REQUIRES_VALID(*data);
 
     _p_data = data;
     _p_stage = &sta;
     _aid = aid;
+    _p_parent = p_parent;
 
-    actor *p_actor;
+    actor *p_actor{nullptr};
     if (!keep_actor) {
         const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);
-        THROW_IF_NULL(actor_data, std::format("Actor data not found.\n"
-                                              "Actor = {}, Activity = {}",
-                                              _p_data->h_actor_id, _aid));
+        REQUIRES_NOT_NULL_MSG(actor_data, std::format("Actor data ({}) not found.\n", _p_data->h_actor_id));
 
-        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent_activity == nullptr ? -1 : p_parent_activity->_aid);
+        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent == nullptr ? -1 : p_parent->get_parent()->_aid);
         p_actor->init(actor_data, *_p_stage, this);
     } else {
         p_actor = sta.get_actor(_aid);
-        if (p_actor == nullptr) {
-            throw std::runtime_error(std::format("Could not keep actor if it doesn't exist.\n"
-                                                 "Activity = {}",
-                                                 _aid));
-        }
+        REQUIRES_NOT_NULL_MSG(p_actor, "Could not keep actor if it doesn't exist.");
     }
 
     _timeline.init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
-
-    _is_valid = true;
 }
 
 void activity::fina(boolean_t keep_actor) {
-    _is_valid = false;
-
     if (!keep_actor) {
         auto *p_actor = _p_stage->get_actor(_aid);
         if (p_actor != nullptr) {
@@ -60,13 +52,10 @@ void activity::fina(boolean_t keep_actor) {
 }
 
 number_t activity::update(number_t beat_time) {
-    if (!_is_valid) {
-        return 0.0F;
-    }
-    RETURN_ZERO_IF_NULL(_p_data);
+    REQUIRES_NOT_NULL(_p_stage);
 
     auto *p_actor = _p_stage->get_actor(_aid);
-    RETURN_ZERO_IF_NULL(p_actor);
+    REQUIRES_NOT_NULL(p_actor);
 
     auto candidates = _timeline.update(beat_time);
     auto temp_attributes = std::map<hash_t, variant>(p_actor->get_data()->default_attributes);
@@ -95,14 +84,11 @@ number_t activity::update(number_t beat_time) {
 }
 
 variant activity::get_initial_value(hash_t h_attribute_name) {
-    if (!_is_valid) {
-        return {};
-    }
+    REQUIRES_NOT_NULL(_p_stage);
+    REQUIRES_NOT_NULL(_p_data);
 
     auto *const p_actor = _p_stage->get_actor(_aid);
-    THROW_IF_NULL(p_actor, std::format("Actor instance not found.\n"
-                                       "Activity = {}",
-                                       _aid));
+    REQUIRES_NOT_NULL(p_actor);
 
     if (const auto it = _p_data->initial_attributes.find(h_attribute_name); it != _p_data->initial_attributes.end()) {
         return it->second;
@@ -117,16 +103,32 @@ variant activity::get_initial_value(hash_t h_attribute_name) {
 }
 
 boolean_t activity::handle_dirty_attribute(hash_t key, const variant &val) {
-    if (!_is_valid)
-        return false;
+    REQUIRES_NOT_NULL(_p_stage);
 
-    auto p_actor = _p_stage->get_actor(_aid);
-    THROW_IF_NULL(p_actor, std::format("Actor instance not found.\n"
-                                       "Activity = {}",
-                                       _aid));
+    auto *p_actor = _p_stage->get_actor(_aid);
+    REQUIRES_NOT_NULL(p_actor);
 
     return p_actor->handle_dirty_attribute(key, val);
 }
-} // namespace camellia
 
-#undef CLASS_NAME
+activity::activity(const activity & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+
+activity &activity::operator=(const activity &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    THROW_NO_LOC("Copying not allowed");
+}
+
+std::string activity::get_locator() const noexcept {
+    std::string parent_locator{"???"};
+    if (_p_parent != nullptr) {
+        parent_locator = _p_parent->get_locator();
+    } else if (_p_stage != nullptr) {
+        parent_locator = _p_stage->get_locator();
+    }
+
+    return std::format("{} > Activity({})", parent_locator, _aid);
+}
+} // namespace camellia

@@ -5,7 +5,6 @@
 #include "camellia.h"
 #include "gtest/gtest.h"
 
-
 using namespace camellia;
 
 TEST(variant_test_suite, equality) {
@@ -13,7 +12,7 @@ TEST(variant_test_suite, equality) {
     ASSERT_NE(variant(1), variant(1.0F));
 
     // variants with different inner-value are not equal
-    ASSERT_NE(variant(TEXT("1"), false), variant(TEXT("2"), false));
+    ASSERT_NE(variant("1"), variant("2"));
 
     // variants with the same type and inner-variant are equal
     ASSERT_EQ(variant(true), variant(true));

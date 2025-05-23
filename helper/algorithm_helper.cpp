@@ -19,12 +19,14 @@ integer_t get_bbcode_string_length(const text_t &bbcode) {
     integer_t res = 0;
     for (int i = 0; i < bbcode.length(); i++) {
         res++;
-        if (bbcode[i] != '[')
+        if (bbcode[i] != '[') {
             continue;
+        }
 
         auto j = i + 1;
-        while (j < bbcode.length() && bbcode[j] != ']')
+        while (j < bbcode.length() && bbcode[j] != ']') {
             j++;
+        }
         if (j >= bbcode.length()) {
             res += j - i - 1;
             break;

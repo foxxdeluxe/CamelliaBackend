@@ -2,28 +2,28 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#define CLASS_NAME "actor"
-
 #include "camellia.h"
 
 namespace camellia {
 const std::shared_ptr<actor_data> &actor::get_data() const {
-    THROW_UNINITIALIZED_IF_NULL(_p_data);
+    REQUIRES_NOT_NULL(_p_data);
     return _p_data;
 }
 
 const std::map<hash_t, variant> &actor::get_default_attributes() const {
-    THROW_UNINITIALIZED_IF_NULL(_p_data);
+    REQUIRES_NOT_NULL(_p_data);
     return _p_data->default_attributes;
 }
 
-boolean_t actor::handle_dirty_attribute(hash_t key, const variant &val) { return true; }
+boolean_t actor::handle_dirty_attribute(hash_t /*key*/, const variant & /*val*/) { return true; }
 
 void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity *p_parent) {
-    data->assert_valid();
+    REQUIRES_NOT_NULL(data);
+    REQUIRES_VALID(*data);
 
     _p_data = data;
     _p_stage = &sta;
+    _p_parent = p_parent;
 
     for (auto &attribute : data->default_attributes) {
         attributes.set(attribute.first, attribute.second);
@@ -48,18 +48,13 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity *
         while (it != data->children.end()) {
             auto i = _children.find(it->first);
 
-            try {
-                if (i != _children.end()) {
-                    i->second.init(it->second, it->first, true, *_p_stage, p_parent);
-                } else {
-                    // add new activity instances
+            if (i != _children.end()) {
+                i->second.init(it->second, it->first, true, *_p_stage, this);
+            } else {
+                // add new activity instances
 
-                    _children[it->first] = activity();
-                    _children[it->first].init(it->second, it->first, false, *_p_stage, p_parent);
-                }
-            } catch (const std::runtime_error &e) {
-                // some activities failed to initialize and are not in a valid state
-                // TODO: Report warning
+                _children[it->first] = activity();
+                _children[it->first].init(it->second, it->first, false, *_p_stage, this);
             }
 
             ++it;
@@ -77,6 +72,7 @@ number_t actor::update_children(number_t beat_time) {
 
 void actor::fina(boolean_t keep_children) {
     _p_data = nullptr;
+    _p_parent = nullptr;
 
     if (!keep_children) {
         for (auto &child : _children) {
@@ -87,5 +83,23 @@ void actor::fina(boolean_t keep_children) {
 
     attributes.clear();
 }
+
+activity *actor::get_parent() const {
+    REQUIRES_NOT_NULL(_p_parent);
+    return _p_parent;
+}
+
+actor::actor(const actor & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+
+actor &actor::operator=(const actor &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    THROW_NO_LOC("Copying not allowed");
+}
+
+std::string actor::get_locator() const noexcept {
+    return std::format("{} > Actor({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_data->h_actor_id);
+}
 } // namespace camellia
-#undef CLASS_NAME

@@ -6,11 +6,10 @@
 
 #include "camellia.h"
 
-#define CLASS_NAME "_dialog"
 namespace camellia {
 
 integer_t text_region::get_id() const {
-    RETURN_ZERO_IF_NULL(_data);
+    REQUIRES_NOT_NULL(_data);
     return _data->id;
 }
 
@@ -20,23 +19,26 @@ text_t text_region::get_current_text() const {
 }
 
 text_t text_region::get_full_text() const {
-    RETURN_IF_NULL(_data, text_t());
+    REQUIRES_NOT_NULL(_data);
     return _data->text;
 }
 
-dialog *text_region::get_parent_dialog() const { return _parent_dialog; }
+dialog &text_region::get_parent_dialog() const {
+    REQUIRES_NOT_NULL(_parent_dialog);
+    return *_parent_dialog;
+}
 
 boolean_t text_region::get_is_visible() const { return _is_visible; }
 
 number_t text_region::get_transition_duration() const {
-    RETURN_ZERO_IF_NULL(_data);
+    REQUIRES_NOT_NULL(_data);
     return _data->transition_duration;
 }
 
 number_t text_region::get_transition_speed() const { return 1.0F; }
 
 void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &parent) {
-    data->assert_valid();
+    REQUIRES_VALID(*data);
 
     _data = data;
     _parent_dialog = &parent;
@@ -50,9 +52,9 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
 
     if (data->h_transition_script_name != 0ULL) {
         const auto *const p_transition_code = parent.get_stage().get_script_code(data->h_transition_script_name);
-        THROW_IF_NULL(p_transition_code, std::format("Could not find text region transition script.\n"
-                                                     "Script = {}",
-                                                     data->h_transition_script_name));
+        THROW_IF(p_transition_code == nullptr, std::format("Could not find text region transition script.\n"
+                                                           "Script = {}",
+                                                           data->h_transition_script_name));
 
         try {
             _p_transition_script = new scripting_helper::engine();
@@ -65,10 +67,9 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
             delete _p_transition_script;
             _p_transition_script = nullptr;
 
-            throw std::runtime_error(std::format("Error while evaluating text region transition script:\n"
-                                                 "{}\n"
-                                                 "Script = {}",
-                                                 err.what(), data->h_transition_script_name));
+            THROW(std::format("Error while evaluating transition script ({}) for text region:\n"
+                              "{}",
+                              data->h_transition_script_name, err.what()));
         }
     }
 }
@@ -94,8 +95,6 @@ const char *text_region::TIME_NAME = "time";
 const char *text_region::RUN_NAME = "run";
 
 number_t text_region::update(const number_t region_time) {
-    RETURN_ZERO_IF_NULL(_data);
-
     if (region_time < 0.0F) {
         _is_visible = false;
     } else {
@@ -110,10 +109,9 @@ number_t text_region::update(const number_t region_time) {
                 const auto text = _p_transition_script->guarded_invoke(RUN_NAME, 0, nullptr, variant::TEXT);
                 temp_attributes[H_TEXT_NAME] = text;
             } catch (scripting_helper::engine::scripting_engine_error &ex) {
-                throw std::runtime_error(std::format("Error while invoking function 'run()' text region transition script.\n"
-                                                     "{}\n"
-                                                     "Script = {}",
-                                                     ex.what(), _data->h_transition_script_name));
+                THROW(std::format("Error while invoking function 'run()' in transition script ({}) for text region:\n"
+                                  "{}",
+                                  _data->h_transition_script_name, ex.what()));
             }
         }
 
@@ -131,9 +129,7 @@ number_t text_region::update(const number_t region_time) {
                 break;
             }
             default: {
-                throw std::runtime_error(std::format("Unknown action type.\n"
-                                                     "Type = {}",
-                                                     ac.get_type()));
+                THROW(std::format("Unknown action type ({}).", ac.get_type()));
             }
             }
         }
@@ -150,15 +146,26 @@ number_t text_region::update(const number_t region_time) {
 }
 
 variant text_region::get_initial_value(const hash_t h_attribute_name) {
-    if (const auto it = _initial_attributes.find(h_attribute_name); it != _initial_attributes.end())
+    if (const auto it = _initial_attributes.find(h_attribute_name); it != _initial_attributes.end()) {
         return it->second;
+    }
 
     // TODO: Report warning
     return {};
 }
 
+text_region::text_region(const text_region & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+
+text_region &text_region::operator=(const text_region &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    THROW_NO_LOC("Copying not allowed");
+}
+
 stage &dialog::get_stage() const {
-    THROW_UNINITIALIZED_IF_NULL(_parent_stage);
+    REQUIRES_NOT_NULL(_parent_stage);
     return *_parent_stage;
 }
 
@@ -171,8 +178,8 @@ void dialog::fina() {
 }
 
 void dialog::advance(const std::shared_ptr<dialog_data> &data) {
-    THROW_UNINITIALIZED_IF_NULL(_parent_stage);
-    data->assert_valid();
+    REQUIRES_NOT_NULL(data);
+    REQUIRES_VALID(*data);
     _current = data;
 
     if (data->region_life_timeline->effective_duration >= 0.0F) {
@@ -244,5 +251,19 @@ number_t dialog::update(number_t beat_time) {
 
     return -time_left;
 }
+
+dialog::dialog(const dialog & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+
+dialog &dialog::operator=(const dialog &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    THROW_NO_LOC("Copying not allowed");
+}
+
+std::string dialog::get_locator() const noexcept { return std::format("{} > Dialog", _parent_stage != nullptr ? _parent_stage->get_locator() : "???"); }
+std::string text_region::get_locator() const noexcept {
+    return std::format("{} > TextRegion({})", _parent_dialog != nullptr ? _parent_dialog->get_locator() : "???", _data->id);
+}
 } // namespace camellia
-#undef CLASS_NAME

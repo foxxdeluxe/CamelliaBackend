@@ -7,67 +7,105 @@
 #include <set>
 
 namespace camellia {
-action *action::allocate_action(const std::shared_ptr<action_data> p_data) {
-    switch (p_data->get_action_type()) {
+action &action::allocate_action(const action_data::action_types type) {
+    switch (type) {
     case action_data::ACTION_MODIFIER: {
-        return new modifier_action();
+        return *new modifier_action();
     }
     default: {
-        throw std::runtime_error(std::format("Unknown action type.\n"
-                                             "Type = {}",
-                                             p_data->get_action_type()));
+        THROW_NO_LOC(std::format("Unknown action type ({}).", type));
     }
     }
 }
 
-void action::collect_action(const action *action) { delete action; }
+void action::collect_action(const action &action) { delete &action; }
 
-integer_t action::get_track_index() const { return track_index; }
+integer_t action::get_track_index() const { return _track_index; }
 
-integer_t action::get_index() const { return index; }
+integer_t action::get_index() const { return _index; }
 
 void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent, const integer_t ti, const integer_t i) {
-    data->assert_valid();
+    REQUIRES_VALID(*data);
 
-    track_index = ti;
-    index = i;
-    p_base_data = data;
+    _track_index = ti;
+    _index = i;
+    _p_base_data = data;
+    _p_parent_keyframe = parent;
 }
 
 void action::fina() {
-    track_index = -1;
-    index = -1;
-    p_base_data = nullptr;
+    _track_index = -1;
+    _index = -1;
+    _p_base_data = nullptr;
+    _p_parent_keyframe = nullptr;
+}
+
+action::action(const action & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+
+action &action::operator=(const action &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    THROW_NO_LOC("Copying not allowed");
 }
 
 void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    data->assert_valid();
+    REQUIRES_VALID(*data);
+
     action::init(data, p_parent, ti, i);
 }
 
 void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    data->assert_valid();
+    REQUIRES_VALID(*data);
+
     action::init(data, p_parent, ti, i);
 }
 
 action_data::action_types modifier_action::get_type() const { return action_data::action_types::ACTION_MODIFIER; }
 
-const std::shared_ptr<modifier_action_data> modifier_action::get_data() const { return std::dynamic_pointer_cast<modifier_action_data>(p_base_data); }
+std::shared_ptr<modifier_action_data> modifier_action::get_data() const {
+    REQUIRES_NOT_NULL(_p_base_data);
+    return std::dynamic_pointer_cast<modifier_action_data>(_p_base_data);
+}
 
-hash_t modifier_action::get_name_hash() const { return get_data()->h_action_name; }
+hash_t modifier_action::get_name_hash() const {
+    auto p_data = get_data();
+    REQUIRES_NOT_NULL(p_data);
+    return p_data->h_action_name;
+}
 
-number_t modifier_action::get_actual_duration() const { return _p_parent_keyframe->get_actual_duration(); }
+number_t modifier_action::get_actual_duration() const {
+    REQUIRES_NOT_NULL(_p_parent_keyframe);
+    return _p_parent_keyframe->get_actual_duration();
+}
 
-number_t modifier_action::get_preferred_duration() const { return _p_parent_keyframe->get_preferred_duration(); }
+number_t modifier_action::get_preferred_duration() const {
+    REQUIRES_NOT_NULL(_p_parent_keyframe);
+    return _p_parent_keyframe->get_preferred_duration();
+}
 
-hash_t modifier_action::get_attribute_name_hash() const { return get_data()->h_attribute_name; }
+hash_t modifier_action::get_attribute_name_hash() const {
+    auto p_data = get_data();
+    REQUIRES_NOT_NULL(p_data);
+    return p_data->h_attribute_name;
+}
 
-variant::types modifier_action::get_value_type() const { return get_data()->value_type; }
+variant::types modifier_action::get_value_type() const {
+    auto p_data = get_data();
+    REQUIRES_NOT_NULL(p_data);
+    return p_data->value_type;
+}
 
-const std::map<text_t, variant> &modifier_action::get_default_params() const { return get_data()->default_params; }
+const std::map<text_t, variant> &modifier_action::get_default_params() const {
+    auto p_data = get_data();
+    REQUIRES_NOT_NULL(p_data);
+    return p_data->default_params;
+}
 
 void modifier_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    data->assert_valid();
+    REQUIRES_VALID(*data);
+
     continuous_action::init(data, p_parent, ti, i);
 
     // guaranteed not to be nullptr by allocate_action
@@ -79,40 +117,39 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     _p_script = new scripting_helper::engine();
 
     std::set<text_t> seen;
-    for (auto &p : *p_parent->get_override_params()) {
-        if (seen.contains(p.first))
+    for (const auto &p : *p_parent->get_override_params()) {
+        if (seen.contains(p.first)) {
             continue;
+        }
         _p_script->set_property(p.first, p.second);
         seen.insert(p.first);
     }
 
-    for (auto &p : get_default_params()) {
-        if (seen.contains(p.first))
+    for (const auto &p : get_default_params()) {
+        if (seen.contains(p.first)) {
             continue;
+        }
         _p_script->set_property(p.first, p.second);
         seen.insert(p.first);
     }
 
-    auto code = p_parent->get_timeline().get_stage().get_script_code(mad->h_script_name);
-    THROW_IF_NULL(code, std::format("Failed to find modifier action script.\n"
-                                    "Script = {}, Action = {}",
-                                    mad->h_script_name, mad->h_action_name));
+    const auto *code = p_parent->get_timeline().get_stage().get_script_code(mad->h_script_name);
+    THROW_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
+                                          "{}",
+                                          mad->h_script_name, mad->h_action_name, get_locator()));
 
     try {
         _p_script->guarded_evaluate(*code, variant::VOID);
     } catch (const scripting_helper::engine::scripting_engine_error &err) {
-        throw std::runtime_error(std::format("Error while evaluating modifier action script.\n"
-                                             "Script = {}, Action = {}\n"
-                                             "{}",
-                                             mad->h_script_name, mad->h_action_name, err.what()));
+        THROW(std::format("Error while evaluating script ({}) for modifier action ({}):\n"
+                          "{}",
+                          mad->h_script_name, mad->h_action_name, err.what()));
     }
 
-    _is_valid = true;
+    continuous_action::init(data, p_parent, ti, i);
 }
 
 void modifier_action::fina() {
-    _is_valid = false;
-
     _p_timeline = nullptr;
     final_value = variant();
 
@@ -125,8 +162,9 @@ void modifier_action::fina() {
 }
 
 variant modifier_action::apply_modifier(const number_t action_time, const hash_t h_attribute_name, const variant &val) const {
-    if (get_attribute_name_hash() != h_attribute_name)
+    if (get_attribute_name_hash() != h_attribute_name) {
         return val;
+    }
     return modify(action_time, val);
 }
 
@@ -147,8 +185,7 @@ const char *modifier_action::ORIG_NAME = "orig";
 const char *modifier_action::RUN_NAME = "run";
 
 variant modifier_action::modify(const number_t action_time, const variant &base_value) const {
-    if (!_is_valid)
-        return base_value;
+    REQUIRES_NOT_NULL(_p_script);
 
     try {
         // set built-in constants
@@ -161,10 +198,25 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
 
     } catch (scripting_helper::engine::scripting_engine_error &err) {
         const auto data = get_data();
-        throw std::runtime_error(std::format("Error while invoking function 'run()' of the modifier action script.\n"
-                                             "{}\n"
-                                             "Script = {}, Action = {}",
-                                             err.what(), data->h_script_name, data->h_action_name));
+        THROW(std::format("Error while invoking function 'run()' in script ({}) for modifier action ({}):\n"
+                          "{}",
+                          data->h_script_name, data->h_action_name, err.what()));
     }
+}
+
+std::string action::get_locator() const noexcept {
+    return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+}
+
+std::string continuous_action::get_locator() const noexcept {
+    return std::format("{} > ContinuousAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+}
+
+std::string instant_action::get_locator() const noexcept {
+    return std::format("{} > InstantAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+}
+
+std::string modifier_action::get_locator() const noexcept {
+    return std::format("{} > ModifierAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
 }
 } // namespace camellia
