@@ -29,7 +29,7 @@ engine::~engine() {
 }
 
 namespace {
-constexpr std::string get_type_mismatch_msg(variant::types result_type) {
+std::string get_type_mismatch_msg(variant::types result_type) {
     return std::format("Resulting value cannot be converted to a variant of target type.\n"
                        "Target = {}",
                        result_type);
