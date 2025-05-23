@@ -100,7 +100,6 @@ number_t text_region::update(const number_t region_time) {
     } else {
         _is_visible = true;
 
-        const auto keyframes = _timeline.update(region_time);
         auto temp_attributes = std::map<hash_t, variant>(_initial_attributes);
 
         if (_p_transition_script != nullptr) {
@@ -115,24 +114,7 @@ number_t text_region::update(const number_t region_time) {
             }
         }
 
-        for (const auto &keyframe : keyframes) {
-            auto &ac = keyframe->get_action();
-            switch (ac.get_type()) {
-            case action_data::action_types::ACTION_MODIFIER: {
-                auto *const ma = dynamic_cast<modifier_action *>(&ac);
-                if (const auto action_time = region_time - keyframe->get_time(); action_time <= keyframe->get_time()) {
-
-                    ma->apply_modifier(action_time, temp_attributes);
-                } else if (keyframe->get_linger()) {
-                    ma->apply_modifier(keyframe->get_preferred_duration(), temp_attributes);
-                }
-                break;
-            }
-            default: {
-                THROW(std::format("Unknown action type ({}).", ac.get_type()));
-            }
-            }
-        }
+        temp_attributes = _timeline.update(region_time, temp_attributes);
 
         _attributes.update(temp_attributes);
     }
@@ -143,15 +125,6 @@ number_t text_region::update(const number_t region_time) {
     }
 
     return _timeline.get_effective_duration() - region_time;
-}
-
-variant text_region::get_initial_value(const hash_t h_attribute_name) {
-    if (const auto it = _initial_attributes.find(h_attribute_name); it != _initial_attributes.end()) {
-        return it->second;
-    }
-
-    // TODO: Report warning
-    return {};
 }
 
 text_region::text_region(const text_region & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
@@ -183,7 +156,7 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     _current = data;
 
     if (data->region_life_timeline->effective_duration >= 0.0F) {
-        _region_life_timeline.init({data->region_life_timeline}, *_parent_stage, nullptr);
+        _region_life_timeline.init({data->region_life_timeline}, *_parent_stage, this);
         _use_life_timeline = true;
     } else {
         _use_life_timeline = false;

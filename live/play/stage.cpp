@@ -23,7 +23,7 @@ void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
     auto *actor = get_actor(0);
 
     actor->fina(true);
-    actor->init(_root_actor_data, *this, &_root_activity);
+    actor->init(_root_actor_data, *this, _root_activity);
 
     _root_activity.fina(true);
     _root_activity.init(_root_activity_data, 0, true, *this, nullptr);

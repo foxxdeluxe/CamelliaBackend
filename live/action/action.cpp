@@ -51,13 +51,17 @@ action &action::operator=(const action &other) {
 }
 
 void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    REQUIRES_VALID(*data);
+    const auto cad = std::dynamic_pointer_cast<continuous_action_data>(data);
+    REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to continuous action data.", data->h_action_name));
+    REQUIRES_VALID(*cad);
 
     action::init(data, p_parent, ti, i);
 }
 
 void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    REQUIRES_VALID(*data);
+    const auto iad = std::dynamic_pointer_cast<instant_action_data>(data);
+    REQUIRES_NOT_NULL_MSG(iad, std::format("Failed to cast action data ({}) to instant action data.", data->h_action_name));
+    REQUIRES_VALID(*iad);
 
     action::init(data, p_parent, ti, i);
 }
@@ -104,12 +108,11 @@ const std::map<text_t, variant> &modifier_action::get_default_params() const {
 }
 
 void modifier_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
-    REQUIRES_VALID(*data);
+    const auto mad = std::dynamic_pointer_cast<modifier_action_data>(data);
+    REQUIRES_NOT_NULL_MSG(mad, std::format("Failed to cast action data ({}) to modifier action data.", data->h_action_name));
+    REQUIRES_VALID(*mad);
 
     continuous_action::init(data, p_parent, ti, i);
-
-    // guaranteed not to be nullptr by allocate_action
-    auto mad = std::dynamic_pointer_cast<modifier_action_data>(data);
 
     _p_parent_keyframe = p_parent;
     _p_timeline = &_p_parent_keyframe->get_timeline();
@@ -204,6 +207,23 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
     }
 }
 
+void composite_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+    const auto cad = std::dynamic_pointer_cast<composite_action_data>(data);
+    REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
+    REQUIRES_VALID(*cad);
+
+    action::init(data, p_parent, ti, i);
+
+    _timeline.init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
+}
+
+void composite_action::fina() {
+    _timeline.fina();
+    action::fina();
+}
+
+action_timeline &composite_action::get_timeline() { return _timeline; }
+
 std::string action::get_locator() const noexcept {
     return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
 }
@@ -219,4 +239,9 @@ std::string instant_action::get_locator() const noexcept {
 std::string modifier_action::get_locator() const noexcept {
     return std::format("{} > ModifierAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
 }
+
+std::string composite_action::get_locator() const noexcept {
+    return std::format("{} > CompositeAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+}
+
 } // namespace camellia

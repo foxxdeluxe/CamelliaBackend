@@ -21,13 +21,21 @@ void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, b
     _aid = aid;
     _p_parent = p_parent;
 
+    const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);
+    REQUIRES_NOT_NULL_MSG(actor_data, std::format("Actor data ({}) not found.\n", _p_data->h_actor_id));
+
+    for (const auto &attribute : actor_data->default_attributes) {
+        _initial_attributes[attribute.first] = attribute.second;
+    }
+
+    for (const auto &attribute : data->initial_attributes) {
+        _initial_attributes[attribute.first] = attribute.second;
+    }
+
     actor *p_actor{nullptr};
     if (!keep_actor) {
-        const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);
-        REQUIRES_NOT_NULL_MSG(actor_data, std::format("Actor data ({}) not found.\n", _p_data->h_actor_id));
-
-        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent == nullptr ? -1 : p_parent->get_parent()->_aid);
-        p_actor->init(actor_data, *_p_stage, this);
+        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent == nullptr ? -1 : p_parent->get_parent()._aid);
+        p_actor->init(actor_data, *_p_stage, *this);
     } else {
         p_actor = sta.get_actor(_aid);
         REQUIRES_NOT_NULL_MSG(p_actor, "Could not keep actor if it doesn't exist.");
@@ -47,6 +55,7 @@ void activity::fina(boolean_t keep_actor) {
 
     _timeline.fina();
 
+    _initial_attributes.clear();
     _p_stage = nullptr;
     _p_data = nullptr;
 }
@@ -57,50 +66,15 @@ number_t activity::update(number_t beat_time) {
     auto *p_actor = _p_stage->get_actor(_aid);
     REQUIRES_NOT_NULL(p_actor);
 
-    auto candidates = _timeline.update(beat_time);
-    auto temp_attributes = std::map<hash_t, variant>(p_actor->get_data()->default_attributes);
-    for (auto &attribute : _p_data->initial_attributes) {
-        temp_attributes[attribute.first] = attribute.second;
-    }
+    auto updated = _timeline.update(beat_time, _initial_attributes);
 
-    for (const auto *keyframe : candidates) {
-        if (keyframe->get_action().get_type() != action_data::action_types::ACTION_MODIFIER) {
-            continue;
-        }
-        auto *ma = dynamic_cast<modifier_action *>(&keyframe->get_action());
-        auto action_time = beat_time - keyframe->get_time();
-
-        if (action_time <= keyframe->get_preferred_duration()) {
-            ma->apply_modifier(action_time, temp_attributes);
-        } else if (keyframe->get_linger()) {
-            ma->apply_modifier(keyframe->get_preferred_duration(), temp_attributes);
-        }
-    }
-
-    p_actor->attributes.update(temp_attributes);
+    p_actor->attributes.update(updated);
     p_actor->attributes.handle_dirty_attributes(*p_actor);
 
     return std::max(p_actor->update_children(beat_time), _timeline.get_effective_duration() - beat_time);
 }
 
-variant activity::get_initial_value(hash_t h_attribute_name) {
-    REQUIRES_NOT_NULL(_p_stage);
-    REQUIRES_NOT_NULL(_p_data);
-
-    auto *const p_actor = _p_stage->get_actor(_aid);
-    REQUIRES_NOT_NULL(p_actor);
-
-    if (const auto it = _p_data->initial_attributes.find(h_attribute_name); it != _p_data->initial_attributes.end()) {
-        return it->second;
-    }
-
-    if (const auto it = p_actor->get_default_attributes().find(h_attribute_name); it != p_actor->get_default_attributes().end()) {
-        return it->second;
-    }
-
-    // TODO: Report warning
-    return {};
-}
+const std::map<hash_t, variant> &activity::get_initial_values() { return _initial_attributes; }
 
 boolean_t activity::handle_dirty_attribute(hash_t key, const variant &val) {
     REQUIRES_NOT_NULL(_p_stage);

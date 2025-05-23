@@ -17,15 +17,15 @@ const std::map<hash_t, variant> &actor::get_default_attributes() const {
 
 boolean_t actor::handle_dirty_attribute(hash_t /*key*/, const variant & /*val*/) { return true; }
 
-void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity *p_parent) {
+void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent) {
     REQUIRES_NOT_NULL(data);
     REQUIRES_VALID(*data);
 
     _p_data = data;
     _p_stage = &sta;
-    _p_parent = p_parent;
+    _p_parent = &parent;
 
-    for (auto &attribute : data->default_attributes) {
+    for (const auto &attribute : parent.get_initial_values()) {
         attributes.set(attribute.first, attribute.second);
     }
 
@@ -84,9 +84,9 @@ void actor::fina(boolean_t keep_children) {
     attributes.clear();
 }
 
-activity *actor::get_parent() const {
+activity &actor::get_parent() const {
     REQUIRES_NOT_NULL(_p_parent);
-    return _p_parent;
+    return *_p_parent;
 }
 
 actor::actor(const actor & /*other*/) { THROW_NO_LOC("Copying not allowed"); }

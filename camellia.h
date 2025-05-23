@@ -16,6 +16,7 @@
 #include <variant>
 #include <vector>
 
+#ifndef SWIG
 #define RETURN_IF_NULL(P, X)                                                                                                                                   \
     if (P == nullptr) [[unlikely]]                                                                                                                             \
     return X
@@ -39,31 +40,12 @@
     static constexpr std::string get_class_name() { return #N; }                                                                                               \
     static_assert(sizeof(N *));
 
-#define BREADCRUMB_CLASS                                                                                                                                       \
-public:                                                                                                                                                        \
-    std::string get_locator() const noexcept;                                                                                                                  \
-                                                                                                                                                               \
-private:
-
-#define BREADCRUMB_CLASS_BASE                                                                                                                                  \
-public:                                                                                                                                                        \
-    virtual std::string get_locator() const noexcept;                                                                                                          \
-                                                                                                                                                               \
-private:
-
-#define BREADCRUMB_CLASS_BASE_PURE                                                                                                                             \
-public:                                                                                                                                                        \
-    virtual std::string get_locator() const noexcept = 0;                                                                                                      \
-                                                                                                                                                               \
-private:
-
-#define BREADCRUMB_CLASS_DERIVED                                                                                                                               \
-public:                                                                                                                                                        \
-    std::string get_locator() const noexcept override;                                                                                                         \
-                                                                                                                                                               \
-private:
+#endif
 
 namespace camellia {
+
+constexpr number_t NUMBER_POSITIVE_INFINITY = 1E20F;
+constexpr number_t NUMBER_2_POSITIVE_INFINITY = 2.0F * NUMBER_POSITIVE_INFINITY;
 
 class manager;
 struct vector2;
@@ -95,25 +77,36 @@ class action;
 class continuous_action;
 class instant_action;
 class modifier_action;
+class composite_action;
 class uninitialized_exception;
 class activity;
 class actor;
 class text_region;
 class dialog;
 class stage;
-class timeline_evaluator;
+
+class live_object {
+public:
+    live_object() = default;
+    virtual ~live_object() = default;
+    live_object(const live_object &) = default;
+    live_object &operator=(const live_object &) = default;
+    live_object(live_object &&) noexcept = default;
+    live_object &operator=(live_object &&) noexcept = default;
+
+    [[nodiscard]] virtual std::string get_locator() const noexcept = 0;
+};
 
 /* MANAGER */
-class manager {
+class manager : public live_object {
     NAMED_CLASS(manager);
-    BREADCRUMB_CLASS;
 
 public:
     enum log_type : char { LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
     virtual void log(const text_t &msg, log_type type = log_type::LOG_INFO) const = 0;
     explicit manager(integer_t id) : _id(id) {}
-    virtual ~manager() = default;
+    ~manager() override = default;
 
     manager(const manager &);
     manager &operator=(const manager &);
@@ -125,6 +118,8 @@ public:
     void register_stage_data(std::shared_ptr<stage_data> data);
     void configure_stage(stage *s, hash_t h_stage_name);
     void clean_stage(stage *s) const;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 #ifndef SWIG
 private:
     std::unordered_map<hash_t, std::shared_ptr<stage_data>> _stage_data_map;
@@ -289,12 +284,12 @@ private:
 
 /* ATTRIBUTE REGISTRY */
 
-class dirty_attribute_handler {
+class dirty_attribute_handler : public live_object {
 public:
     virtual boolean_t handle_dirty_attribute(hash_t h_key, const variant &val) = 0;
 
     dirty_attribute_handler() = default;
-    virtual ~dirty_attribute_handler() = default;
+    ~dirty_attribute_handler() override = default;
 
     dirty_attribute_handler(const dirty_attribute_handler &) = default;
     dirty_attribute_handler(dirty_attribute_handler &&other) noexcept = default;
@@ -336,16 +331,18 @@ private:
 
 struct action_data {
     enum action_types : char {
+        ACTION_TYPE_MIN = -1,
         // negative types are instant actions
-        INVALID_MODIFIER = 0,
+        ACTION_COMPOSITE = 0,
         // positive types are continuous actions
-        ACTION_MODIFIER = 1
+        ACTION_MODIFIER = 1,
+        ACTION_TYPE_MAX = 2
     };
 
     hash_t h_action_name{0ULL};
     std::map<text_t, variant> default_params;
 
-    [[nodiscard]] virtual action_types get_action_type() const { return INVALID_MODIFIER; }
+    [[nodiscard]] virtual action_types get_action_type() const { return ACTION_TYPE_MIN; }
 
     virtual ~action_data() = default;
     action_data() = default;
@@ -354,7 +351,10 @@ struct action_data {
     action_data(action_data &&other) noexcept = default;
     action_data &operator=(action_data &&other) noexcept = default;
 
-    [[nodiscard]] boolean_t is_valid() const { return h_action_name != 0ULL; }
+    [[nodiscard]] boolean_t is_valid() const {
+        auto type = get_action_type();
+        return h_action_name != 0ULL && type > ACTION_TYPE_MIN && type < ACTION_TYPE_MAX;
+    }
 };
 
 struct action_timeline_keyframe_data {
@@ -381,7 +381,7 @@ struct action_timeline_data {
 };
 
 struct continuous_action_data : public action_data {
-    [[nodiscard]] boolean_t is_valid() const { return action_data::is_valid(); }
+    [[nodiscard]] boolean_t is_valid() const { return true; }
 };
 
 struct modifier_action_data : public continuous_action_data {
@@ -397,7 +397,15 @@ struct modifier_action_data : public continuous_action_data {
 };
 
 struct instant_action_data : public action_data {
-    [[nodiscard]] boolean_t is_valid() const { return action_data::is_valid(); }
+    [[nodiscard]] boolean_t is_valid() const { return true; }
+};
+
+struct composite_action_data : public action_data {
+    std::shared_ptr<action_timeline_data> timeline{nullptr};
+
+    [[nodiscard]] action_types get_action_type() const override { return action_data::ACTION_COMPOSITE; }
+
+    [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && timeline->is_valid(); }
 };
 
 struct curve_point_data {
@@ -647,9 +655,8 @@ private:
 } // namespace scripting_helper
 
 #ifndef SWIG
-class action_timeline_keyframe {
+class action_timeline_keyframe : public live_object {
     NAMED_CLASS(action_timeline_keyframe)
-    BREADCRUMB_CLASS;
 
 public:
     [[nodiscard]] number_t get_time() const;
@@ -659,6 +666,8 @@ public:
     [[nodiscard]] boolean_t get_linger() const;
 
     [[nodiscard]] number_t get_actual_duration() const;
+
+    [[nodiscard]] number_t get_effective_duration() const;
 
     [[nodiscard]] std::shared_ptr<action_timeline_keyframe_data> get_data() const;
 
@@ -675,62 +684,67 @@ public:
     [[nodiscard]] variant query_param(const text_t &key) const;
 
     action_timeline_keyframe() = default;
-    ~action_timeline_keyframe() = default;
+    ~action_timeline_keyframe() override = default;
     action_timeline_keyframe(const action_timeline_keyframe &other);
     action_timeline_keyframe &operator=(const action_timeline_keyframe &other);
     action_timeline_keyframe(action_timeline_keyframe &&other) noexcept = default;
     action_timeline_keyframe &operator=(action_timeline_keyframe &&other) noexcept = default;
 
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
 private:
     std::shared_ptr<action_timeline_keyframe_data> _data{nullptr};
     action_timeline *_parent_timeline{nullptr};
-    number_t _actual_duration{0.0F};
+    number_t _effective_duration{0.0F};
     action *_p_action{nullptr};
 };
 
-class action_timeline {
+class action_timeline : public live_object {
     NAMED_CLASS(action_timeline)
-    BREADCRUMB_CLASS;
 
 public:
     [[nodiscard]] stage &get_stage() const;
 
-    [[nodiscard]] timeline_evaluator *get_timeline_evaluator() const;
+    [[nodiscard]] live_object *get_parent() const;
 
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, timeline_evaluator *p_parent);
+    void init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, live_object *p_parent);
 
     void fina();
 
     [[nodiscard]] std::vector<const action_timeline_keyframe *> sample(number_t timeline_time) const;
 
-    std::vector<const action_timeline_keyframe *> update(number_t timeline_time, boolean_t continuous = true);
+    [[nodiscard]] std::map<hash_t, variant> update(number_t timeline_time, const std::map<hash_t, variant> &attributes, boolean_t continuous = true,
+                                                   boolean_t exclude_continuous = false);
 
     [[nodiscard]] variant get_base_value(number_t timeline_time, hash_t h_attribute_name, const modifier_action &until) const;
 
     [[nodiscard]] variant get_prev_value(const modifier_action &ac) const;
 
     action_timeline() = default;
-    ~action_timeline() = default;
+    ~action_timeline() override = default;
     action_timeline(const action_timeline &other);
     action_timeline &operator=(const action_timeline &other);
     action_timeline(action_timeline &&other) noexcept = default;
     action_timeline &operator=(action_timeline &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 
 private:
     std::vector<std::shared_ptr<action_timeline_data>> _data;
     number_t _effective_duration{0.0F};
     std::vector<integer_t> _next_keyframe_indices;
     std::vector<std::vector<action_timeline_keyframe>> _tracks;
+    std::vector<action_timeline_keyframe *> _current_composite_keyframes;
+    const std::map<hash_t, variant> *_current_initial_attributes{nullptr};
 
     stage *_p_stage{nullptr};
-    timeline_evaluator *_p_timeline_evaluator{nullptr};
+    live_object *_p_parent{nullptr};
 };
 
-class action {
+class action : public live_object {
     NAMED_CLASS(action)
-    BREADCRUMB_CLASS_BASE
 
 public:
     static action &allocate_action(const action_data::action_types type);
@@ -748,11 +762,13 @@ public:
     [[nodiscard]] virtual action_data::action_types get_type() const = 0;
 
     action() = default;
-    virtual ~action() = default;
+    ~action() override = default;
     action(const action &other);
     action &operator=(const action &other);
     action(action &&other) noexcept = default;
     action &operator=(action &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 
 protected:
     std::shared_ptr<action_data> _p_base_data{nullptr};
@@ -762,22 +778,21 @@ protected:
 
 class continuous_action : public action {
     NAMED_CLASS(continuous_action)
-    BREADCRUMB_CLASS_DERIVED
 public:
     void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    [[nodiscard]] std::string get_locator() const noexcept override;
 };
 
 class instant_action : public action {
     NAMED_CLASS(instant_action)
-    BREADCRUMB_CLASS_DERIVED
 
 public:
     void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    [[nodiscard]] std::string get_locator() const noexcept override;
 };
 
 class modifier_action : public continuous_action {
     NAMED_CLASS(modifier_action)
-    BREADCRUMB_CLASS_DERIVED
 
 public:
     [[nodiscard]] action_data::action_types get_type() const override;
@@ -804,6 +819,8 @@ public:
 
     void apply_modifier(number_t action_time, std::map<hash_t, variant> &attributes) const;
 
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
     variant final_value;
 
 private:
@@ -821,6 +838,19 @@ private:
 
     [[nodiscard]] variant modify(number_t action_time, const variant &base_value) const;
 };
+
+class composite_action : public action {
+    NAMED_CLASS(composite_action)
+
+public:
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void fina() override;
+    [[nodiscard]] action_timeline &get_timeline();
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
+private:
+    action_timeline _timeline;
+};
 #endif
 
 class uninitialized_exception : public std::exception {
@@ -833,26 +863,16 @@ private:
     text_t _msg;
 };
 
-class timeline_evaluator : public dirty_attribute_handler {
-    NAMED_CLASS(timeline_evaluator)
-    BREADCRUMB_CLASS_BASE_PURE;
-
-public:
-    virtual number_t update(number_t timeline_time) = 0;
-    virtual variant get_initial_value(hash_t h_attribute_name) = 0;
-};
-
 #ifndef SWIG
-class activity : public timeline_evaluator {
+class activity : public dirty_attribute_handler {
     NAMED_CLASS(activity)
-    BREADCRUMB_CLASS_DERIVED;
 
 public:
     [[nodiscard]] stage &get_stage() const;
     void init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, actor *p_parent);
     void fina(boolean_t keep_actor);
-    number_t update(number_t beat_time) override;
-    variant get_initial_value(hash_t h_attribute_name) override;
+    number_t update(number_t beat_time);
+    [[nodiscard]] const std::map<hash_t, variant> &get_initial_values();
     boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 
     activity() = default;
@@ -862,8 +882,11 @@ public:
     activity(activity &&other) noexcept = default;
     activity &operator=(activity &&other) noexcept = default;
 
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
 private:
     std::shared_ptr<activity_data> _p_data{nullptr};
+    std::map<hash_t, variant> _initial_attributes;
     stage *_p_stage{nullptr};
     action_timeline _timeline;
     integer_t _aid{-1};
@@ -873,7 +896,6 @@ private:
 
 class actor : public dirty_attribute_handler {
     NAMED_CLASS(actor)
-    BREADCRUMB_CLASS;
 
 public:
     attribute_registry attributes;
@@ -888,11 +910,13 @@ public:
     actor(actor &&other) noexcept = default;
     actor &operator=(actor &&other) noexcept = default;
 
-    [[nodiscard]] activity *get_parent() const;
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
+    [[nodiscard]] activity &get_parent() const;
 
 #ifndef SWIG
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
-    void init(const std::shared_ptr<actor_data> &data, stage &sta, activity *p_parent);
+    void init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent);
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time);
 
@@ -908,9 +932,8 @@ private:
 #endif
 };
 
-class text_region : public timeline_evaluator {
+class text_region : public dirty_attribute_handler {
     NAMED_CLASS(text_region)
-    BREADCRUMB_CLASS_DERIVED;
 
 public:
     [[nodiscard]] text_t get_current_text() const;
@@ -919,8 +942,7 @@ public:
     [[nodiscard]] integer_t get_id() const;
     [[nodiscard]] number_t get_transition_duration() const;
     [[nodiscard]] number_t get_transition_speed() const;
-    number_t update(number_t region_time) override;
-    variant get_initial_value(hash_t h_attribute_name) override;
+    number_t update(number_t region_time);
     virtual boolean_t handle_visibility_update(boolean_t is_visible) = 0;
 
     text_region() = default;
@@ -929,6 +951,8 @@ public:
     text_region &operator=(const text_region &other);
     text_region(text_region &&other) noexcept = default;
     text_region &operator=(text_region &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
     [[nodiscard]] dialog &get_parent_dialog() const;
@@ -956,9 +980,8 @@ private:
 #endif
 };
 
-class dialog {
+class dialog : public live_object {
     NAMED_CLASS(dialog)
-    BREADCRUMB_CLASS;
 
 public:
     virtual text_region &append_text_region() = 0;
@@ -968,11 +991,13 @@ public:
     number_t update(number_t beat_time);
 
     dialog() = default;
-    virtual ~dialog() = default;
+    ~dialog() override = default;
     dialog(const dialog &other);
     dialog &operator=(const dialog &other);
     dialog(dialog &&other) noexcept = default;
     dialog &operator=(dialog &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
     [[nodiscard]] stage &get_stage() const;
@@ -990,9 +1015,8 @@ private:
 #endif
 };
 
-class stage {
+class stage : public live_object {
     NAMED_CLASS(stage)
-    BREADCRUMB_CLASS;
 
 public:
     [[nodiscard]] virtual dialog *get_main_dialog() = 0;
@@ -1004,11 +1028,13 @@ public:
     [[nodiscard]] manager &get_parent_manager();
 
     stage() = default;
-    virtual ~stage() = default;
+    ~stage() override = default;
     stage(const stage &other);
     stage &operator=(const stage &other);
     stage(stage &&other) noexcept = default;
     stage &operator=(stage &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
     void init(const std::shared_ptr<stage_data> &data, manager &parent);
@@ -1100,6 +1126,9 @@ template <> struct std::formatter<camellia::action_data::action_types> {
         switch (t) {
         case camellia::action_data::action_types::ACTION_MODIFIER:
             s = "ACTION_MODIFIER";
+            break;
+        case camellia::action_data::action_types::ACTION_COMPOSITE:
+            s = "ACTION_COMPOSITE";
             break;
         default:
             s = "UNKNOWN";

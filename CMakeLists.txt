@@ -28,7 +28,6 @@ add_library(
         live/play/activity.cpp
         live/play/actor.cpp
         live/play/dialog.cpp
-        live/play/timeline_evaluator.cpp
         live/play/stage.cpp
         live/action/action.cpp
         live/action/action_timeline.cpp
