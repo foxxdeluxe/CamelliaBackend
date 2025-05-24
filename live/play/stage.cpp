@@ -115,8 +115,10 @@ stage &stage::operator=(const stage &other) {
 }
 
 std::string stage::get_locator() const noexcept {
-    return std::format("{} > Stage({})", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???",
-                       _p_scenario != nullptr ? _p_scenario->h_stage_name : 0ULL);
+    if (_p_scenario == nullptr) {
+        return std::format(R"({} > Stage(???))", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???");
+    }
+    return std::format("{} > Stage({})", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???", _p_scenario->h_stage_name);
 }
 
 } // namespace camellia
