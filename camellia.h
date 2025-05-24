@@ -677,7 +677,7 @@ public:
 
     [[nodiscard]] action_timeline &get_timeline() const;
 
-    void init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i, number_t actual_duration);
+    void init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i, number_t effective_duration);
 
     void fina();
 

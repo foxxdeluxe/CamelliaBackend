@@ -137,7 +137,7 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
         _effective_duration = std::max(_effective_duration, d->effective_duration);
     }
 
-    _current_composite_keyframes.resize(data.size());
+    _current_composite_keyframes.resize(_tracks.size());
 }
 
 void action_timeline::fina() {
