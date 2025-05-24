@@ -199,7 +199,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
             auto &track = _tracks[i];
 
             action_timeline_keyframe *k{nullptr};
-            while (_next_keyframe_indices[i] < track.size() && (k = &track[_next_keyframe_indices[i]])->get_time() <= timeline_time) {
+            while (_next_keyframe_indices[i] < track.size() && timeline_time <= (k = &track[_next_keyframe_indices[i]])->get_time()) {
                 auto *prev_composite_keyframe = _current_composite_keyframes[i];
                 if (prev_composite_keyframe != nullptr) {
                     candidates.push_back(prev_composite_keyframe);
