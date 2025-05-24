@@ -32,40 +32,40 @@ void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
 }
 
 void stage::advance() {
-    REQUIRES_NOT_NULL(_scenario);
+    REQUIRES_NOT_NULL(_p_scenario);
 
     if (_time_to_end > 0.0F) {
         _beat_begin_time -= _time_to_end;
         _time_to_end = 0.0F;
     } else {
-        if (_next_beat_index >= _scenario->beats.size()) {
+        if (_next_beat_index >= _p_scenario->beats.size()) {
             return;
         }
-        set_beat(_scenario->beats[_next_beat_index]);
+        set_beat(_p_scenario->beats[_next_beat_index]);
         _next_beat_index++;
     }
 }
 
 std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
-    REQUIRES_NOT_NULL(_scenario);
+    REQUIRES_NOT_NULL(_p_scenario);
 
     if (h_id == H_ROOT_ACTOR_ID) {
         return _root_actor_data;
     }
-    const auto it = _scenario->actors.find(h_id);
-    return it == _scenario->actors.end() ? nullptr : it->second;
+    const auto it = _p_scenario->actors.find(h_id);
+    return it == _p_scenario->actors.end() ? nullptr : it->second;
 }
 
 std::shared_ptr<action_data> stage::get_action_data(const hash_t h_id) const {
-    REQUIRES_NOT_NULL(_scenario);
-    const auto it = _scenario->actions.find(h_id);
-    return it == _scenario->actions.end() ? nullptr : it->second;
+    REQUIRES_NOT_NULL(_p_scenario);
+    const auto it = _p_scenario->actions.find(h_id);
+    return it == _p_scenario->actions.end() ? nullptr : it->second;
 }
 
 void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     REQUIRES_VALID(*data);
 
-    _scenario = data;
+    _p_scenario = data;
     _p_parent_backend = &parent;
 
     _root_activity.init(_root_activity_data, 0, false, *this, nullptr);
@@ -79,7 +79,7 @@ void stage::fina() {
     _root_activity.fina(false);
 
     _p_parent_backend = nullptr;
-    _scenario = nullptr;
+    _p_scenario = nullptr;
 }
 
 number_t stage::update(const number_t stage_time) {
@@ -94,9 +94,9 @@ number_t stage::update(const number_t stage_time) {
 }
 
 const std::string *stage::get_script_code(const hash_t h_script_name) const {
-    REQUIRES_NOT_NULL(_scenario);
-    const auto it = _scenario->scripts.find(h_script_name);
-    return it == _scenario->scripts.end() ? nullptr : &it->second;
+    REQUIRES_NOT_NULL(_p_scenario);
+    const auto it = _p_scenario->scripts.find(h_script_name);
+    return it == _p_scenario->scripts.end() ? nullptr : &it->second;
 }
 
 manager &stage::get_parent_manager() {
@@ -115,7 +115,8 @@ stage &stage::operator=(const stage &other) {
 }
 
 std::string stage::get_locator() const noexcept {
-    return std::format("{} > Stage({})", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???", _scenario->h_stage_name);
+    return std::format("{} > Stage({})", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???",
+                       _p_scenario != nullptr ? _p_scenario->h_stage_name : 0ULL);
 }
 
 } // namespace camellia

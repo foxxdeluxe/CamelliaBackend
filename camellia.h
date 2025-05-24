@@ -1047,7 +1047,7 @@ public:
 private:
     const static hash_t H_ROOT_ACTOR_ID;
 
-    std::shared_ptr<stage_data> _scenario;
+    std::shared_ptr<stage_data> _p_scenario;
 
     std::shared_ptr<beat_data> _current_beat{nullptr};
     integer_t _next_beat_index{0};
