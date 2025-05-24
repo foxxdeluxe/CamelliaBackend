@@ -225,23 +225,23 @@ void composite_action::fina() {
 action_timeline &composite_action::get_timeline() { return _timeline; }
 
 std::string action::get_locator() const noexcept {
-    return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+    return std::format("{} > Action(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
 }
 
 std::string continuous_action::get_locator() const noexcept {
-    return std::format("{} > ContinuousAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+    return std::format("{} > ContinuousAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
 }
 
 std::string instant_action::get_locator() const noexcept {
-    return std::format("{} > InstantAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+    return std::format("{} > InstantAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
 }
 
 std::string modifier_action::get_locator() const noexcept {
-    return std::format("{} > ModifierAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+    return std::format("{} > ModifierAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
 }
 
 std::string composite_action::get_locator() const noexcept {
-    return std::format("{} > CompositeAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _index);
+    return std::format("{} > CompositeAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
 }
 
 } // namespace camellia
