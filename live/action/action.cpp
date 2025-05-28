@@ -20,22 +20,19 @@ action &action::allocate_action(const action_data::action_types type) {
 
 void action::collect_action(const action &action) { delete &action; }
 
-integer_t action::get_track_index() const { return _track_index; }
+action_timeline_keyframe &action::get_parent_keyframe() const {
+    REQUIRES_NOT_NULL(_p_parent_keyframe);
+    return *_p_parent_keyframe;
+}
 
-integer_t action::get_index() const { return _index; }
-
-void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent, const integer_t ti, const integer_t i) {
+void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent) {
     REQUIRES_VALID(*data);
 
-    _track_index = ti;
-    _index = i;
     _p_base_data = data;
     _p_parent_keyframe = parent;
 }
 
 void action::fina() {
-    _track_index = -1;
-    _index = -1;
     _p_base_data = nullptr;
     _p_parent_keyframe = nullptr;
 }
@@ -50,20 +47,20 @@ action &action::operator=(const action &other) {
     THROW_NO_LOC("Copying not allowed");
 }
 
-void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
     const auto cad = std::dynamic_pointer_cast<continuous_action_data>(data);
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to continuous action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    action::init(data, p_parent, ti, i);
+    action::init(data, p_parent);
 }
 
-void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
     const auto iad = std::dynamic_pointer_cast<instant_action_data>(data);
     REQUIRES_NOT_NULL_MSG(iad, std::format("Failed to cast action data ({}) to instant action data.", data->h_action_name));
     REQUIRES_VALID(*iad);
 
-    action::init(data, p_parent, ti, i);
+    action::init(data, p_parent);
 }
 
 action_data::action_types modifier_action::get_type() const { return action_data::action_types::ACTION_MODIFIER; }
@@ -107,12 +104,12 @@ const std::map<text_t, variant> &modifier_action::get_default_params() const {
     return p_data->default_params;
 }
 
-void modifier_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+void modifier_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
     const auto mad = std::dynamic_pointer_cast<modifier_action_data>(data);
     REQUIRES_NOT_NULL_MSG(mad, std::format("Failed to cast action data ({}) to modifier action data.", data->h_action_name));
     REQUIRES_VALID(*mad);
 
-    continuous_action::init(data, p_parent, ti, i);
+    continuous_action::init(data, p_parent);
 
     _p_parent_keyframe = p_parent;
     _p_timeline = &_p_parent_keyframe->get_timeline();
@@ -149,7 +146,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
                           mad->h_script_name, mad->h_action_name, err.what()));
     }
 
-    continuous_action::init(data, p_parent, ti, i);
+    continuous_action::init(data, p_parent);
 }
 
 void modifier_action::fina() {
@@ -207,12 +204,12 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
     }
 }
 
-void composite_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, const integer_t ti, const integer_t i) {
+void composite_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
     const auto cad = std::dynamic_pointer_cast<composite_action_data>(data);
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    action::init(data, p_parent, ti, i);
+    action::init(data, p_parent);
 
     _timeline.init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
 }
@@ -225,23 +222,38 @@ void composite_action::fina() {
 action_timeline &composite_action::get_timeline() { return _timeline; }
 
 std::string action::get_locator() const noexcept {
-    return std::format("{} > Action(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
+    if (_p_base_data == nullptr) {
+        return std::format(R"({} > Action(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+    }
+    return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string continuous_action::get_locator() const noexcept {
-    return std::format("{} > ContinuousAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
+    if (_p_base_data == nullptr) {
+        return std::format(R"({} > ContinuousAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+    }
+    return std::format("{} > ContinuousAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string instant_action::get_locator() const noexcept {
-    return std::format("{} > InstantAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
+    if (_p_base_data == nullptr) {
+        return std::format(R"({} > InstantAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+    }
+    return std::format("{} > InstantAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string modifier_action::get_locator() const noexcept {
-    return std::format("{} > ModifierAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
+    if (_p_base_data == nullptr) {
+        return std::format(R"({} > ModifierAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+    }
+    return std::format("{} > ModifierAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string composite_action::get_locator() const noexcept {
-    return std::format("{} > CompositeAction(T{}, #{})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _track_index, _index);
+    if (_p_base_data == nullptr) {
+        return std::format(R"({} > CompositeAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+    }
+    return std::format("{} > CompositeAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 } // namespace camellia

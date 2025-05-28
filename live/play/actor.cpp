@@ -23,7 +23,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
 
     _p_data = data;
     _p_stage = &sta;
-    _p_parent = &parent;
+    _p_parent_activity = &parent;
 
     for (const auto &attribute : parent.get_initial_values()) {
         attributes.set(attribute.first, attribute.second);
@@ -72,7 +72,7 @@ number_t actor::update_children(number_t beat_time) {
 
 void actor::fina(boolean_t keep_children) {
     _p_data = nullptr;
-    _p_parent = nullptr;
+    _p_parent_activity = nullptr;
 
     if (!keep_children) {
         for (auto &child : _children) {
@@ -84,9 +84,9 @@ void actor::fina(boolean_t keep_children) {
     attributes.clear();
 }
 
-activity &actor::get_parent() const {
-    REQUIRES_NOT_NULL(_p_parent);
-    return *_p_parent;
+activity &actor::get_parent_activity() const {
+    REQUIRES_NOT_NULL(_p_parent_activity);
+    return *_p_parent_activity;
 }
 
 actor::actor(const actor & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
@@ -100,6 +100,6 @@ actor &actor::operator=(const actor &other) {
 }
 
 std::string actor::get_locator() const noexcept {
-    return std::format("{} > Actor({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_data->h_actor_id);
+    return std::format("{} > Actor({})", _p_parent_activity != nullptr ? _p_parent_activity->get_locator() : "???", _p_data->h_actor_id);
 }
 } // namespace camellia

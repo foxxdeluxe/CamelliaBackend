@@ -19,7 +19,7 @@ void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, b
     _p_data = data;
     _p_stage = &sta;
     _aid = aid;
-    _p_parent = p_parent;
+    _p_parent_actor = p_parent;
 
     const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);
     REQUIRES_NOT_NULL_MSG(actor_data, std::format("Actor data ({}) not found.\n", _p_data->h_actor_id));
@@ -34,7 +34,7 @@ void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, b
 
     actor *p_actor{nullptr};
     if (!keep_actor) {
-        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, p_parent == nullptr ? -1 : p_parent->get_parent()._aid);
+        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, _p_parent_actor == nullptr ? -1 : _p_parent_actor->get_parent_activity()._aid);
         p_actor->init(actor_data, *_p_stage, *this);
     } else {
         p_actor = sta.get_actor(_aid);
@@ -97,8 +97,8 @@ activity &activity::operator=(const activity &other) {
 
 std::string activity::get_locator() const noexcept {
     std::string parent_locator{"???"};
-    if (_p_parent != nullptr) {
-        parent_locator = _p_parent->get_locator();
+    if (_p_parent_actor != nullptr) {
+        parent_locator = _p_parent_actor->get_locator();
     } else if (_p_stage != nullptr) {
         parent_locator = _p_stage->get_locator();
     }

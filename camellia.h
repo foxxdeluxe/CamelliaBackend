@@ -669,6 +669,10 @@ public:
 
     [[nodiscard]] number_t get_effective_duration() const;
 
+    [[nodiscard]] integer_t get_track_index() const;
+
+    [[nodiscard]] integer_t get_index() const;
+
     [[nodiscard]] std::shared_ptr<action_timeline_keyframe_data> get_data() const;
 
     [[nodiscard]] const std::map<text_t, variant> *get_override_params() const;
@@ -697,6 +701,7 @@ private:
     action_timeline *_parent_timeline{nullptr};
     number_t _effective_duration{0.0F};
     action *_p_action{nullptr};
+    integer_t _track_index{-1}, _index{-1};
 };
 
 class action_timeline : public live_object {
@@ -751,15 +756,13 @@ public:
 
     static void collect_action(const action &action);
 
-    [[nodiscard]] integer_t get_track_index() const;
-
-    [[nodiscard]] integer_t get_index() const;
-
-    virtual void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent, integer_t ti, integer_t i);
+    virtual void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent);
 
     virtual void fina();
 
     [[nodiscard]] virtual action_data::action_types get_type() const = 0;
+
+    [[nodiscard]] action_timeline_keyframe &get_parent_keyframe() const;
 
     action() = default;
     ~action() override = default;
@@ -773,13 +776,12 @@ public:
 protected:
     std::shared_ptr<action_data> _p_base_data{nullptr};
     action_timeline_keyframe *_p_parent_keyframe{nullptr};
-    integer_t _track_index{-1}, _index{-1};
 };
 
 class continuous_action : public action {
     NAMED_CLASS(continuous_action)
 public:
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
     [[nodiscard]] std::string get_locator() const noexcept override;
 };
 
@@ -787,7 +789,7 @@ class instant_action : public action {
     NAMED_CLASS(instant_action)
 
 public:
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
     [[nodiscard]] std::string get_locator() const noexcept override;
 };
 
@@ -811,7 +813,7 @@ public:
 
     [[nodiscard]] const std::map<text_t, variant> &get_default_params() const;
 
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
 
     void fina() override;
 
@@ -843,7 +845,7 @@ class composite_action : public action {
     NAMED_CLASS(composite_action)
 
 public:
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent, integer_t ti, integer_t i) override;
+    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
     void fina() override;
     [[nodiscard]] action_timeline &get_timeline();
     [[nodiscard]] std::string get_locator() const noexcept override;
@@ -890,7 +892,7 @@ private:
     stage *_p_stage{nullptr};
     action_timeline _timeline;
     integer_t _aid{-1};
-    actor *_p_parent{nullptr};
+    actor *_p_parent_actor{nullptr};
 };
 #endif
 
@@ -912,7 +914,7 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-    [[nodiscard]] activity &get_parent() const;
+    [[nodiscard]] activity &get_parent_activity() const;
 
 #ifndef SWIG
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
@@ -928,7 +930,7 @@ private:
     std::shared_ptr<actor_data> _p_data{nullptr};
     std::map<integer_t, activity> _children;
     stage *_p_stage{nullptr};
-    activity *_p_parent{nullptr};
+    activity *_p_parent_activity{nullptr};
 #endif
 };
 
