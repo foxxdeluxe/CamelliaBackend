@@ -64,9 +64,7 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     _index = i;
 
     const auto action_data = parent->get_stage().get_action_data(data->h_action_name);
-    THROW_IF(action_data == nullptr, std::format("Action data ({}) not found.\n"
-                                                 "{}",
-                                                 data->h_action_name, get_locator()));
+    THROW_IF(action_data == nullptr, std::format("Action data ({}) not found.", data->h_action_name));
 
     _p_action = &action::allocate_action(action_data->get_action_type());
     _p_action->init(action_data, this);
@@ -226,7 +224,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
 
             if (_next_keyframe_indices[i] > 0) {
                 auto &keyframe = track[_next_keyframe_indices[i] - 1];
-                if (keyframe.get_linger() || keyframe.get_time() + keyframe.get_preferred_duration() <= timeline_time) {
+                if (keyframe.get_linger() || timeline_time <= keyframe.get_time() + keyframe.get_preferred_duration()) {
                     auto type = keyframe.get_action().get_type();
                     if (type > action_data::action_types::ACTION_COMPOSITE) {
                         if (!exclude_continuous) {
