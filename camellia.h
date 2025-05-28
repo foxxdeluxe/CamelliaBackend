@@ -848,6 +848,7 @@ public:
     void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
     void fina() override;
     [[nodiscard]] action_timeline &get_timeline();
+    [[nodiscard]] action_data::action_types get_type() const override;
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 private:

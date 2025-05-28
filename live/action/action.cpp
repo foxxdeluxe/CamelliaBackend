@@ -12,6 +12,9 @@ action &action::allocate_action(const action_data::action_types type) {
     case action_data::ACTION_MODIFIER: {
         return *new modifier_action();
     }
+    case action_data::ACTION_COMPOSITE: {
+        return *new composite_action();
+    }
     default: {
         THROW_NO_LOC(std::format("Unknown action type ({}).", type));
     }
@@ -220,6 +223,8 @@ void composite_action::fina() {
 }
 
 action_timeline &composite_action::get_timeline() { return _timeline; }
+
+action_data::action_types composite_action::get_type() const { return action_data::action_types::ACTION_COMPOSITE; }
 
 std::string action::get_locator() const noexcept {
     if (_p_base_data == nullptr) {

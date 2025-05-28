@@ -34,6 +34,7 @@ namespace camellia {
         struct continuous_action_data;
         struct modifier_action_data;
         struct instant_action_data;
+        struct composite_action_data;
         struct text_region_attachment_data;
         struct text_region_attachment_text_data;
 }
@@ -42,6 +43,7 @@ namespace camellia {
 %shared_ptr(camellia::continuous_action_data)
 %shared_ptr(camellia::modifier_action_data)
 %shared_ptr(camellia::instant_action_data)
+%shared_ptr(camellia::composite_action_data)
 %shared_ptr(camellia::stage_data)
 %shared_ptr(camellia::action_timeline_keyframe_data)
 %shared_ptr(camellia::action_timeline_track_data)
