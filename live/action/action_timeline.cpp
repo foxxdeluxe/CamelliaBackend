@@ -121,12 +121,14 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
 
     int track_index = 0;
     for (const auto &d : data) {
+        _tracks.resize(_tracks.size() + d->tracks.size());
         for (const auto &track : d->tracks) {
-            std::vector<action_timeline_keyframe> live_track;
+            auto &live_track = _tracks[track_index];
+            live_track.resize(track->keyframes.size());
             for (int i = 0; i < track->keyframes.size(); i++) {
                 auto keyframe = track->keyframes[i];
-                live_track.emplace_back();
-                auto &live_keyframe = live_track.back();
+                auto *live_keyframe = new action_timeline_keyframe();
+                live_track[i] = live_keyframe;
                 auto preferred_duration = std::fabsf(keyframe->preferred_duration_signed);
 
                 auto effective_duration = keyframe->preferred_duration_signed < 0.0F ? NUMBER_POSITIVE_INFINITY : preferred_duration;
@@ -134,10 +136,9 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
                     effective_duration = std::min(track->keyframes[i + 1]->time - keyframe->time, effective_duration);
                 }
 
-                live_keyframe.init(keyframe, this, track_index, i, effective_duration);
+                live_keyframe->init(keyframe, this, track_index, i, effective_duration);
             }
 
-            _tracks.push_back(std::move(live_track));
             _next_keyframe_indices.push_back(0);
             track_index++;
         }
@@ -155,7 +156,8 @@ void action_timeline::fina() {
 
     for (auto &track : _tracks) {
         for (auto &keyframe : track) {
-            keyframe.fina();
+            keyframe->fina();
+            delete keyframe;
         }
     }
 
@@ -167,12 +169,12 @@ void action_timeline::fina() {
 std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t timeline_time) const {
     std::vector<const action_timeline_keyframe *> res;
     for (const auto &track : _tracks) {
-        auto index = algorithm_helper::upper_bound<action_timeline_keyframe>(
-            track, [&](const action_timeline_keyframe &k) { return algorithm_helper::compare_to(k.get_time(), timeline_time); });
+        auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
+            track, [&](const action_timeline_keyframe *k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
         if (index <= 0) {
             continue;
         }
-        res.push_back(&track[index - 1]);
+        res.push_back(track[index - 1]);
     }
     return res;
 }
@@ -189,16 +191,16 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
         _current_composite_keyframes.clear();
         for (int i = 0; i < _tracks.size(); i++) {
             auto &track = _tracks[i];
-            auto index = algorithm_helper::upper_bound<action_timeline_keyframe>(
-                track, [&](const action_timeline_keyframe &k) { return algorithm_helper::compare_to(k.get_time(), timeline_time); });
+            auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
+                track, [&](const action_timeline_keyframe *k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
             _next_keyframe_indices.push_back(index);
             if (index <= 0) {
                 continue;
             }
             auto &keyframe = track[index - 1];
-            candidates.push_back(&keyframe);
-            if (keyframe.get_action().get_type() == action_data::action_types::ACTION_COMPOSITE) {
-                _current_composite_keyframes[i] = &keyframe;
+            candidates.push_back(keyframe);
+            if (keyframe->get_action().get_type() == action_data::action_types::ACTION_COMPOSITE) {
+                _current_composite_keyframes[i] = keyframe;
             }
         }
     } else {
@@ -206,7 +208,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
             auto &track = _tracks[i];
 
             action_timeline_keyframe *k{nullptr};
-            while (_next_keyframe_indices[i] < track.size() && timeline_time >= (k = &track[_next_keyframe_indices[i]])->get_time()) {
+            while (_next_keyframe_indices[i] < track.size() && timeline_time >= (k = track[_next_keyframe_indices[i]])->get_time()) {
                 auto *prev_composite_keyframe = _current_composite_keyframes[i];
                 if (prev_composite_keyframe != nullptr) {
                     candidates.push_back(prev_composite_keyframe);
@@ -224,16 +226,16 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
 
             if (_next_keyframe_indices[i] > 0) {
                 auto &keyframe = track[_next_keyframe_indices[i] - 1];
-                if (keyframe.get_linger() || timeline_time <= keyframe.get_time() + keyframe.get_preferred_duration()) {
-                    auto type = keyframe.get_action().get_type();
+                if (keyframe->get_linger() || timeline_time <= keyframe->get_time() + keyframe->get_preferred_duration()) {
+                    auto type = keyframe->get_action().get_type();
                     if (type > action_data::action_types::ACTION_COMPOSITE) {
                         if (!exclude_continuous) {
-                            candidates.push_back(&keyframe); // continuous keyframes only
+                            candidates.push_back(keyframe); // continuous keyframes only
                         }
                     } else if (type == action_data::action_types::ACTION_COMPOSITE) {
                         // _current_composite_keyframes[i] is either nullptr or &keyframe here
-                        _current_composite_keyframes[i] = &keyframe;
-                        candidates.push_back(&keyframe); // ongoing composite keyframes only
+                        _current_composite_keyframes[i] = keyframe;
+                        candidates.push_back(keyframe); // ongoing composite keyframes only
                     }
                 } else {
                     // when current timeline time is not inside any keyframe, and not before all keyframes
@@ -306,13 +308,13 @@ variant action_timeline::get_base_value(const number_t timeline_time, const hash
 variant action_timeline::get_prev_value(const modifier_action &ac) const {
     const auto &track = _tracks[ac.get_parent_keyframe().get_track_index()];
     const auto &current_keyframe = track[ac.get_parent_keyframe().get_index()];
-    auto base_value = get_base_value(current_keyframe.get_time(), ac.get_attribute_name_hash(), ac);
+    auto base_value = get_base_value(current_keyframe->get_time(), ac.get_attribute_name_hash(), ac);
     if (ac.get_parent_keyframe().get_index() <= 0) {
         return base_value;
     }
 
     const auto &last_keyframe = track[ac.get_parent_keyframe().get_index() - 1];
-    auto &lac = last_keyframe.get_action();
+    auto &lac = last_keyframe->get_action();
     if (lac.get_type() != action_data::action_types::ACTION_MODIFIER) {
         return base_value;
     }
@@ -322,7 +324,7 @@ variant action_timeline::get_prev_value(const modifier_action &ac) const {
     }
 
     if (lma->final_value.get_value_type() == variant::VOID) {
-        lma->final_value = lma->apply_modifier(current_keyframe.get_time() - last_keyframe.get_time(), ac.get_attribute_name_hash(), base_value);
+        lma->final_value = lma->apply_modifier(current_keyframe->get_time() - last_keyframe->get_time(), ac.get_attribute_name_hash(), base_value);
     }
     return lma->final_value;
 }
