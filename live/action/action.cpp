@@ -2,7 +2,9 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#include "camellia.h"
+#include "action.h"
+#include "camellia_macro.h"
+#include "live/play/stage.h"
 #include <format>
 #include <set>
 
@@ -33,9 +35,12 @@ void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyf
 
     _p_base_data = data;
     _p_parent_keyframe = parent;
+
+    _is_initialized = true;
 }
 
 void action::fina() {
+    _is_initialized = false;
     _p_base_data = nullptr;
     _p_parent_keyframe = nullptr;
 }
@@ -153,6 +158,8 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
 }
 
 void modifier_action::fina() {
+    continuous_action::fina();
+
     _p_timeline = nullptr;
     final_value = variant();
 
@@ -160,8 +167,6 @@ void modifier_action::fina() {
         delete _p_script;
         _p_script = nullptr;
     }
-
-    continuous_action::fina();
 }
 
 variant modifier_action::apply_modifier(const number_t action_time, const hash_t h_attribute_name, const variant &val) const {
@@ -188,7 +193,7 @@ const char *modifier_action::ORIG_NAME = "orig";
 const char *modifier_action::RUN_NAME = "run";
 
 variant modifier_action::modify(const number_t action_time, const variant &base_value) const {
-    REQUIRES_NOT_NULL(_p_script);
+    REQUIRES_INITIALIZED(*this);
 
     try {
         // set built-in constants
@@ -212,14 +217,14 @@ void composite_action::init(const std::shared_ptr<action_data> &data, action_tim
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    action::init(data, p_parent);
-
     _timeline.init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
+
+    action::init(data, p_parent);
 }
 
 void composite_action::fina() {
-    _timeline.fina();
     action::fina();
+    _timeline.fina();
 }
 
 action_timeline &composite_action::get_timeline() { return _timeline; }

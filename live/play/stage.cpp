@@ -2,8 +2,11 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#include "camellia.h"
 #include <memory>
+
+#include "camellia_macro.h"
+#include "live/play/stage.h"
+#include "manager.h"
 
 namespace camellia {
 
@@ -71,9 +74,11 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     _root_activity.init(_root_activity_data, 0, false, *this, nullptr);
 
     get_main_dialog()->init(*this);
+    _is_initialized = true;
 }
 
 void stage::fina() {
+    _is_initialized = false;
     get_main_dialog()->fina();
 
     _root_activity.fina(false);

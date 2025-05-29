@@ -6,8 +6,13 @@
 #include <cstddef>
 #include <format>
 
-#include "camellia.h"
+#include "action.h"
+#include "action_timeline.h"
+#include "camellia_constant.h"
+#include "camellia_macro.h"
+#include "helper/algorithm_helper.h"
 #include "helper/resource_helper.h"
+#include "live/play/stage.h"
 
 namespace camellia {
 number_t action_timeline_keyframe::get_time() const {
@@ -68,9 +73,12 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
 
     _p_action = &action::allocate_action(action_data->get_action_type());
     _p_action->init(action_data, this);
+
+    _is_initialized = true;
 }
 
 void action_timeline_keyframe::fina() {
+    _is_initialized = false;
     _data = nullptr;
     _parent_timeline = nullptr;
     _track_index = -1;
@@ -146,9 +154,12 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
     }
 
     _current_composite_keyframes.resize(_tracks.size());
+
+    _is_initialized = true;
 }
 
 void action_timeline::fina() {
+    _is_initialized = false;
     _data.clear();
     _p_stage = nullptr;
     _p_parent = nullptr;
@@ -167,6 +178,8 @@ void action_timeline::fina() {
 }
 
 std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t timeline_time) const {
+    REQUIRES_INITIALIZED(*this);
+
     std::vector<const action_timeline_keyframe *> res;
     for (const auto &track : _tracks) {
         auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
@@ -181,6 +194,7 @@ std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t t
 
 std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, const std::map<hash_t, variant> &attributes, const boolean_t continuous,
                                                   const boolean_t exclude_continuous) {
+    REQUIRES_INITIALIZED(*this);
     resource_helper::finally fin([this]() { _current_initial_attributes = nullptr; });
 
     _current_initial_attributes = &attributes;

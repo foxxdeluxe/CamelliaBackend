@@ -1,7 +1,10 @@
-#include "camellia.h"
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
+
+#include "helper/algorithm_helper.h"
+#include "live/play/stage.h"
+#include "manager.h"
 
 using namespace camellia;
 

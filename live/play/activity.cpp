@@ -2,9 +2,10 @@
 // Created by LENOVO on 2025/4/4.
 //
 
+#include "activity.h"
+#include "camellia_macro.h"
+#include "live/play/stage.h"
 #include <format>
-
-#include "camellia.h"
 
 namespace camellia {
 
@@ -42,9 +43,13 @@ void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, b
     }
 
     _timeline.init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
+
+    _is_initialized = true;
 }
 
 void activity::fina(boolean_t keep_actor) {
+    _is_initialized = false;
+
     if (!keep_actor) {
         auto *p_actor = _p_stage->get_actor(_aid);
         if (p_actor != nullptr) {
@@ -68,8 +73,8 @@ number_t activity::update(number_t beat_time) {
 
     auto updated = _timeline.update(beat_time, _initial_attributes);
 
-    p_actor->attributes.update(updated);
-    p_actor->attributes.handle_dirty_attributes(*p_actor);
+    p_actor->get_attributes().update(updated);
+    p_actor->get_attributes().handle_dirty_attributes(*p_actor);
 
     return std::max(p_actor->update_children(beat_time), _timeline.get_effective_duration() - beat_time);
 }

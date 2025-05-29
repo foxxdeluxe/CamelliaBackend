@@ -15,29 +15,71 @@
 
 %include "camellia_typedef.h"
 
+// Forward declarations
 namespace camellia {
-        class actor;
-        class dialog;
-        class variant;
+// From attribute_registry.h
+class live_object;
+class dirty_attribute_handler;
+class attribute_registry;
 
-        struct action_timeline_keyframe_data;
-        struct activity_data;
-        struct curve_point_data;
-        struct action_timeline_data;
-        struct action_timeline_track_data;
-        struct dialog_data;
-        struct text_region_data;
-        struct beat_data;
-        struct actor_data;
-        struct stage_data;
-        struct action_data;
-        struct continuous_action_data;
-        struct modifier_action_data;
-        struct instant_action_data;
-        struct composite_action_data;
-        struct text_region_attachment_data;
-        struct text_region_attachment_text_data;
+// From data/stage_data.h
+struct action_timeline_data;
+struct action_data;
+struct action_timeline_keyframe_data;
+struct action_timeline_track_data;
+struct continuous_action_data;
+struct modifier_action_data;
+struct instant_action_data;
+struct composite_action_data;
+struct curve_point_data;
+struct curve_data;
+struct activity_data;
+struct actor_data;
+struct text_region_attachment_data;
+struct text_region_attachment_text_data;
+struct text_region_data;
+struct dialog_data;
+struct beat_data;
+struct stage_data;
+
+// From helper/scripting_helper.h
+namespace scripting_helper {
+class engine;
 }
+
+// From live/action/action.h
+class action_timeline_keyframe;
+class action;
+class continuous_action;
+class instant_action;
+class modifier_action;
+class composite_action;
+
+// From live/action/action_timeline.h
+class stage;
+class action_timeline;
+
+// From live/play/activity.h
+class activity;
+
+// From live/play/actor.h
+class actor;
+
+// From live/play/dialog.h
+class dialog;
+class text_region;
+
+// From live/play/stage.h (stage already declared above)
+
+// From manager.h
+class manager;
+
+// From variant.h
+struct vector2;
+struct vector3;
+struct vector4;
+class variant;
+} // namespace camellia
 
 %shared_ptr(camellia::action_data)
 %shared_ptr(camellia::continuous_action_data)
@@ -72,6 +114,7 @@ namespace std {
         %template(ScriptMap) map<camellia::hash_t, camellia::text_t>;
         %template(HashVariantMap) map<camellia::hash_t, camellia::variant>;
         %template(ByteVector) vector<unsigned char>;
+        %template(VariantVector) vector<camellia::variant>;
 }
 
 %exception {
@@ -110,3 +153,16 @@ namespace camellia {
 %warnfilter(473) stage;
 %warnfilter(473) dialog;
 %include "camellia.h"
+%include "camellia_macro.h"
+%include "attribute_registry.h"
+%include "data/stage_data.h"
+%include "helper/algorithm_helper.h"
+%include "helper/scripting_helper.h"
+%include "live/action/action.h"
+%include "live/action/action_timeline.h"
+%include "live/play/activity.h"
+%include "live/play/actor.h"
+%include "live/play/dialog.h"
+%include "live/play/stage.h"
+%include "manager.h"
+%include "variant.h"

@@ -2,7 +2,9 @@
 // Created by LENOVO on 2025/4/4.
 //
 
-#include "camellia.h"
+#include "actor.h"
+#include "camellia_macro.h"
+#include "live/play/stage.h"
 
 namespace camellia {
 const std::shared_ptr<actor_data> &actor::get_data() const {
@@ -15,6 +17,8 @@ const std::map<hash_t, variant> &actor::get_default_attributes() const {
     return _p_data->default_attributes;
 }
 
+attribute_registry &actor::get_attributes() { return _attributes; }
+
 boolean_t actor::handle_dirty_attribute(hash_t /*key*/, const variant & /*val*/) { return true; }
 
 void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent) {
@@ -26,7 +30,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     _p_parent_activity = &parent;
 
     for (const auto &attribute : parent.get_initial_values()) {
-        attributes.set(attribute.first, attribute.second);
+        _attributes.set(attribute.first, attribute.second);
     }
 
     {
@@ -60,6 +64,8 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
             ++it;
         }
     }
+
+    _is_initialized = true;
 }
 
 number_t actor::update_children(number_t beat_time) {
@@ -71,6 +77,7 @@ number_t actor::update_children(number_t beat_time) {
 }
 
 void actor::fina(boolean_t keep_children) {
+    _is_initialized = false;
     _p_data = nullptr;
     _p_parent_activity = nullptr;
 
@@ -81,7 +88,7 @@ void actor::fina(boolean_t keep_children) {
         _children.clear();
     }
 
-    attributes.clear();
+    _attributes.clear();
 }
 
 activity &actor::get_parent_activity() const {

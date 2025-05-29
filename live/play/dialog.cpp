@@ -4,7 +4,11 @@
 
 #include <format>
 
-#include "camellia.h"
+#include "camellia_macro.h"
+#include "dialog.h"
+#include "helper/algorithm_helper.h"
+#include "live/play/stage.h"
+
 
 namespace camellia {
 
@@ -72,9 +76,12 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
                               data->h_transition_script_name, err.what()));
         }
     }
+
+    _is_initialized = true;
 }
 
 void text_region::fina() {
+    _is_initialized = false;
     _data = nullptr;
     _parent_dialog = nullptr;
 
@@ -142,9 +149,13 @@ stage &dialog::get_stage() const {
     return *_parent_stage;
 }
 
-void dialog::init(stage &st) { _parent_stage = &st; }
+void dialog::init(stage &st) {
+    _parent_stage = &st;
+    _is_initialized = true;
+}
 
 void dialog::fina() {
+    _is_initialized = false;
     _parent_stage = nullptr;
 
     trim_text_regions(0);

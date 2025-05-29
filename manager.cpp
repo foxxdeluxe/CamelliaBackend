@@ -2,7 +2,11 @@
 // Created by LENOVO on 2025/4/3.
 //
 
-#include "camellia.h"
+#include "manager.h"
+#include "camellia_macro.h"
+#include "data/stage_data.h"
+#include "live/play/stage.h"
+#include <format>
 #include <stdexcept>
 
 namespace camellia {

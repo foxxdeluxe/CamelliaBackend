@@ -17,6 +17,55 @@ add_subdirectory(test)
 
 include_directories(${PROJECT_SOURCE_DIR})
 
+# Collect all header files for the library export
+set(CAMELLIA_HEADERS
+    camellia_typedef.h
+    variant.h
+    attribute_registry.h
+    manager.h
+    data/stage_data.h
+    helper/algorithm_helper.h
+    helper/scripting_helper.h
+    live/action/action_timeline.h
+    live/action/action.h
+    live/play/activity.h
+    live/play/actor.h
+    live/play/dialog.h
+    live/play/stage.h
+)
+
+# Create a generated header file for library export
+configure_file(
+    "${PROJECT_SOURCE_DIR}/camellia.h"
+    "${EXPORT_INCLUDE_DIR}/camellia.h"
+    COPYONLY
+)
+
+# Create export directories at configure time
+file(MAKE_DIRECTORY ${EXPORT_LIB_DIR})
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR})
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/data)
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/helper)
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/action)
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/play)
+file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/quickjs)
+
+# Copy all header files using configure_file
+configure_file(${PROJECT_SOURCE_DIR}/camellia_typedef.h ${EXPORT_INCLUDE_DIR}/camellia_typedef.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/variant.h ${EXPORT_INCLUDE_DIR}/variant.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/attribute_registry.h ${EXPORT_INCLUDE_DIR}/attribute_registry.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/manager.h ${EXPORT_INCLUDE_DIR}/manager.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/data/stage_data.h ${EXPORT_INCLUDE_DIR}/data/stage_data.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/helper/algorithm_helper.h ${EXPORT_INCLUDE_DIR}/helper/algorithm_helper.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/helper/scripting_helper.h ${EXPORT_INCLUDE_DIR}/helper/scripting_helper.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/action/action_timeline.h ${EXPORT_INCLUDE_DIR}/live/action/action_timeline.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/action/action.h ${EXPORT_INCLUDE_DIR}/live/action/action.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/play/activity.h ${EXPORT_INCLUDE_DIR}/live/play/activity.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/play/actor.h ${EXPORT_INCLUDE_DIR}/live/play/actor.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/play/dialog.h ${EXPORT_INCLUDE_DIR}/live/play/dialog.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/play/stage.h ${EXPORT_INCLUDE_DIR}/live/play/stage.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/quickjs.h COPYONLY)
+
 # main C++ library
 add_library(
         CamelliaBackendCore
@@ -32,7 +81,7 @@ add_library(
         live/action/action.cpp
         live/action/action_timeline.cpp
         attribute_registry.cpp
-        live/exception/uninitialized_exception.cpp
+        data/stage_data.cpp
         xxHash/xxhash.c
         xxHash/xxh_x86dispatch.c
 )
@@ -45,20 +94,9 @@ target_link_libraries(
 add_custom_command(
         TARGET CamelliaBackendCore POST_BUILD
         COMMENT "Copying core build outputs..."
-
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_LIB_DIR} 
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_INCLUDE_DIR} 
-
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_LIB_DIR}
+        
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:qjs> ${EXPORT_LIB_DIR}
-
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/camellia.h ${EXPORT_INCLUDE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/camellia_typedef.h ${EXPORT_INCLUDE_DIR}
-
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_INCLUDE_DIR}/quickjs
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/
 )
 
 # swig

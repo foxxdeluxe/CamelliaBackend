@@ -1,7 +1,8 @@
 ﻿//
 // Created by LENOVO on 2025/4/1.
 //
-#include "camellia.h"
+#include "variant.h"
+#include "helper/algorithm_helper.h"
 #include <variant>
 
 #define IMPL_VECTOR_COMMON_OPS(X)                                                                                                                              \
@@ -106,6 +107,8 @@ bool variant::operator==(const variant &other) const {
         return std::get<vector4>(_data) == std::get<vector4>(other._data);
     case BYTES:
         return std::get<bytes_t>(_data) == std::get<bytes_t>(other._data);
+    case ARRAY:
+        return std::get<std::vector<variant>>(_data) == std::get<std::vector<variant>>(other._data);
     default: // others
         return false;
     }
@@ -148,6 +151,9 @@ variant &variant::operator=(const variant &v) {
         break;
     case BYTES:
         _data = std::get<bytes_t>(v._data);
+        break;
+    case ARRAY:
+        _data = std::get<std::vector<variant>>(v._data);
         break;
     }
     return *this;
@@ -215,6 +221,9 @@ variant::variant(types t) : _type(t) {
     case BYTES:
         _data = bytes_t{};
         break;
+    case ARRAY:
+        _data = std::vector<variant>{};
+        break;
     }
 }
 
@@ -260,6 +269,21 @@ bool variant::approx_equals(const variant &other) const {
         }
         return std::get<vector4>(_data).approx_equals(std::get<vector4>(other._data));
     }
+    case ARRAY: {
+        if (other._type != ARRAY) {
+            return *this == other;
+        }
+
+        if (std::get<std::vector<variant>>(_data).size() != std::get<std::vector<variant>>(other._data).size()) {
+            return false;
+        }
+        for (size_t i = 0; i < std::get<std::vector<variant>>(_data).size(); i++) {
+            if (!std::get<std::vector<variant>>(_data)[i].approx_equals(std::get<std::vector<variant>>(other._data)[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
     default:
         return *this == other;
     }
@@ -272,4 +296,6 @@ const vector3 &variant::get_vector3() const { return std::get<vector3>(_data); }
 const vector4 &variant::get_vector4() const { return std::get<vector4>(_data); }
 
 const bytes_t &variant::get_bytes() const { return std::get<bytes_t>(_data); }
+
+const std::vector<variant> &variant::get_array() const { return std::get<std::vector<variant>>(_data); }
 } // namespace camellia
