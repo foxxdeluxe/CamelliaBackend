@@ -147,7 +147,7 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
                 live_keyframe->init(keyframe, this, track_index, i, effective_duration);
             }
 
-            _next_keyframe_indices.push_back(0);
+            _last_completed_keyframe_indices.push_back(-1);
             track_index++;
         }
         _effective_duration = std::max(_effective_duration, d->effective_duration);
@@ -173,7 +173,7 @@ void action_timeline::fina() {
     }
 
     _tracks.clear();
-    _next_keyframe_indices.clear();
+    _last_completed_keyframe_indices.clear();
     _current_composite_keyframes.clear();
 }
 
@@ -193,101 +193,84 @@ std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t t
 }
 
 std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, const std::map<hash_t, variant> &attributes, const boolean_t continuous,
-                                                  const boolean_t exclude_continuous) {
+                                                  const boolean_t exclude_ongoing) {
     REQUIRES_INITIALIZED(*this);
     resource_helper::finally fin([this]() { _current_initial_attributes = nullptr; });
 
     _current_initial_attributes = &attributes;
-    std::vector<const action_timeline_keyframe *> candidates;
+    std::vector<const action_timeline_keyframe *> ongoing_keyframes;
+    std::vector<const action_timeline_keyframe *> finishing_keyframes;
 
     if (!continuous) {
-        _next_keyframe_indices.clear();
-        _current_composite_keyframes.clear();
-        for (int i = 0; i < _tracks.size(); i++) {
-            auto &track = _tracks[i];
+        _last_completed_keyframe_indices.clear();
+        for (auto &track : _tracks) {
             auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
                 track, [&](const action_timeline_keyframe *k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
-            _next_keyframe_indices.push_back(index);
             if (index <= 0) {
+                _last_completed_keyframe_indices.push_back(-1);
                 continue;
             }
             auto &keyframe = track[index - 1];
-            candidates.push_back(keyframe);
-            if (keyframe->get_action().get_type() == action_data::action_types::ACTION_COMPOSITE) {
-                _current_composite_keyframes[i] = keyframe;
+            if (timeline_time <= keyframe->get_time() + keyframe->get_effective_duration()) {
+                if (!exclude_ongoing) {
+                    ongoing_keyframes.push_back(keyframe);
+                }
+                _last_completed_keyframe_indices.push_back(index - 1);
+            } else {
+                _last_completed_keyframe_indices.push_back(index);
             }
         }
     } else {
         for (int i = 0; i < _tracks.size(); i++) {
             auto &track = _tracks[i];
 
-            action_timeline_keyframe *k{nullptr};
-            while (_next_keyframe_indices[i] < track.size() && timeline_time >= (k = track[_next_keyframe_indices[i]])->get_time()) {
-                auto *prev_composite_keyframe = _current_composite_keyframes[i];
-                if (prev_composite_keyframe != nullptr) {
-                    candidates.push_back(prev_composite_keyframe);
-                    _current_composite_keyframes[i] = nullptr;
+            while (_last_completed_keyframe_indices[i] < static_cast<integer_t>(track.size()) - 1) {
+                auto &k = track[_last_completed_keyframe_indices[i] + 1];
+                if (timeline_time <= k->get_time() + k->get_effective_duration()) {
+                    if (!exclude_ongoing) {
+                        ongoing_keyframes.push_back(k);
+                    }
+                    break;
                 }
 
-                auto action_type = k->get_action().get_type();
-                if (action_type < action_data::action_types::ACTION_COMPOSITE) {
-                    candidates.push_back(k); // take instant keyframes into account
-                } else if (action_type == action_data::action_types::ACTION_COMPOSITE && timeline_time > k->get_time() + k->get_effective_duration()) {
-                    candidates.push_back(k); // take ended composite keyframes into account
-                }
-                _next_keyframe_indices[i]++;
-            }
-
-            if (_next_keyframe_indices[i] > 0) {
-                auto &keyframe = track[_next_keyframe_indices[i] - 1];
-                if (keyframe->get_linger() || timeline_time <= keyframe->get_time() + keyframe->get_preferred_duration()) {
-                    auto type = keyframe->get_action().get_type();
-                    if (type > action_data::action_types::ACTION_COMPOSITE) {
-                        if (!exclude_continuous) {
-                            candidates.push_back(keyframe); // continuous keyframes only
-                        }
-                    } else if (type == action_data::action_types::ACTION_COMPOSITE) {
-                        // _current_composite_keyframes[i] is either nullptr or &keyframe here
-                        _current_composite_keyframes[i] = keyframe;
-                        candidates.push_back(keyframe); // ongoing composite keyframes only
-                    }
-                } else {
-                    // when current timeline time is not inside any keyframe, and not before all keyframes
-                    auto *prev_composite_keyframe = _current_composite_keyframes[i];
-                    if (prev_composite_keyframe != nullptr) {
-                        // only when current timeline time is after a composite keyframe and before the next keyframe
-                        candidates.push_back(prev_composite_keyframe);
-                        _current_composite_keyframes[i] = nullptr;
-                    }
-                }
+                finishing_keyframes.push_back(k);
+                _last_completed_keyframe_indices[i]++;
             }
         }
     }
 
     std::map<hash_t, variant> temp_attributes{attributes};
 
-    for (const auto *keyframe : candidates) {
+    for (const auto *keyframe : finishing_keyframes) {
         auto *action = &keyframe->get_action();
+        switch (action->get_type()) {
+        case action_data::action_types::ACTION_COMPOSITE: {
+            auto *ca = dynamic_cast<composite_action *>(action);
+            temp_attributes = ca->get_timeline().update(keyframe->get_preferred_duration(), temp_attributes, continuous, true);
+            break;
+        }
+        default: {
+            break;
+        }
+        }
+    }
+
+    for (const auto *keyframe : ongoing_keyframes) {
+        auto *action = &keyframe->get_action();
+        auto action_time = std::min(timeline_time - keyframe->get_time(), keyframe->get_preferred_duration());
         switch (action->get_type()) {
         case action_data::action_types::ACTION_MODIFIER: {
             auto *ma = dynamic_cast<modifier_action *>(action);
-            auto action_time = timeline_time - keyframe->get_time();
-            ma->apply_modifier(std::min(action_time, keyframe->get_preferred_duration()), temp_attributes);
+            ma->apply_modifier(action_time, temp_attributes);
             break;
         }
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
-            if (timeline_time > keyframe->get_time() + keyframe->get_effective_duration()) {
-                // already ended,
-                temp_attributes = ca->get_timeline().update(timeline_time - keyframe->get_time(), temp_attributes, continuous, true);
-            } else {
-                // ongoing
-                temp_attributes = ca->get_timeline().update(timeline_time - keyframe->get_time(), temp_attributes, continuous, false);
-            }
+            temp_attributes = ca->get_timeline().update(action_time, temp_attributes, continuous, false);
             break;
         }
         default: {
-            THROW(std::format("Unknown type ({}) of action ({}).", action->get_type(), action->get_locator()));
+            break;
         }
         }
     }

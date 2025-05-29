@@ -3,6 +3,7 @@
 //
 
 #include "action.h"
+#include "attribute_registry.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
 #include <format>
@@ -45,7 +46,7 @@ void action::fina() {
     _p_parent_keyframe = nullptr;
 }
 
-action::action(const action & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+action::action(const action &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
 
 action &action::operator=(const action &other) {
     if (this == &other) {
@@ -53,22 +54,6 @@ action &action::operator=(const action &other) {
     }
 
     THROW_NO_LOC("Copying not allowed");
-}
-
-void continuous_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
-    const auto cad = std::dynamic_pointer_cast<continuous_action_data>(data);
-    REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to continuous action data.", data->h_action_name));
-    REQUIRES_VALID(*cad);
-
-    action::init(data, p_parent);
-}
-
-void instant_action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) {
-    const auto iad = std::dynamic_pointer_cast<instant_action_data>(data);
-    REQUIRES_NOT_NULL_MSG(iad, std::format("Failed to cast action data ({}) to instant action data.", data->h_action_name));
-    REQUIRES_VALID(*iad);
-
-    action::init(data, p_parent);
 }
 
 action_data::action_types modifier_action::get_type() const { return action_data::action_types::ACTION_MODIFIER; }
@@ -117,7 +102,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     REQUIRES_NOT_NULL_MSG(mad, std::format("Failed to cast action data ({}) to modifier action data.", data->h_action_name));
     REQUIRES_VALID(*mad);
 
-    continuous_action::init(data, p_parent);
+    action::init(data, p_parent);
 
     _p_parent_keyframe = p_parent;
     _p_timeline = &_p_parent_keyframe->get_timeline();
@@ -154,11 +139,11 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
                           mad->h_script_name, mad->h_action_name, err.what()));
     }
 
-    continuous_action::init(data, p_parent);
+    action::init(data, p_parent);
 }
 
 void modifier_action::fina() {
-    continuous_action::fina();
+    action::fina();
 
     _p_timeline = nullptr;
     final_value = variant();
@@ -236,20 +221,6 @@ std::string action::get_locator() const noexcept {
         return std::format(R"({} > Action(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
     }
     return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
-}
-
-std::string continuous_action::get_locator() const noexcept {
-    if (_p_base_data == nullptr) {
-        return std::format(R"({} > ContinuousAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
-    }
-    return std::format("{} > ContinuousAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
-}
-
-std::string instant_action::get_locator() const noexcept {
-    if (_p_base_data == nullptr) {
-        return std::format(R"({} > InstantAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
-    }
-    return std::format("{} > InstantAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string modifier_action::get_locator() const noexcept {

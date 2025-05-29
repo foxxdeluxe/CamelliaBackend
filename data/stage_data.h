@@ -17,16 +17,17 @@ struct action_data {
     enum action_types : char {
         ACTION_TYPE_MIN = -1,
         // negative types are instant actions
-        ACTION_COMPOSITE = 0,
+        ACTION_INVALID = 0,
         // positive types are continuous actions
         ACTION_MODIFIER = 1,
-        ACTION_TYPE_MAX = 2
+        ACTION_COMPOSITE = 2,
+        ACTION_TYPE_MAX = 3
     };
 
     hash_t h_action_name{0ULL};
     std::map<text_t, variant> default_params;
 
-    [[nodiscard]] virtual action_types get_action_type() const { return ACTION_TYPE_MIN; }
+    [[nodiscard]] virtual action_types get_action_type() const { return ACTION_INVALID; }
     virtual ~action_data() = default;
     action_data() = default;
     action_data(const action_data &other) = default;
@@ -66,11 +67,7 @@ struct action_timeline_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 };
 
-struct continuous_action_data : public action_data {
-    [[nodiscard]] boolean_t is_valid() const { return true; }
-};
-
-struct modifier_action_data : public continuous_action_data {
+struct modifier_action_data : public action_data {
     hash_t h_attribute_name{0ULL};
     variant::types value_type{variant::VOID};
     hash_t h_script_name{0ULL};
@@ -80,10 +77,6 @@ struct modifier_action_data : public continuous_action_data {
     [[nodiscard]] boolean_t is_valid() const {
         return action_data::is_valid() && h_attribute_name != 0ULL && value_type != variant::VOID && h_script_name != 0ULL;
     }
-};
-
-struct instant_action_data : public action_data {
-    [[nodiscard]] boolean_t is_valid() const { return true; }
 };
 
 struct composite_action_data : public action_data {

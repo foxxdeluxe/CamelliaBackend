@@ -109,7 +109,7 @@ public:
 private:
     std::vector<std::shared_ptr<action_timeline_data>> _data;
     number_t _effective_duration{0.0F};
-    std::vector<integer_t> _next_keyframe_indices;
+    std::vector<integer_t> _last_completed_keyframe_indices;
     std::vector<std::vector<action_timeline_keyframe *>> _tracks;
     std::vector<action_timeline_keyframe *> _current_composite_keyframes;
     const std::map<hash_t, variant> *_current_initial_attributes{nullptr};

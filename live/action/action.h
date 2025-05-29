@@ -53,22 +53,7 @@ protected:
     action_timeline_keyframe *_p_parent_keyframe{nullptr};
 };
 
-class continuous_action : public action {
-    NAMED_CLASS(continuous_action)
-public:
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
-    [[nodiscard]] std::string get_locator() const noexcept override;
-};
-
-class instant_action : public action {
-    NAMED_CLASS(instant_action)
-
-public:
-    void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
-    [[nodiscard]] std::string get_locator() const noexcept override;
-};
-
-class modifier_action : public continuous_action {
+class modifier_action : public action {
     NAMED_CLASS(modifier_action)
 
 public:
