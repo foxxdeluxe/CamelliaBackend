@@ -6,6 +6,7 @@
 #include <format>
 #include <map>
 #include <memory>
+#include <variant>
 #include <vector>
 
 namespace camellia {
@@ -176,8 +177,10 @@ struct dialog_data {
 struct beat_data {
     std::shared_ptr<dialog_data> dialog{nullptr};
 
-    // <actor_instance_id, data>
+    // <activity_id, data>
     std::map<integer_t, std::shared_ptr<activity_data>> activities;
+
+    std::map<hash_t, variant> features;
 
     [[nodiscard]] boolean_t is_valid() const { return dialog != nullptr; }
 };

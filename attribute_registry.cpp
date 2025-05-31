@@ -1,10 +1,6 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
+﻿
 #include "attribute_registry.h"
 #include <stdexcept>
-
 
 namespace camellia {
 

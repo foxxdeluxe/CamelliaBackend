@@ -1,7 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/2.
-//
-
+﻿
 #include "algorithm_helper.h"
 #include "camellia.h"
 #include "xxHash/xxhash.h"

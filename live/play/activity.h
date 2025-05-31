@@ -23,7 +23,7 @@ public:
     [[nodiscard]] stage &get_stage() const;
     void init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, actor *p_parent);
     void fina(boolean_t keep_actor);
-    number_t update(number_t beat_time);
+    number_t update(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
     [[nodiscard]] const std::map<hash_t, variant> &get_initial_values();
     boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
 

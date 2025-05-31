@@ -7,6 +7,7 @@
 #include "../../helper/scripting_helper.h"
 #include "action_timeline.h"
 #include "camellia_macro.h"
+#include "variant.h"
 #include <map>
 #include <memory>
 
@@ -70,9 +71,10 @@ public:
 
     void fina() override;
 
-    [[nodiscard]] variant apply_modifier(number_t action_time, hash_t h_attribute_name, const variant &val) const;
+    [[nodiscard]] variant apply_modifier(number_t action_time, hash_t h_attribute_name, const variant &val,
+                                         std::vector<std::map<hash_t, variant>> &ref_attributes) const;
 
-    void apply_modifier(number_t action_time, std::map<hash_t, variant> &attributes) const;
+    void apply_modifier(number_t action_time, std::map<hash_t, variant> &attributes, std::vector<std::map<hash_t, variant>> &ref_attributes) const;
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
@@ -88,8 +90,9 @@ private:
     action_timeline_keyframe *_p_parent_keyframe{nullptr};
     action_timeline *_p_timeline{nullptr};
     scripting_helper::engine *_p_script{nullptr};
+    std::map<text_t, hash_t> _ref_params;
 
-    [[nodiscard]] variant modify(number_t action_time, const variant &base_value) const;
+    [[nodiscard]] variant modify(number_t action_time, const variant &base_value, std::vector<std::map<hash_t, variant>> &attributes) const;
 };
 
 class composite_action : public action {

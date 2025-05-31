@@ -1,10 +1,6 @@
-﻿//
-// Created by LENOVO on 2025/4/3.
-//
-
+﻿
 #include "helper/scripting_helper.h"
 #include "gtest/gtest.h"
-
 
 using namespace camellia;
 

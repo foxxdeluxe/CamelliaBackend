@@ -83,7 +83,7 @@ struct vector4 {
 
 class variant {
 public:
-    enum types : char { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES, ARRAY };
+    enum types : char { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES, ARRAY, ATTRIBUTE };
 
     [[nodiscard]] types get_value_type() const;
     bool operator==(const variant &other) const;
@@ -112,22 +112,24 @@ public:
    variant(const vector4 &v);
    variant(const bytes_t &b);
    variant(const std::vector<variant> &a);
+   variant(hash_t h);
 #else
     variant(const variant &v) = default;
     variant &operator=(variant &&v) noexcept;
     variant(variant &&v) noexcept;
 
     // Using std::variant instead of union
-    using variant_storage = std::variant<std::monostate,      // VOID
-                                         integer_t,           // INTEGER
-                                         number_t,            // NUMBER
-                                         boolean_t,           // BOOLEAN
-                                         text_t,              // TEXT or ERROR
-                                         vector2,             // VECTOR2
-                                         vector3,             // VECTOR3
-                                         vector4,             // VECTOR4
-                                         bytes_t,             // BYTES
-                                         std::vector<variant> // ARRAY
+    using variant_storage = std::variant<std::monostate,       // VOID
+                                         integer_t,            // INTEGER
+                                         number_t,             // NUMBER
+                                         boolean_t,            // BOOLEAN
+                                         text_t,               // TEXT or ERROR
+                                         vector2,              // VECTOR2
+                                         vector3,              // VECTOR3
+                                         vector4,              // VECTOR4
+                                         bytes_t,              // BYTES
+                                         std::vector<variant>, // ARRAY
+                                         hash_t                // ATTRIBUTE
                                          >;
 
     explicit(false) variant(integer_t i);
@@ -143,6 +145,7 @@ public:
     explicit(false) variant(bytes_t &&b);
     explicit(false) variant(const std::vector<variant> &a);
     explicit(false) variant(std::vector<variant> &&a);
+    explicit(false) variant(hash_t h);
 
 private:
     types _type;
@@ -193,6 +196,9 @@ template <> struct std::formatter<camellia::variant::types> {
             break;
         case camellia::variant::ARRAY:
             s = "ARRAY";
+            break;
+        case camellia::variant::ATTRIBUTE:
+            s = "ATTRIBUTE";
             break;
         default:
             s = "UNKNOWN";

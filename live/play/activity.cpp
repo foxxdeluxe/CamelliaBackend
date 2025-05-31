@@ -1,8 +1,5 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include "activity.h"
+﻿#include "activity.h"
+#include "attribute_registry.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
 #include <format>
@@ -65,18 +62,21 @@ void activity::fina(boolean_t keep_actor) {
     _p_data = nullptr;
 }
 
-number_t activity::update(number_t beat_time) {
+number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
     REQUIRES_NOT_NULL(_p_stage);
 
     auto *p_actor = _p_stage->get_actor(_aid);
     REQUIRES_NOT_NULL(p_actor);
 
-    auto updated = _timeline.update(beat_time, _initial_attributes);
+    auto updated = _timeline.update(beat_time, _initial_attributes, parent_attributes);
 
     p_actor->get_attributes().update(updated);
     p_actor->get_attributes().handle_dirty_attributes(*p_actor);
 
-    return std::max(p_actor->update_children(beat_time), _timeline.get_effective_duration() - beat_time);
+    parent_attributes.push_back(updated);
+    auto res = std::max(p_actor->update_children(beat_time, parent_attributes), _timeline.get_effective_duration() - beat_time);
+    parent_attributes.pop_back();
+    return res;
 }
 
 const std::map<hash_t, variant> &activity::get_initial_values() { return _initial_attributes; }
@@ -90,7 +90,7 @@ boolean_t activity::handle_dirty_attribute(hash_t key, const variant &val) {
     return p_actor->handle_dirty_attribute(key, val);
 }
 
-activity::activity(const activity & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+activity::activity(const activity &other) : dirty_attribute_handler(other) { THROW_NO_LOC("Copying not allowed"); }
 
 activity &activity::operator=(const activity &other) {
     if (this == &other) {

@@ -1,7 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/1.
-//
-#include "variant.h"
+﻿#include "variant.h"
 #include "helper/algorithm_helper.h"
 #include <variant>
 
@@ -109,6 +106,8 @@ bool variant::operator==(const variant &other) const {
         return std::get<bytes_t>(_data) == std::get<bytes_t>(other._data);
     case ARRAY:
         return std::get<std::vector<variant>>(_data) == std::get<std::vector<variant>>(other._data);
+    case ATTRIBUTE:
+        return std::get<hash_t>(_data) == std::get<hash_t>(other._data);
     default: // others
         return false;
     }
@@ -155,6 +154,9 @@ variant &variant::operator=(const variant &v) {
     case ARRAY:
         _data = std::get<std::vector<variant>>(v._data);
         break;
+    case ATTRIBUTE:
+        _data = std::get<hash_t>(v._data);
+        break;
     }
     return *this;
 }
@@ -191,6 +193,12 @@ variant::variant(const bytes_t &b) : variant(BYTES) { _data = b; }
 
 variant::variant(bytes_t &&b) : variant(BYTES) { _data = std::move(b); }
 
+variant::variant(const std::vector<variant> &a) : variant(ARRAY) { _data = a; }
+
+variant::variant(std::vector<variant> &&a) : variant(ARRAY) { _data = std::move(a); }
+
+variant::variant(hash_t h) : variant(ATTRIBUTE) { _data = h; }
+
 variant::variant(types t) : _type(t) {
     switch (_type) {
     case VOID:
@@ -223,6 +231,9 @@ variant::variant(types t) : _type(t) {
         break;
     case ARRAY:
         _data = std::vector<variant>{};
+        break;
+    case ATTRIBUTE:
+        _data = hash_t{};
         break;
     }
 }

@@ -1,8 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include "actor.h"
+﻿#include "actor.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
 
@@ -68,10 +64,10 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     _is_initialized = true;
 }
 
-number_t actor::update_children(number_t beat_time) {
+number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
     number_t time_to_end = 0.0F;
     for (auto &child : _children) {
-        time_to_end = std::max(child.second.update(beat_time), time_to_end);
+        time_to_end = std::max(child.second.update(beat_time, parent_attributes), time_to_end);
     }
     return time_to_end;
 }

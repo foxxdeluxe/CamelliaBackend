@@ -35,7 +35,7 @@ public:
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
     void init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent);
     void fina(boolean_t keep_children);
-    number_t update_children(number_t beat_time);
+    number_t update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
 
     constexpr static text_t POSITION_NAME = "position";
     constexpr static text_t SCALE_NAME = "scale";

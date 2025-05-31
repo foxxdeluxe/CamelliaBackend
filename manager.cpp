@@ -1,7 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/3.
-//
-
+﻿
 #include "manager.h"
 #include "camellia_macro.h"
 #include "data/stage_data.h"

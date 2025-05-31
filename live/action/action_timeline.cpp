@@ -1,8 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include <cmath>
+﻿#include <cmath>
 #include <cstddef>
 #include <format>
 
@@ -111,16 +107,13 @@ stage &action_timeline::get_stage() const {
     return *_p_stage;
 }
 
-live_object *action_timeline::get_parent() const {
-    REQUIRES_NOT_NULL(_p_parent);
-    return _p_parent;
-}
+live_object *action_timeline::get_parent() const { return _p_parent; }
 
 number_t action_timeline::get_effective_duration() const { return _effective_duration; }
 
 void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, live_object *p_parent) {
     for (size_t i = 0; i < data.size(); i++) {
-        REQUIRES_VALID_MSG(*data[i], std::format("data #{} is invalid", i));
+        REQUIRES_VALID_MSG(*data[i], std::format("Action timeline ata #{} is invalid", i));
     }
 
     _data = data;
@@ -153,8 +146,6 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
         _effective_duration = std::max(_effective_duration, d->effective_duration);
     }
 
-    _current_composite_keyframes.resize(_tracks.size());
-
     _is_initialized = true;
 }
 
@@ -174,7 +165,6 @@ void action_timeline::fina() {
 
     _tracks.clear();
     _last_completed_keyframe_indices.clear();
-    _current_composite_keyframes.clear();
 }
 
 std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t timeline_time) const {
@@ -192,7 +182,8 @@ std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t t
     return res;
 }
 
-std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, const std::map<hash_t, variant> &attributes, const boolean_t continuous,
+std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, const std::map<hash_t, variant> &attributes,
+                                                  std::vector<std::map<hash_t, variant>> &ref_attributes, const boolean_t continuous,
                                                   const boolean_t exclude_ongoing) {
     REQUIRES_INITIALIZED(*this);
     resource_helper::finally fin([this]() { _current_initial_attributes = nullptr; });
@@ -246,7 +237,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
         switch (action->get_type()) {
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
-            temp_attributes = ca->get_timeline().update(keyframe->get_preferred_duration(), temp_attributes, continuous, true);
+            temp_attributes = ca->get_timeline().update(keyframe->get_preferred_duration(), temp_attributes, ref_attributes, continuous, true);
             break;
         }
         default: {
@@ -261,12 +252,12 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
         switch (action->get_type()) {
         case action_data::action_types::ACTION_MODIFIER: {
             auto *ma = dynamic_cast<modifier_action *>(action);
-            ma->apply_modifier(action_time, temp_attributes);
+            ma->apply_modifier(action_time, temp_attributes, ref_attributes);
             break;
         }
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
-            temp_attributes = ca->get_timeline().update(action_time, temp_attributes, continuous, false);
+            temp_attributes = ca->get_timeline().update(action_time, temp_attributes, ref_attributes, continuous, false);
             break;
         }
         default: {
@@ -276,54 +267,6 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     }
 
     return temp_attributes;
-}
-
-variant action_timeline::get_base_value(const number_t timeline_time, const hash_t h_attribute_name, const modifier_action &until) const {
-    REQUIRES_NOT_NULL_MSG(_current_initial_attributes, "Initial attributes not set. Is this called during update?");
-    auto it = _current_initial_attributes->find(h_attribute_name);
-    if (it == _current_initial_attributes->end()) {
-        THROW(std::format("Initial attribute ({}) not found.", h_attribute_name));
-    }
-    auto val = it->second;
-
-    for (const auto &keyframe : sample(timeline_time)) {
-        if (keyframe->get_action().get_type() != action_data::action_types::ACTION_MODIFIER) {
-            continue;
-        }
-        auto *const mo = dynamic_cast<modifier_action *>(&keyframe->get_action());
-        if (mo == &until) {
-            return val;
-        }
-
-        const auto action_time = timeline_time - keyframe->get_time();
-        val = mo->apply_modifier(action_time, h_attribute_name, val);
-    }
-
-    THROW(std::format("Target modifier action ({}) not found at specified time ({}).", until.get_name_hash(), timeline_time));
-}
-
-variant action_timeline::get_prev_value(const modifier_action &ac) const {
-    const auto &track = _tracks[ac.get_parent_keyframe().get_track_index()];
-    const auto &current_keyframe = track[ac.get_parent_keyframe().get_index()];
-    auto base_value = get_base_value(current_keyframe->get_time(), ac.get_attribute_name_hash(), ac);
-    if (ac.get_parent_keyframe().get_index() <= 0) {
-        return base_value;
-    }
-
-    const auto &last_keyframe = track[ac.get_parent_keyframe().get_index() - 1];
-    auto &lac = last_keyframe->get_action();
-    if (lac.get_type() != action_data::action_types::ACTION_MODIFIER) {
-        return base_value;
-    }
-    auto *const lma = dynamic_cast<modifier_action *>(&lac);
-    if (lma->get_attribute_name_hash() != ac.get_attribute_name_hash()) {
-        return base_value;
-    }
-
-    if (lma->final_value.get_value_type() == variant::VOID) {
-        lma->final_value = lma->apply_modifier(current_keyframe->get_time() - last_keyframe->get_time(), ac.get_attribute_name_hash(), base_value);
-    }
-    return lma->final_value;
 }
 
 action_timeline::action_timeline(const action_timeline &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }

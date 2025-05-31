@@ -1,7 +1,3 @@
-//
-// Created by LENOVO on 2025/4/4.
-//
-
 #include "scene.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
@@ -104,8 +100,9 @@ number_t scene::update(number_t stage_time) {
     time_to_end = std::max(main_dialog->update(beat_time), time_to_end);
 
     // Update all activities and find the maximum time to end
+    std::vector<std::map<hash_t, variant>> parent_attributes;
     for (auto &activity_pair : _activities) {
-        time_to_end = std::max(activity_pair.second.update(beat_time), time_to_end);
+        time_to_end = std::max(activity_pair.second.update(beat_time, parent_attributes), time_to_end);
     }
 
     return time_to_end;

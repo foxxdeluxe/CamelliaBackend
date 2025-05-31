@@ -1,7 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/2.
-//
-
+﻿
 #include "scripting_helper.h"
 #include "quickjs.h"
 #include <format>

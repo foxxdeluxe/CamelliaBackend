@@ -1,8 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include <memory>
+﻿#include <memory>
 
 #include "camellia_macro.h"
 #include "helper/algorithm_helper.h"

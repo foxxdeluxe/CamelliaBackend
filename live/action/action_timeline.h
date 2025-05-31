@@ -83,12 +83,9 @@ public:
 
     [[nodiscard]] std::vector<const action_timeline_keyframe *> sample(number_t timeline_time) const;
 
-    [[nodiscard]] std::map<hash_t, variant> update(number_t timeline_time, const std::map<hash_t, variant> &attributes, boolean_t continuous = true,
-                                                   boolean_t exclude_continuous = false);
-
-    [[nodiscard]] variant get_base_value(number_t timeline_time, hash_t h_attribute_name, const modifier_action &until) const;
-
-    [[nodiscard]] variant get_prev_value(const modifier_action &ac) const;
+    [[nodiscard]] std::map<hash_t, variant> update(number_t timeline_time, const std::map<hash_t, variant> &attributes,
+                                                   std::vector<std::map<hash_t, variant>> &ref_attributes, boolean_t continuous = true,
+                                                   boolean_t exclude_ongoing = false);
 
     action_timeline() = default;
     ~action_timeline() override = default;
@@ -104,7 +101,6 @@ private:
     number_t _effective_duration{0.0F};
     std::vector<integer_t> _last_completed_keyframe_indices;
     std::vector<std::vector<action_timeline_keyframe *>> _tracks;
-    std::vector<action_timeline_keyframe *> _current_composite_keyframes;
     const std::map<hash_t, variant> *_current_initial_attributes{nullptr};
 
     stage *_p_stage{nullptr};

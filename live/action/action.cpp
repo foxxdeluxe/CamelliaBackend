@@ -1,8 +1,4 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include "action.h"
+﻿#include "action.h"
 #include "attribute_registry.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
@@ -154,38 +150,52 @@ void modifier_action::fina() {
     }
 }
 
-variant modifier_action::apply_modifier(const number_t action_time, const hash_t h_attribute_name, const variant &val) const {
+variant modifier_action::apply_modifier(const number_t action_time, const hash_t h_attribute_name, const variant &val,
+                                        std::vector<std::map<hash_t, variant>> &ref_attributes) const {
     if (get_attribute_name_hash() != h_attribute_name) {
         return val;
     }
-    return modify(action_time, val);
+    return modify(action_time, val, ref_attributes);
 }
 
-void modifier_action::apply_modifier(const number_t action_time, std::map<hash_t, variant> &attributes) const {
+void modifier_action::apply_modifier(const number_t action_time, std::map<hash_t, variant> &attributes,
+                                     std::vector<std::map<hash_t, variant>> &ref_attributes) const {
     const auto it = attributes.find(get_attribute_name_hash());
     if (it == attributes.end()) {
         // TODO: Report warning
         return;
     }
 
-    attributes[get_attribute_name_hash()] = modify(action_time, it->second);
+    attributes[get_attribute_name_hash()] = modify(action_time, it->second, ref_attributes);
 }
 
 const char *modifier_action::TIME_NAME = "time";
 const char *modifier_action::DURATION_NAME = "duration";
-const char *modifier_action::PREV_NAME = "prev";
 const char *modifier_action::ORIG_NAME = "orig";
 const char *modifier_action::RUN_NAME = "run";
 
-variant modifier_action::modify(const number_t action_time, const variant &base_value) const {
+variant modifier_action::modify(const number_t action_time, const variant &base_value, std::vector<std::map<hash_t, variant>> &ref_attributes) const {
     REQUIRES_INITIALIZED(*this);
 
     try {
         // set built-in constants
         _p_script->set_property(TIME_NAME, action_time);
-        _p_script->set_property(DURATION_NAME, std::min(get_actual_duration(), get_preferred_duration()));
-        _p_script->set_property(PREV_NAME, _p_timeline->get_prev_value(*this));
+        _p_script->set_property(DURATION_NAME, get_actual_duration());
         _p_script->set_property(ORIG_NAME, base_value);
+
+        for (const auto &p : _ref_params) {
+            int i = 0;
+            for (; i < ref_attributes.size(); i++) {
+                const auto it = ref_attributes[i].find(p.second);
+                if (it != ref_attributes[i].end()) {
+                    _p_script->set_property(p.first, it->second);
+                    break;
+                }
+            }
+            if (i >= ref_attributes.size()) {
+                THROW(std::format("Failed to find referenced attribute ({}) for modifier action.", p.second));
+            }
+        }
 
         return _p_script->guarded_invoke(RUN_NAME, 0, nullptr, get_value_type());
 

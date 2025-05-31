@@ -1,14 +1,9 @@
-﻿//
-// Created by LENOVO on 2025/4/4.
-//
-
-#include <format>
+﻿#include <format>
 
 #include "camellia_macro.h"
 #include "dialog.h"
 #include "helper/algorithm_helper.h"
 #include "live/play/stage.h"
-
 
 namespace camellia {
 
@@ -121,7 +116,8 @@ number_t text_region::update(const number_t region_time) {
             }
         }
 
-        temp_attributes = _timeline.update(region_time, temp_attributes);
+        std::vector<std::map<hash_t, variant>> ref_attributes;
+        temp_attributes = _timeline.update(region_time, temp_attributes, ref_attributes);
 
         _attributes.update(temp_attributes);
     }
