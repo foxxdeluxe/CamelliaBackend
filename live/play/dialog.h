@@ -6,6 +6,7 @@
 #include "../../data/stage_data.h"
 #include "../../helper/scripting_helper.h"
 #include "../action/action_timeline.h"
+#include "camellia_macro.h"
 #include <memory>
 
 namespace camellia {
@@ -13,14 +14,6 @@ namespace camellia {
 // Forward declarations
 class stage;
 class dialog;
-
-#ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
 
 class text_region : public dirty_attribute_handler {
     NAMED_CLASS(text_region)

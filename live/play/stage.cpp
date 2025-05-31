@@ -5,12 +5,11 @@
 #include <memory>
 
 #include "camellia_macro.h"
+#include "helper/algorithm_helper.h"
 #include "live/play/stage.h"
 #include "manager.h"
 
 namespace camellia {
-
-const hash_t stage::H_ROOT_ACTOR_ID = 2007ULL; // ROOT
 
 void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
     REQUIRES_NOT_NULL(beat);
@@ -19,28 +18,19 @@ void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
     auto *main_dialog = get_main_dialog();
     REQUIRES_NOT_NULL(main_dialog);
 
-    _current_beat = beat;
-    _beat_begin_time = _stage_time;
-
-    _root_actor_data->children = beat->activities;
-    auto *actor = get_actor(0);
-
-    actor->fina(true);
-    actor->init(_root_actor_data, *this, _root_activity);
-
-    _root_activity.fina(true);
-    _root_activity.init(_root_activity_data, 0, true, *this, nullptr);
-
-    main_dialog->advance(beat->dialog);
+    // Delegate beat handling to the current scene
+    _scenes.back().set_beat(beat, _stage_time);
 }
 
 void stage::advance() {
     REQUIRES_NOT_NULL(_p_scenario);
 
     if (_time_to_end > 0.0F) {
-        _beat_begin_time -= _time_to_end;
+        // Fast forward
+        _scenes.back().set_next_beat_time(_scenes.back().get_beat_time() + _time_to_end);
         _time_to_end = 0.0F;
     } else {
+        // Advance to next beat if available
         if (_next_beat_index >= _p_scenario->beats.size()) {
             return;
         }
@@ -52,9 +42,6 @@ void stage::advance() {
 std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
     REQUIRES_NOT_NULL(_p_scenario);
 
-    if (h_id == H_ROOT_ACTOR_ID) {
-        return _root_actor_data;
-    }
     const auto it = _p_scenario->actors.find(h_id);
     return it == _p_scenario->actors.end() ? nullptr : it->second;
 }
@@ -71,7 +58,8 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     _p_scenario = data;
     _p_parent_backend = &parent;
 
-    _root_activity.init(_root_activity_data, 0, false, *this, nullptr);
+    _scenes.emplace_back();
+    _scenes.back().init(_next_scene_id++, *this);
 
     get_main_dialog()->init(*this);
     _is_initialized = true;
@@ -81,10 +69,19 @@ void stage::fina() {
     _is_initialized = false;
     get_main_dialog()->fina();
 
-    _root_activity.fina(false);
+    // Clean up all scenes
+    for (auto &scene : _scenes) {
+        scene.fina();
+    }
+    _scenes.clear();
 
     _p_parent_backend = nullptr;
     _p_scenario = nullptr;
+    _next_beat_index = 0;
+    _next_scene_id = 0;
+
+    _stage_time = 0.0F;
+    _time_to_end = 0.0F;
 }
 
 number_t stage::update(const number_t stage_time) {
@@ -92,9 +89,8 @@ number_t stage::update(const number_t stage_time) {
     REQUIRES_NOT_NULL(main_dialog);
 
     _stage_time = stage_time;
-    const auto beat_time = stage_time - _beat_begin_time;
 
-    _time_to_end = std::max(main_dialog->update(beat_time), _root_activity.update(beat_time));
+    _time_to_end = _scenes.back().update(stage_time);
     return _time_to_end;
 }
 
@@ -109,7 +105,7 @@ manager &stage::get_parent_manager() {
     return *_p_parent_backend;
 }
 
-stage::stage(const stage & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+stage::stage(const stage &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
 
 stage &stage::operator=(const stage &other) {
     if (this == &other) {

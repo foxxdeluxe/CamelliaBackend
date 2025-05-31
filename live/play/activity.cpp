@@ -14,12 +14,12 @@ stage &activity::get_stage() const {
     return *_p_stage;
 }
 
-void activity::init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, actor *p_parent) {
+void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, actor *p_parent) {
     REQUIRES_VALID(*data);
 
     _p_data = data;
     _p_stage = &sta;
-    _aid = aid;
+    _aid = data->id;
     _p_parent_actor = p_parent;
 
     const auto actor_data = sta.get_actor_data(_p_data->h_actor_id);

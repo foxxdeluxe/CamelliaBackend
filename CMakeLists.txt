@@ -31,6 +31,7 @@ set(CAMELLIA_HEADERS
     live/play/activity.h
     live/play/actor.h
     live/play/dialog.h
+    live/play/scene.h
     live/play/stage.h
 )
 
@@ -63,6 +64,7 @@ configure_file(${PROJECT_SOURCE_DIR}/live/action/action.h ${EXPORT_INCLUDE_DIR}/
 configure_file(${PROJECT_SOURCE_DIR}/live/play/activity.h ${EXPORT_INCLUDE_DIR}/live/play/activity.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/live/play/actor.h ${EXPORT_INCLUDE_DIR}/live/play/actor.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/live/play/dialog.h ${EXPORT_INCLUDE_DIR}/live/play/dialog.h COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/live/play/scene.h ${EXPORT_INCLUDE_DIR}/live/play/scene.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/live/play/stage.h ${EXPORT_INCLUDE_DIR}/live/play/stage.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/quickjs.h COPYONLY)
 
@@ -77,6 +79,7 @@ add_library(
         live/play/activity.cpp
         live/play/actor.cpp
         live/play/dialog.cpp
+        live/play/scene.cpp
         live/play/stage.cpp
         live/action/action.cpp
         live/action/action_timeline.cpp

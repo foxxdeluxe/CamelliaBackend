@@ -3,6 +3,7 @@
 //
 
 #include "algorithm_helper.h"
+#include "camellia.h"
 #include "xxHash/xxhash.h"
 #include <algorithm>
 #include <cmath>
@@ -39,7 +40,30 @@ integer_t get_bbcode_string_length(const text_t &bbcode) {
     return res;
 }
 
-hash_t calc_hash(const std::string &str) noexcept { return XXH3_64bits_withSeed(str.data(), str.length(), XXHASH_SEED); }
+hash_t calc_hash(const std::string &str) noexcept {
+    auto hash = XXH3_64bits_withSeed(str.data(), str.size(), XXHASH_SEED);
+    if (hash >= RESERVE_SIZE) [[likely]] {
+        return hash;
+    }
 
-hash_t calc_hash(const char *str) noexcept { return XXH3_64bits_withSeed(str, std::strlen(str), XXHASH_SEED); }
+    // Jackpot!!!
+    for (auto seed = XXHASH_SEED + 1; hash < RESERVE_SIZE; seed++) {
+        hash = XXH3_64bits_withSeed(str.data(), str.size(), seed);
+    }
+    return hash;
+}
+
+hash_t calc_hash(const char *str) noexcept {
+    auto len = std::strlen(str);
+    auto hash = XXH3_64bits_withSeed(str, len, XXHASH_SEED);
+    if (hash >= RESERVE_SIZE) [[likely]] {
+        return hash;
+    }
+
+    // Jackpot!!!
+    for (auto seed = XXHASH_SEED + 1; hash < RESERVE_SIZE; seed++) {
+        hash = XXH3_64bits_withSeed(str, len, seed);
+    }
+    return hash;
+}
 } // namespace camellia::algorithm_helper

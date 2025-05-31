@@ -2,6 +2,7 @@
 #define CAMELLIA_LIVE_ACTION_ACTION_TIMELINE_H
 
 #include "../../attribute_registry.h"
+#include "../../camellia_macro.h"
 #include "../../camellia_typedef.h"
 #include "../../data/stage_data.h"
 #include <map>
@@ -15,14 +16,6 @@ class stage;
 class action;
 class action_timeline;
 class modifier_action;
-
-#ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
 
 #ifndef SWIG
 class action_timeline_keyframe : public live_object {

@@ -5,6 +5,7 @@
 #include "../../camellia_typedef.h"
 #include "../../data/stage_data.h"
 #include "../action/action_timeline.h"
+#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -15,20 +16,12 @@ class stage;
 class actor;
 
 #ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
-
-#ifndef SWIG
 class activity : public dirty_attribute_handler {
     NAMED_CLASS(activity)
 
 public:
     [[nodiscard]] stage &get_stage() const;
-    void init(const std::shared_ptr<activity_data> &data, integer_t aid, boolean_t keep_actor, stage &sta, actor *p_parent);
+    void init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, actor *p_parent);
     void fina(boolean_t keep_actor);
     number_t update(number_t beat_time);
     [[nodiscard]] const std::map<hash_t, variant> &get_initial_values();

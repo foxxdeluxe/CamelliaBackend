@@ -102,13 +102,13 @@ struct curve_data {
 };
 
 struct activity_data {
-    integer_t id{-1};
+    integer_t id{0};
 
     hash_t h_actor_id{0ULL};
     std::shared_ptr<action_timeline_data> timeline{nullptr};
     std::map<hash_t, variant> initial_attributes;
 
-    [[nodiscard]] boolean_t is_valid() const { return h_actor_id != 0ULL && timeline != nullptr; }
+    [[nodiscard]] boolean_t is_valid() const { return id != 0 && h_actor_id != 0ULL && timeline != nullptr; }
 };
 
 struct actor_data {

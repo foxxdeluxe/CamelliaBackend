@@ -2,6 +2,7 @@
 #define CAMELLIA_MANAGER_H
 
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include <memory>
 #include <unordered_map>
@@ -13,14 +14,6 @@ struct stage_data;
 class stage;
 
 class manager : public live_object {
-#ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
-
     NAMED_CLASS(manager);
 
 public:

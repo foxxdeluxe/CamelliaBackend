@@ -53,12 +53,12 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
             auto i = _children.find(it->first);
 
             if (i != _children.end()) {
-                i->second.init(it->second, it->first, true, *_p_stage, this);
+                i->second.init(it->second, true, *_p_stage, this);
             } else {
                 // add new activity instances
 
                 _children[it->first] = activity();
-                _children[it->first].init(it->second, it->first, false, *_p_stage, this);
+                _children[it->first].init(it->second, false, *_p_stage, this);
             }
 
             ++it;

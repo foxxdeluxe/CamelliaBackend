@@ -6,6 +6,7 @@
 #include "../../data/stage_data.h"
 #include "../../helper/scripting_helper.h"
 #include "action_timeline.h"
+#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -13,14 +14,6 @@ namespace camellia {
 
 // Forward declarations
 class action_timeline_keyframe;
-
-#ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
 
 #ifndef SWIG
 class action : public live_object {

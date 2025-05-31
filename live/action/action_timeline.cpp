@@ -96,7 +96,7 @@ variant action_timeline_keyframe::query_param(const text_t &key) const {
     return it == get_override_params()->end() ? variant() : it->second;
 }
 
-action_timeline_keyframe::action_timeline_keyframe(const action_timeline_keyframe & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+action_timeline_keyframe::action_timeline_keyframe(const action_timeline_keyframe &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
 
 action_timeline_keyframe &action_timeline_keyframe::operator=(const action_timeline_keyframe &other) {
     if (this == &other) {
@@ -326,7 +326,7 @@ variant action_timeline::get_prev_value(const modifier_action &ac) const {
     return lma->final_value;
 }
 
-action_timeline::action_timeline(const action_timeline & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
+action_timeline::action_timeline(const action_timeline &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
 
 action_timeline &action_timeline::operator=(const action_timeline &other) {
     if (this == &other) {

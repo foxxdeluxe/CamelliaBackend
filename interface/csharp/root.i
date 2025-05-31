@@ -27,9 +27,7 @@ struct action_timeline_data;
 struct action_data;
 struct action_timeline_keyframe_data;
 struct action_timeline_track_data;
-struct continuous_action_data;
 struct modifier_action_data;
-struct instant_action_data;
 struct composite_action_data;
 struct curve_point_data;
 struct curve_data;
@@ -50,8 +48,6 @@ class engine;
 // From live/action/action.h
 class action_timeline_keyframe;
 class action;
-class continuous_action;
-class instant_action;
 class modifier_action;
 class composite_action;
 
@@ -82,9 +78,7 @@ class variant;
 } // namespace camellia
 
 %shared_ptr(camellia::action_data)
-%shared_ptr(camellia::continuous_action_data)
 %shared_ptr(camellia::modifier_action_data)
-%shared_ptr(camellia::instant_action_data)
 %shared_ptr(camellia::composite_action_data)
 %shared_ptr(camellia::stage_data)
 %shared_ptr(camellia::action_timeline_keyframe_data)

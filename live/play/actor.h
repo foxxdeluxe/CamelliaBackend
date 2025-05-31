@@ -5,6 +5,7 @@
 #include "../../camellia_typedef.h"
 #include "../../data/stage_data.h"
 #include "activity.h"
+#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -12,14 +13,6 @@ namespace camellia {
 
 // Forward declarations
 class stage;
-
-#ifndef SWIG
-#define NAMED_CLASS(N)                                                                                                                                         \
-    static constexpr std::string get_class_name() { return #N; }                                                                                               \
-    static_assert(sizeof(N *));
-#else
-#define NAMED_CLASS(N)
-#endif
 
 class actor : public dirty_attribute_handler {
     NAMED_CLASS(actor)

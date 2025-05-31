@@ -1,0 +1,56 @@
+#ifndef CAMELLIA_LIVE_PLAY_SCENE_H
+#define CAMELLIA_LIVE_PLAY_SCENE_H
+
+#include "../../attribute_registry.h"
+#include "../../camellia_typedef.h"
+#include "../../data/stage_data.h"
+#include "activity.h"
+#include "camellia_macro.h"
+#include <map>
+#include <memory>
+
+namespace camellia {
+
+// Forward declarations
+class stage;
+
+#ifndef SWIG
+class scene : public live_object {
+    NAMED_CLASS(scene)
+
+public:
+    void init(integer_t scene_id, stage &parent_stage);
+    void fina();
+    void set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time);
+    [[nodiscard]] number_t get_beat_time() const;
+    void set_next_beat_time(number_t beat_time);
+    number_t update(number_t stage_time);
+
+    [[nodiscard]] integer_t get_scene_id() const;
+    [[nodiscard]] stage &get_stage() const;
+
+    scene() = default;
+    ~scene() override = default;
+    scene(const scene &other);
+    scene &operator=(const scene &other);
+    scene(scene &&other) noexcept = default;
+    scene &operator=(scene &&other) noexcept = default;
+
+    [[nodiscard]] std::string get_locator() const noexcept override;
+
+private:
+    integer_t _scene_id{-1};
+    number_t _beat_begin_time{0.0F};
+    number_t _current_beat_time{0.0F};
+    number_t _next_beat_time{-1.0F};
+    stage *_p_parent_stage{nullptr};
+    std::shared_ptr<beat_data> _current_beat{nullptr};
+
+    // Map of activity_id to activity instances - retains state between beats like actors do
+    std::map<integer_t, activity> _activities;
+};
+#endif
+
+} // namespace camellia
+
+#endif // CAMELLIA_LIVE_PLAY_SCENE_H

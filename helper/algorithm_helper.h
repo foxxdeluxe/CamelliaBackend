@@ -1,12 +1,12 @@
-#ifndef CAMELLIA_HELPER_ALGORITHM_HELPER_H
-#define CAMELLIA_HELPER_ALGORITHM_HELPER_H
+#ifndef ALGORITHM_HELPER_H
+#define ALGORITHM_HELPER_H
 
 #include "../camellia_typedef.h"
 #include <functional>
 #include <vector>
 
-namespace camellia {
-namespace algorithm_helper {
+namespace camellia::algorithm_helper {
+constexpr hash_t RESERVE_SIZE = 0x8000;
 
 boolean_t approx_equals(number_t a, number_t b);
 integer_t get_bbcode_string_length(const text_t &bbcode);
@@ -58,7 +58,6 @@ template <class T> integer_t lower_bound(const std::vector<T> &list, std::functi
 hash_t calc_hash(const char *str) noexcept;
 #endif
 
-} // namespace algorithm_helper
-} // namespace camellia
+} // namespace camellia::algorithm_helper
 
-#endif // CAMELLIA_HELPER_ALGORITHM_HELPER_H
+#endif // ALGORITHM_HELPER_H

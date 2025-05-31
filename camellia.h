@@ -15,6 +15,7 @@
 #include "live/play/activity.h"
 #include "live/play/actor.h"
 #include "live/play/dialog.h"
+#include "live/play/scene.h"
 #include "live/play/stage.h"
 #include "manager.h"
 #include "variant.h"
