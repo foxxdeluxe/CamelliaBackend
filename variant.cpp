@@ -1,5 +1,10 @@
 ﻿#include "variant.h"
 #include "helper/algorithm_helper.h"
+#include <cstdio>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <string_view>
 #include <variant>
 
 #define IMPL_VECTOR_COMMON_OPS(X)                                                                                                                              \
@@ -249,6 +254,8 @@ variant::operator number_t() const { return std::get<number_t>(_data); }
 
 variant::operator boolean_t() const { return std::get<boolean_t>(_data); }
 
+variant::operator hash_t() const { return std::get<hash_t>(_data); }
+
 const text_t &variant::get_text() const { return std::get<text_t>(_data); }
 
 bool variant::approx_equals(const variant &other) const {
@@ -309,4 +316,304 @@ const vector4 &variant::get_vector4() const { return std::get<vector4>(_data); }
 const bytes_t &variant::get_bytes() const { return std::get<bytes_t>(_data); }
 
 const std::vector<variant> &variant::get_array() const { return std::get<std::vector<variant>>(_data); }
+
+variant variant::from_desc(const text_t &descriptor) {
+    if (descriptor.empty()) {
+        return {}; // VOID
+    }
+
+    char type_char = descriptor[0];
+
+    switch (type_char) {
+    case VOID_PREFIX: // VOID
+        return {};
+
+    case INTEGER_PREFIX: { // INTEGER
+        if (descriptor.size() <= 1) {
+            return {0};
+        }
+
+        // Find base suffix (D=decimal, H=hex, O=octal, B=binary)
+        char base_suffix = descriptor.back();
+
+        int base = 10;
+        size_t len{descriptor.size() - 2};
+        switch (base_suffix) {
+        case 'H':
+            base = 16;
+            break;
+        case 'O':
+            base = 8;
+            break;
+        case 'B':
+            base = 2;
+            break;
+        case 'D':
+            break;
+        default:
+            // No suffix, assume entire content is decimal
+            len = descriptor.size() - 1;
+            break;
+        }
+
+        try {
+            return {static_cast<integer_t>(std::stol(descriptor.substr(1, len), nullptr, base))};
+        } catch (...) {
+            return {0};
+        }
+    }
+
+    case NUMBER_PREFIX: { // NUMBER (floating point)
+        try {
+            return {std::stof(descriptor.substr(1))};
+        } catch (...) {
+            return {0.0F};
+        }
+    }
+
+    case BOOLEAN_PREFIX: { // BOOLEAN
+        if (descriptor.size() <= 1 || descriptor[1] == '0' || descriptor[1] == 'F') {
+            return {false};
+        } else {
+            return {true};
+        }
+    }
+
+    case TEXT_PREFIX: // TEXT
+        return {descriptor.substr(1)};
+
+    case ERROR_PREFIX: // ERROR
+        return {descriptor.substr(1), true};
+
+    case VECTOR2_PREFIX: { // VECTOR2
+        // Format: "2x,y"
+        std::istringstream iss(descriptor);
+        iss.seekg(1);
+        vector2 v{0.0, 0.0};
+        char comma{'Z'};
+        iss >> v.dim[0] >> comma >> v.dim[1];
+        return {v};
+    }
+
+    case VECTOR3_PREFIX: { // VECTOR3
+        // Format: "3x,y,z"
+        std::istringstream iss(descriptor);
+        iss.seekg(1);
+        vector3 v{0.0, 0.0, 0.0};
+        char comma{'Z'};
+        iss >> v.dim[0] >> comma >> v.dim[1] >> comma >> v.dim[2];
+        return {v};
+    }
+
+    case VECTOR4_PREFIX: { // VECTOR4
+        // Format: "4x,y,z,w"
+        std::istringstream iss(descriptor);
+        iss.seekg(1);
+        vector4 v{0.0, 0.0, 0.0, 0.0};
+        char comma{'Z'};
+        iss >> v.dim[0] >> comma >> v.dim[1] >> comma >> v.dim[2] >> comma >> v.dim[3];
+        return {v};
+    }
+
+    case BYTES_PREFIX: { // BYTES
+        // Hex-encoded bytes
+        bytes_t bytes;
+        for (size_t i = 1; i < descriptor.size(); i += 2) {
+            if (i + 1 < descriptor.size()) {
+                text_t hex_byte = descriptor.substr(i, 2);
+                try {
+                    auto byte = static_cast<unsigned char>(std::stoul(hex_byte, nullptr, 16));
+                    bytes.push_back(byte);
+                } catch (...) {
+                    // Skip invalid hex
+                    bytes.push_back(0);
+                }
+            }
+        }
+        return {bytes};
+    }
+
+    case ARRAY_PREFIX: { // ARRAY - special case where '[' is the type indicator
+        // Parse array: [elem1,elem2,elem3]
+        if (descriptor.back() != ARRAY_SUFFIX) {
+            return {std::vector<variant>()};
+        }
+
+        std::vector<variant> elements;
+        if (descriptor.size() <= 2) {
+            return {elements};
+        }
+
+        // Parse comma-separated elements with escape handling
+        size_t start = 1;
+        int bracket_level = 0;
+        bool escaped = false;
+
+        for (size_t i = start; i <= descriptor.length() - 1; ++i) {
+            char c = (i < descriptor.length() - 1) ? descriptor[i] : ARRAY_SEPARATOR; // Treat end as comma
+
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+
+            if (c == ESCAPE_CHAR) {
+                escaped = true;
+                continue;
+            }
+
+            if (c == ARRAY_PREFIX) {
+                bracket_level++;
+            } else if (c == ARRAY_SUFFIX) {
+                bracket_level--;
+            } else if (c == ARRAY_SEPARATOR && bracket_level == 0) {
+                // Found a separator at top level
+                text_t element_desc = descriptor.substr(start, i - start);
+
+                text_t unescaped;
+                if (element_desc.size() >= 1 && element_desc[0] == TEXT_PREFIX) {
+                    // Unescape the element descriptor
+                    bool esc = false;
+                    for (char ch : element_desc) {
+                        if (esc) {
+                            unescaped += ch;
+                            esc = false;
+                        } else if (ch == ESCAPE_CHAR) {
+                            esc = true;
+                        } else {
+                            unescaped += ch;
+                        }
+                    }
+                } else {
+                    unescaped = element_desc;
+                }
+
+                elements.push_back(from_desc(unescaped)); // TODO: optimize this
+                start = i + 1;
+            }
+        }
+
+        return {elements};
+    }
+
+    case ATTRIBUTE_PREFIX: { // ATTRIBUTE (hash)
+        try {
+            if (descriptor.size() <= 1) {
+                return {hash_t(0)};
+            }
+
+            if (descriptor[1] == ':') {
+                hash_t hash = algorithm_helper::calc_hash(descriptor.substr(2));
+                return {hash};
+            }
+            
+            hash_t hash = std::stoull(descriptor.substr(1), nullptr, 16);
+            return {hash};
+        } catch (...) {
+            return {hash_t(0)};
+        }
+    }
+
+    default:
+        return {}; // Unknown type, return VOID
+    }
+}
+
+text_t variant::to_desc() const {
+    switch (_type) {
+    case VOID:
+        return text_t{VOID_PREFIX};
+
+    case INTEGER: {
+        integer_t value = std::get<integer_t>(_data);
+        return std::format("{}{}{}", INTEGER_PREFIX, value, INTEGER_DECIMAL_SUFFIX);
+    }
+
+    case NUMBER: {
+        number_t value = std::get<number_t>(_data);
+        return std::format("{}{}", NUMBER_PREFIX, value);
+    }
+
+    case BOOLEAN: {
+        boolean_t value = std::get<boolean_t>(_data);
+        return std::format("{}{}", BOOLEAN_PREFIX, value ? "1" : "0");
+    }
+
+    case TEXT: {
+        const auto &value = std::get<text_t>(_data);
+        return std::format("{}{}", TEXT_PREFIX, value);
+    }
+
+    case ERROR: {
+        const auto &value = std::get<text_t>(_data);
+        return std::format("{}{}", ERROR_PREFIX, value);
+    }
+
+    case VECTOR2: {
+        const auto &v = std::get<vector2>(_data);
+        return std::format("{}{}{}{}", VECTOR2_PREFIX, v.get_x(), VECTOR_SEPARATOR, v.get_y());
+    }
+
+    case VECTOR3: {
+        const auto &v = std::get<vector3>(_data);
+        return std::format("{}{}{}{}{}{}", VECTOR3_PREFIX, v.get_x(), VECTOR_SEPARATOR, v.get_y(), VECTOR_SEPARATOR, v.get_z());
+    }
+
+    case VECTOR4: {
+        const auto &v = std::get<vector4>(_data);
+        return std::format("{}{}{}{}{}{}{}{}", VECTOR4_PREFIX, v.get_x(), VECTOR_SEPARATOR, v.get_y(), VECTOR_SEPARATOR, v.get_z(), VECTOR_SEPARATOR,
+                           v.get_w());
+    }
+
+    case BYTES: {
+        const auto &bytes = std::get<bytes_t>(_data);
+        text_t result;
+        result.reserve((bytes.size() * 2) + 1);
+        result += BYTES_PREFIX;
+        for (unsigned char byte : bytes) {
+            result += std::format("{:02X}", byte);
+        }
+        return result;
+    }
+
+    case ARRAY: {
+        const auto &elements = std::get<std::vector<variant>>(_data);
+        text_t result{ARRAY_PREFIX};
+
+        for (size_t i = 0; i < elements.size(); ++i) {
+            if (i > 0) {
+                result += ARRAY_SEPARATOR;
+            }
+
+            auto element_desc = elements[i].to_desc();
+
+            if (element_desc.size() >= 1 && element_desc[0] == TEXT_PREFIX) {
+                // Escape special characters in the element string descriptor
+                auto escaped = text_t();
+                escaped.reserve(element_desc.size());
+                for (char c : element_desc) {
+                    if (c == ESCAPE_CHAR || c == ARRAY_SEPARATOR || c == ARRAY_PREFIX || c == ARRAY_SUFFIX) {
+                        escaped += ESCAPE_CHAR;
+                    }
+                    escaped += c;
+                }
+                result += escaped;
+            } else {
+                result += element_desc;
+            }
+        }
+
+        result += ARRAY_SUFFIX;
+        return result;
+    }
+
+    case ATTRIBUTE: {
+        auto hash = std::get<hash_t>(_data);
+        return std::format("{}{:016X}", ATTRIBUTE_PREFIX, hash);
+    }
+
+    default:
+        return text_t{VOID_PREFIX}; // Fallback to VOID
+    }
+}
 } // namespace camellia

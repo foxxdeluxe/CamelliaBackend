@@ -1,5 +1,6 @@
 ﻿#include "action.h"
 #include "attribute_registry.h"
+#include "camellia.h"
 #include "camellia_macro.h"
 #include "live/play/stage.h"
 #include <format>
@@ -106,21 +107,24 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     _p_script = new scripting_helper::engine();
 
     std::set<text_t> seen;
-    for (const auto &p : *p_parent->get_override_params()) {
-        if (seen.contains(p.first)) {
-            continue;
-        }
-        _p_script->set_property(p.first, p.second);
-        seen.insert(p.first);
-    }
+    auto process_params = [&](const std::map<text_t, variant> &params) {
+        for (const auto &p : params) {
+            if (seen.contains(p.first)) {
+                continue;
+            }
 
-    for (const auto &p : get_default_params()) {
-        if (seen.contains(p.first)) {
-            continue;
+            if (p.second.get_value_type() == variant::types::ATTRIBUTE) {
+                _ref_params[p.first] = static_cast<hash_t>(p.second);
+            } else {
+                _p_script->set_property(p.first, p.second);
+            }
+
+            seen.insert(p.first);
         }
-        _p_script->set_property(p.first, p.second);
-        seen.insert(p.first);
-    }
+    };
+
+    process_params(*p_parent->get_override_params());
+    process_params(get_default_params());
 
     const auto *code = p_parent->get_timeline().get_stage().get_script_code(mad->h_script_name);
     THROW_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
