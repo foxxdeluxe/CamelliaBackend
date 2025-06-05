@@ -3,7 +3,7 @@
 
 #include "../camellia_typedef.h"
 #include "../variant.h"
-#include "quickjs/quickjs.h"
+#include "quickjs.h"
 #include <exception>
 #include <string>
 

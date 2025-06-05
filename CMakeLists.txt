@@ -12,10 +12,23 @@ set(EXPORT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/export/include")
 set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
 set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
-add_subdirectory(quickjs)
+include(FetchContent)
+
+# QuickJS-NG
+find_package(qjs REQUIRED)
+
+# xxHash
+FetchContent_Declare(
+  xxHash
+  GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
+  GIT_TAG v0.8.3
+)
+FetchContent_MakeAvailable(xxHash)
+
+# Testing
 add_subdirectory(test)
 
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR} ${xxhash_SOURCE_DIR})
 
 # Collect all header files for the library export
 set(CAMELLIA_HEADERS
@@ -49,7 +62,6 @@ file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/data)
 file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/helper)
 file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/action)
 file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/play)
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/quickjs)
 
 # Copy all header files using configure_file
 configure_file(${PROJECT_SOURCE_DIR}/camellia_typedef.h ${EXPORT_INCLUDE_DIR}/camellia_typedef.h COPYONLY)
@@ -66,7 +78,6 @@ configure_file(${PROJECT_SOURCE_DIR}/live/play/actor.h ${EXPORT_INCLUDE_DIR}/liv
 configure_file(${PROJECT_SOURCE_DIR}/live/play/dialog.h ${EXPORT_INCLUDE_DIR}/live/play/dialog.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/live/play/scene.h ${EXPORT_INCLUDE_DIR}/live/play/scene.h COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/live/play/stage.h ${EXPORT_INCLUDE_DIR}/live/play/stage.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/quickjs/quickjs.h ${EXPORT_INCLUDE_DIR}/quickjs/quickjs.h COPYONLY)
 
 # main C++ library
 add_library(
@@ -85,8 +96,8 @@ add_library(
         live/action/action_timeline.cpp
         attribute_registry.cpp
         data/stage_data.cpp
-        xxHash/xxhash.c
-        xxHash/xxh_x86dispatch.c
+        ${xxhash_SOURCE_DIR}/xxhash.c
+        ${xxhash_SOURCE_DIR}/xxh_x86dispatch.c
 )
 
 target_link_libraries(
@@ -99,7 +110,7 @@ add_custom_command(
         COMMENT "Copying core build outputs..."
         
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:qjs> ${EXPORT_LIB_DIR}
+        # COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:qjs> ${EXPORT_LIB_DIR}
 )
 
 # swig

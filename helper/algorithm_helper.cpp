@@ -1,7 +1,7 @@
 ﻿
 #include "algorithm_helper.h"
 #include "camellia.h"
-#include "xxHash/xxhash.h"
+#include "xxhash.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
