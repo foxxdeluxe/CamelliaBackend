@@ -5,23 +5,23 @@
 using namespace camellia;
 
 TEST(scripting_text_suite, expression) {
-    auto engine = scripting_helper::engine();
+    auto engine = scripting_helper::scripting_engine();
     auto val = engine.guarded_evaluate("1 + 1", variant::INTEGER);
     ASSERT_EQ((integer_t)val, 2);
 }
 
 TEST(scripting_text_suite, stack_overflow) {
-    auto engine = scripting_helper::engine();
-    ASSERT_THROW(engine.guarded_evaluate("function a() { a(); } a();", variant::VOID), scripting_helper::engine::scripting_engine_error);
+    auto engine = scripting_helper::scripting_engine();
+    ASSERT_THROW(engine.guarded_evaluate("function a() { a(); } a();", variant::VOID), scripting_helper::scripting_engine::scripting_engine_error);
 }
 
 TEST(scripting_text_suite, out_of_memory) {
-    auto engine = scripting_helper::engine();
-    ASSERT_THROW(engine.guarded_evaluate("new ArrayBuffer(10000000);", variant::VOID), scripting_helper::engine::scripting_engine_error);
+    auto engine = scripting_helper::scripting_engine();
+    ASSERT_THROW(engine.guarded_evaluate("new ArrayBuffer(10000000);", variant::VOID), scripting_helper::scripting_engine::scripting_engine_error);
 }
 
 TEST(scripting_text_suite, js_value_from_to_value) {
-    auto engine = scripting_helper::engine();
+    auto engine = scripting_helper::scripting_engine();
     variant res;
 
     // VOID
@@ -73,7 +73,7 @@ TEST(scripting_text_suite, js_value_from_to_value) {
 }
 
 TEST(scripting_text_suite, invoke) {
-    auto engine = scripting_helper::engine();
+    auto engine = scripting_helper::scripting_engine();
 
     engine.guarded_evaluate("function run(b) {\n"
                             "  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];\n"

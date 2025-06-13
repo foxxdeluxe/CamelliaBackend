@@ -7,22 +7,21 @@
 #include <exception>
 #include <string>
 
-namespace camellia {
-namespace scripting_helper {
+namespace camellia::scripting_helper {
 
-class engine {
+class scripting_engine {
 public:
-    engine();
-    ~engine();
+    scripting_engine();
+    ~scripting_engine();
     variant guarded_evaluate(const std::string &code, variant::types result_type);
     variant guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type);
     void set_property(const std::string &prop_name, const variant &prop_val);
 
 #ifndef SWIG
-    engine(const engine &other) = delete;
-    engine &operator=(const engine &other) = delete;
-    engine(engine &&other) noexcept = delete;
-    engine &operator=(engine &&other) noexcept = delete;
+    scripting_engine(const scripting_engine &other) = delete;
+    scripting_engine &operator=(const scripting_engine &other) = delete;
+    scripting_engine(scripting_engine &&other) noexcept = delete;
+    scripting_engine &operator=(scripting_engine &&other) noexcept = delete;
 
     class scripting_engine_error : public std::exception {
     public:
@@ -52,7 +51,6 @@ private:
 #endif
 };
 
-} // namespace scripting_helper
-} // namespace camellia
+} // namespace camellia::scripting_helper
 
 #endif // CAMELLIA_HELPER_SCRIPTING_HELPER_H

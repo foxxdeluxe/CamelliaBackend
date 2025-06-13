@@ -56,13 +56,13 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
                                                            data->h_transition_script_name));
 
         try {
-            _p_transition_script = new scripting_helper::engine();
+            _p_transition_script = new scripting_helper::scripting_engine();
 
             _p_transition_script->set_property(FULL_TEXT_LENGTH_NAME, algorithm_helper::get_bbcode_string_length(data->text));
             _p_transition_script->set_property(TRANSITION_SPEED_NAME, get_transition_speed());
             _p_transition_script->set_property(ORIG_NAME, data->text);
             _p_transition_script->guarded_evaluate(*p_transition_code, variant::VOID);
-        } catch (scripting_helper::engine::scripting_engine_error &err) {
+        } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
             delete _p_transition_script;
             _p_transition_script = nullptr;
 
@@ -109,7 +109,7 @@ number_t text_region::update(const number_t region_time) {
                 _p_transition_script->set_property(TIME_NAME, region_time);
                 const auto text = _p_transition_script->guarded_invoke(RUN_NAME, 0, nullptr, variant::TEXT);
                 temp_attributes[H_TEXT_NAME] = text;
-            } catch (scripting_helper::engine::scripting_engine_error &ex) {
+            } catch (scripting_helper::scripting_engine::scripting_engine_error &ex) {
                 THROW(std::format("Error while invoking function 'run()' in transition script ({}) for text region:\n"
                                   "{}",
                                   _data->h_transition_script_name, ex.what()));

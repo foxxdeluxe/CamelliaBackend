@@ -6,9 +6,9 @@
 #include <vector>
 
 namespace camellia::scripting_helper {
-const size_t engine::RUNTIME_MEMORY_LIMIT = 10'000'000;
+const size_t scripting_engine::RUNTIME_MEMORY_LIMIT = 10'000'000;
 
-engine::engine() {
+scripting_engine::scripting_engine() {
     if (_p_runtime == nullptr) {
         _p_runtime = JS_NewRuntime();
         JS_SetMemoryLimit(_p_runtime, RUNTIME_MEMORY_LIMIT);
@@ -19,7 +19,7 @@ engine::engine() {
     _global_obj = JS_GetGlobalObject(_p_context);
 }
 
-engine::~engine() {
+scripting_engine::~scripting_engine() {
     JS_FreeValue(_p_context, _global_obj);
     JS_FreeAtom(_p_context, _length_atom);
     JS_FreeContext(_p_context);
@@ -33,7 +33,7 @@ std::string get_type_mismatch_msg(variant::types result_type) {
 }
 } // namespace
 
-variant engine::_js_value_to_value(const JSValue &js_value, variant::types result_type) {
+variant scripting_engine::_js_value_to_value(const JSValue &js_value, variant::types result_type) {
     switch (result_type) {
     case variant::VOID:
         return {};
@@ -161,7 +161,7 @@ variant engine::_js_value_to_value(const JSValue &js_value, variant::types resul
     }
 }
 
-JSValue engine::_value_to_js_value(const variant &val) {
+JSValue scripting_engine::_value_to_js_value(const variant &val) {
     const auto value_type = val.get_value_type();
     switch (value_type) {
     case variant::INTEGER:
@@ -212,7 +212,7 @@ JSValue engine::_value_to_js_value(const variant &val) {
     }
 }
 
-engine::scripting_engine_error engine::_get_exception() {
+scripting_engine::scripting_engine_error scripting_engine::_get_exception() {
     const auto ex = JS_GetException(_p_context);
 
     const auto *const ex_str = JS_ToCString(_p_context, ex);
@@ -235,7 +235,7 @@ engine::scripting_engine_error engine::_get_exception() {
     return scripting_engine_error(err_stream.str());
 }
 
-variant engine::guarded_evaluate(const std::string &code, variant::types result_type) {
+variant scripting_engine::guarded_evaluate(const std::string &code, variant::types result_type) {
     const auto res = JS_Eval(_p_context, code.c_str(), code.length(), "<input>", 0);
     if (JS_IsException(res)) {
         // if an exception is thrown
@@ -253,7 +253,7 @@ variant engine::guarded_evaluate(const std::string &code, variant::types result_
     return val;
 }
 
-variant engine::guarded_invoke(JSValue &this_value, const std::string &func_name, int argc, variant *argv, variant::types result_type) {
+variant scripting_engine::guarded_invoke(JSValue &this_value, const std::string &func_name, int argc, variant *argv, variant::types result_type) {
     std::vector<JSValue> js_argv(argc);
     for (int i = 0; i < argc; i++) {
         js_argv[i] = _value_to_js_value(argv[i]);
@@ -298,12 +298,12 @@ variant engine::guarded_invoke(JSValue &this_value, const std::string &func_name
     return val;
 }
 
-variant engine::guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type) {
+variant scripting_engine::guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type) {
 
     return guarded_invoke(_global_obj, func_name, argc, argv, result_type);
 }
 
-void engine::set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val) {
+void scripting_engine::set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val) {
     const auto prop_atom = JS_NewAtom(_p_context, prop_name.c_str());
 
     const auto js_val = _value_to_js_value(prop_val);
@@ -316,11 +316,11 @@ void engine::set_property(JSValue &this_value, const std::string &prop_name, con
     JS_FreeAtom(_p_context, prop_atom);
 }
 
-void engine::set_property(const std::string &prop_name, const variant &prop_val) { set_property(_global_obj, prop_name, prop_val); }
+void scripting_engine::set_property(const std::string &prop_name, const variant &prop_val) { set_property(_global_obj, prop_name, prop_val); }
 
-JSRuntime *engine::_p_runtime = nullptr;
+JSRuntime *scripting_engine::_p_runtime = nullptr;
 
-JSValue engine::_new_typed_array(JSTypedArrayEnum array_type, size_t length, void *&data) {
+JSValue scripting_engine::_new_typed_array(JSTypedArrayEnum array_type, size_t length, void *&data) {
     auto size = JS_NewUint32(_p_context, length);
     const auto typed_array = JS_NewTypedArray(_p_context, 1, &size, array_type);
 
@@ -338,7 +338,7 @@ JSValue engine::_new_typed_array(JSTypedArrayEnum array_type, size_t length, voi
     return typed_array;
 }
 
-void *engine::_get_typed_array(const JSValue typed_array, size_t &data_size) const {
+void *scripting_engine::_get_typed_array(const JSValue typed_array, size_t &data_size) const {
     size_t buf_offset{0ULL};
     size_t buf_length{0ULL};
     size_t buf_elem_size{0ULL};
@@ -353,8 +353,8 @@ void *engine::_get_typed_array(const JSValue typed_array, size_t &data_size) con
     return data;
 }
 
-const char *engine::scripting_engine_error::what() const noexcept { return msg.c_str(); }
+const char *scripting_engine::scripting_engine_error::what() const noexcept { return msg.c_str(); }
 
-engine::scripting_engine_error::scripting_engine_error(text_t &&msg) : msg(std::move(msg)) {}
-engine::scripting_engine_error::scripting_engine_error(const variant &err) : msg(err.get_text()) {}
+scripting_engine::scripting_engine_error::scripting_engine_error(text_t &&msg) : msg(std::move(msg)) {}
+scripting_engine::scripting_engine_error::scripting_engine_error(const variant &err) : msg(err.get_text()) {}
 } // namespace camellia::scripting_helper

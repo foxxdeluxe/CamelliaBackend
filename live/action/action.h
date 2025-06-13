@@ -89,7 +89,7 @@ private:
 
     action_timeline_keyframe *_p_parent_keyframe{nullptr};
     action_timeline *_p_timeline{nullptr};
-    scripting_helper::engine *_p_script{nullptr};
+    scripting_helper::scripting_engine *_p_script{nullptr};
     std::map<text_t, hash_t> _ref_params;
 
     [[nodiscard]] variant modify(number_t action_time, const variant &base_value, std::vector<std::map<hash_t, variant>> &attributes) const;

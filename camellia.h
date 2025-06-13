@@ -10,6 +10,7 @@
 #include "data/stage_data.h"
 #include "helper/algorithm_helper.h"
 #include "helper/scripting_helper.h"
+#include "helper/text_layout_helper.h"
 #include "live/action/action.h"
 #include "live/action/action_timeline.h"
 #include "live/play/activity.h"

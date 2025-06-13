@@ -45,6 +45,14 @@ namespace scripting_helper {
 class engine;
 }
 
+// From helper/text_layout_helper.h
+namespace text_layout_helper {
+class text_layout_engine;
+class text_paragraph;
+class paragraph_style;
+class text_style;
+}
+
 // From live/action/action.h
 class action_timeline_keyframe;
 class action;
@@ -109,6 +117,7 @@ namespace std {
         %template(HashVariantMap) map<camellia::hash_t, camellia::variant>;
         %template(ByteVector) vector<unsigned char>;
         %template(VariantVector) vector<camellia::variant>;
+        %template(DataVector) vector<camellia::bytes_t>;
 }
 
 %exception {
@@ -152,6 +161,7 @@ namespace camellia {
 %include "data/stage_data.h"
 %include "helper/algorithm_helper.h"
 %include "helper/scripting_helper.h"
+%include "helper/text_layout_helper.h"
 %include "live/action/action.h"
 %include "live/action/action_timeline.h"
 %include "live/play/activity.h"

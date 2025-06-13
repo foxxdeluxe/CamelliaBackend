@@ -104,7 +104,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     _p_parent_keyframe = p_parent;
     _p_timeline = &_p_parent_keyframe->get_timeline();
 
-    _p_script = new scripting_helper::engine();
+    _p_script = new scripting_helper::scripting_engine();
 
     std::set<text_t> seen;
     auto process_params = [&](const std::map<text_t, variant> &params) {
@@ -133,7 +133,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
 
     try {
         _p_script->guarded_evaluate(*code, variant::VOID);
-    } catch (const scripting_helper::engine::scripting_engine_error &err) {
+    } catch (const scripting_helper::scripting_engine::scripting_engine_error &err) {
         THROW(std::format("Error while evaluating script ({}) for modifier action ({}):\n"
                           "{}",
                           mad->h_script_name, mad->h_action_name, err.what()));
@@ -203,7 +203,7 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
 
         return _p_script->guarded_invoke(RUN_NAME, 0, nullptr, get_value_type());
 
-    } catch (scripting_helper::engine::scripting_engine_error &err) {
+    } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
         const auto data = get_data();
         THROW(std::format("Error while invoking function 'run()' in script ({}) for modifier action ({}):\n"
                           "{}",

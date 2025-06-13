@@ -7,14 +7,15 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 
-set(EXPORT_LIB_DIR "${CMAKE_BINARY_DIR}/export/lib")
-set(EXPORT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/export/include")
 set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
 set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
+# Testing
+add_subdirectory(test)
+
 include(FetchContent)
 
-# QuickJS-NG
+# QuickJS-ng
 find_package(qjs REQUIRED)
 
 # xxHash
@@ -25,59 +26,46 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(xxHash)
 
-# Testing
-add_subdirectory(test)
+# Set Skia paths directly
+set(SKIA_ROOT_DIR "$ENV{SkiaParagraph_DIR}")
+set(SKIA_LIBRARY_DIR "${SKIA_ROOT_DIR}/out/Static")
+set(SKIA_INCLUDE_DIR "${SKIA_ROOT_DIR}/include")
+set(SKIA_MODULES_DIR "${SKIA_ROOT_DIR}/modules")
 
-include_directories(${PROJECT_SOURCE_DIR} ${xxhash_SOURCE_DIR})
+# Set Skia library paths directly
+set(SKIA_LIBRARY "${SKIA_LIBRARY_DIR}/libskia.a")
+set(SKIA_PARAGRAPH_LIBRARY "${SKIA_LIBRARY_DIR}/libskparagraph.a")
+set(SKIA_SHAPER_LIBRARY "${SKIA_LIBRARY_DIR}/libskshaper.a")
+set(SKIA_UNICODE_CORE_LIBRARY "${SKIA_LIBRARY_DIR}/libskunicode_core.a")
+set(SKIA_UNICODE_ICU_LIBRARY "${SKIA_LIBRARY_DIR}/libskunicode_icu.a")
+set(SKIA_SKCMS_LIBRARY "${SKIA_LIBRARY_DIR}/libskcms.a")
 
-# Collect all header files for the library export
-set(CAMELLIA_HEADERS
-    camellia_typedef.h
-    variant.h
-    attribute_registry.h
-    manager.h
-    data/stage_data.h
-    helper/algorithm_helper.h
-    helper/scripting_helper.h
-    live/action/action_timeline.h
-    live/action/action.h
-    live/play/activity.h
-    live/play/actor.h
-    live/play/dialog.h
-    live/play/scene.h
-    live/play/stage.h
+# Verify that all Skia libraries exist
+foreach(lib ${SKIA_LIBRARY} ${SKIA_PARAGRAPH_LIBRARY} ${SKIA_SHAPER_LIBRARY} 
+            ${SKIA_UNICODE_CORE_LIBRARY} ${SKIA_UNICODE_ICU_LIBRARY} ${SKIA_SKCMS_LIBRARY})
+    if(NOT EXISTS ${lib})
+        message(FATAL_ERROR "Required Skia library not found: ${lib}")
+    endif()
+endforeach()
+
+# Add system dependencies that Skia typically needs
+find_package(PkgConfig REQUIRED)
+find_package(Freetype REQUIRED)
+find_package(ICU REQUIRED COMPONENTS uc)
+# Use pkg-config for HarfBuzz since find_package may not work reliably
+pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)
+
+
+# Set up include directories
+include_directories(
+    ${PROJECT_SOURCE_DIR} 
+    # QuickJS-ng
+    ${qjs_SOURCE_DIR}
+    # xxHash
+    ${xxhash_SOURCE_DIR}
+    # Skia
+    ${SKIA_ROOT_DIR}
 )
-
-# Create a generated header file for library export
-configure_file(
-    "${PROJECT_SOURCE_DIR}/camellia.h"
-    "${EXPORT_INCLUDE_DIR}/camellia.h"
-    COPYONLY
-)
-
-# Create export directories at configure time
-file(MAKE_DIRECTORY ${EXPORT_LIB_DIR})
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR})
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/data)
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/helper)
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/action)
-file(MAKE_DIRECTORY ${EXPORT_INCLUDE_DIR}/live/play)
-
-# Copy all header files using configure_file
-configure_file(${PROJECT_SOURCE_DIR}/camellia_typedef.h ${EXPORT_INCLUDE_DIR}/camellia_typedef.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/variant.h ${EXPORT_INCLUDE_DIR}/variant.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/attribute_registry.h ${EXPORT_INCLUDE_DIR}/attribute_registry.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/manager.h ${EXPORT_INCLUDE_DIR}/manager.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/data/stage_data.h ${EXPORT_INCLUDE_DIR}/data/stage_data.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/helper/algorithm_helper.h ${EXPORT_INCLUDE_DIR}/helper/algorithm_helper.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/helper/scripting_helper.h ${EXPORT_INCLUDE_DIR}/helper/scripting_helper.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/action/action_timeline.h ${EXPORT_INCLUDE_DIR}/live/action/action_timeline.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/action/action.h ${EXPORT_INCLUDE_DIR}/live/action/action.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/play/activity.h ${EXPORT_INCLUDE_DIR}/live/play/activity.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/play/actor.h ${EXPORT_INCLUDE_DIR}/live/play/actor.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/play/dialog.h ${EXPORT_INCLUDE_DIR}/live/play/dialog.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/play/scene.h ${EXPORT_INCLUDE_DIR}/live/play/scene.h COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/live/play/stage.h ${EXPORT_INCLUDE_DIR}/live/play/stage.h COPYONLY)
 
 # main C++ library
 add_library(
@@ -86,6 +74,7 @@ add_library(
         variant.cpp
         helper/algorithm_helper.cpp
         helper/scripting_helper.cpp
+        helper/text_layout_helper.cpp
         manager.cpp
         live/play/activity.cpp
         live/play/actor.cpp
@@ -96,22 +85,52 @@ add_library(
         live/action/action_timeline.cpp
         attribute_registry.cpp
         data/stage_data.cpp
+        # xxHash (built as part of the project)
         ${xxhash_SOURCE_DIR}/xxhash.c
         ${xxhash_SOURCE_DIR}/xxh_x86dispatch.c
 )
 
+# Link libraries in correct order (dependencies matter)
 target_link_libraries(
-        CamelliaBackendCore
-        PRIVATE qjs
+        CamelliaBackendCore PRIVATE
+        # QuickJS-ng
+        qjs
+        # Skia
+        ${SKIA_PARAGRAPH_LIBRARY}
+        ${SKIA_SHAPER_LIBRARY}
+        ${SKIA_UNICODE_ICU_LIBRARY}
+        ${SKIA_UNICODE_CORE_LIBRARY}
+        ${SKIA_LIBRARY}
+        ${SKIA_SKCMS_LIBRARY}
+        # Skia dependencies
+        ${HARFBUZZ_LIBRARIES}
+        Freetype::Freetype
+        ICU::uc
 )
 
-add_custom_command(
-        TARGET CamelliaBackendCore POST_BUILD
-        COMMENT "Copying core build outputs..."
-        
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCore> ${EXPORT_LIB_DIR}
-        # COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:qjs> ${EXPORT_LIB_DIR}
-)
+# Install the static library
+install(TARGETS CamelliaBackendCore
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
+
+# Install header files with directory structure
+install(FILES camellia.h DESTINATION include/camellia)
+install(FILES camellia_typedef.h DESTINATION include/camellia)
+install(FILES variant.h DESTINATION include/camellia)
+install(FILES attribute_registry.h DESTINATION include/camellia)
+install(FILES manager.h DESTINATION include/camellia)
+install(FILES data/stage_data.h DESTINATION include/camellia/data)
+install(FILES helper/algorithm_helper.h DESTINATION include/camellia/helper)
+install(FILES helper/scripting_helper.h DESTINATION include/camellia/helper)
+install(FILES helper/text_layout_helper.h DESTINATION include/camellia/helper)
+install(FILES live/action/action_timeline.h DESTINATION include/camellia/live/action)
+install(FILES live/action/action.h DESTINATION include/camellia/live/action)
+install(FILES live/play/activity.h DESTINATION include/camellia/live/play)
+install(FILES live/play/actor.h DESTINATION include/camellia/live/play)
+install(FILES live/play/dialog.h DESTINATION include/camellia/live/play)
+install(FILES live/play/scene.h DESTINATION include/camellia/live/play)
+install(FILES live/play/stage.h DESTINATION include/camellia/live/play)
 
 # swig
 find_package(SWIG REQUIRED)
@@ -123,6 +142,8 @@ set(SWIG_INTERFACE_FILES
 )
 
 set_property(SOURCE ${SWIG_INTERFACE_FILES} PROPERTY CPLUSPLUS ON)
+# Add include directories for SWIG to find header files
+set_property(SOURCE ${SWIG_INTERFACE_FILES} PROPERTY SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}")
 # set_property(SOURCE ${SWIG_INTERFACE_FILES} APPEND PROPERTY OBJECT_DEPENDS "${CAMELLIA_BACKEND_CORE_SOURCES};${PROJECT_SOURCE_DIR}")
 swig_add_library(
         CamelliaBackendCSharp

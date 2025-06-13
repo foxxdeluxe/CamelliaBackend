@@ -54,7 +54,7 @@ private:
     action_timeline _timeline;
     std::shared_ptr<text_region_data> _data{nullptr};
     dialog *_parent_dialog{nullptr};
-    scripting_helper::engine *_p_transition_script{nullptr};
+    scripting_helper::scripting_engine *_p_transition_script{nullptr};
 
     std::map<hash_t, variant> _initial_attributes;
     attribute_registry _attributes{};
