@@ -30,8 +30,6 @@ set(SKIA_SKCMS_LIBRARY "${SKIA_LIBRARY_DIR}/libskcms.a")
 include_directories(
   ${gtest_SOURCE_DIR}/include 
   ${CamelliaBackend_SOURCE_DIR}
-  # Skia
-  ${SKIA_ROOT_DIR}
 )
 
 enable_testing()

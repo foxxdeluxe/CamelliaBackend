@@ -50,12 +50,14 @@ TEST(text_layout_test, test_text_layout) {
             std::cout << "  Shape: " << std::hex << std::setw(8) << std::setfill('0') << shape->color << std::dec << '\n';
             auto *rect_shape = dynamic_cast<text_layout_helper::rect_deco_info *>(shape.get());
             if (rect_shape) {
-                std::cout << "  Rect: " << rect_shape->xywh.get_x() << ", " << rect_shape->xywh.get_y() << ", " << rect_shape->xywh.get_z() << ", " << rect_shape->xywh.get_w() << '\n';
+                std::cout << "  Rect: " << rect_shape->xywh.get_x() << ", " << rect_shape->xywh.get_y() << ", " << rect_shape->xywh.get_z() << ", "
+                          << rect_shape->xywh.get_w() << '\n';
                 return;
             }
             auto *line_shape = dynamic_cast<text_layout_helper::line_deco_info *>(shape.get());
             if (line_shape) {
-                std::cout << "  Line: " << line_shape->start.get_x() << ", " << line_shape->start.get_y() << ", " << line_shape->end.get_x() << ", " << line_shape->end.get_y() << '\n';
+                std::cout << "  Line: " << line_shape->start.get_x() << ", " << line_shape->start.get_y() << ", " << line_shape->end.get_x() << ", "
+                          << line_shape->end.get_y() << '\n';
                 return;
             }
             auto *path_shape = dynamic_cast<text_layout_helper::path_deco_info *>(shape.get());
@@ -69,11 +71,11 @@ TEST(text_layout_test, test_text_layout) {
     paragraph.visit_foreground([](const text_layout_helper::foreground_visit_info &info) {
         std::cout << "Foreground: " << info.get_line_number() << ", " << info.get_start() << ", " << info.get_end() << '\n';
 
-        std::cout << "Font: " << info.get_font().get_size() << ", " << std::hex << std::setw(8) << std::setfill('0') << info.get_style().get_color() << std::dec << ", "
-                  << info.get_style().get_font_family() << '\n';
+        std::cout << "Font: " << info.get_font().get_size() << ", " << std::hex << std::setw(8) << std::setfill('0') << info.get_style().get_color() << std::dec
+                  << ", " << info.get_style().get_font_family() << '\n';
 
-        for (int i = 0; i < info.get_glyph_count(); i++) {
-            std::cout << info.get_glyphs()[i] << ' ' << info.get_offset_x() + info.get_position(i).get_x() << ", " << info.get_offset_y() + info.get_position(i).get_y() << '\n';
+        for (size_t i = 0; i < info.get_glyphs().size(); i++) {
+            std::cout << info.get_glyphs()[i] << ' ' << info.get_positions()[i].get_x() << ", " << info.get_positions()[i].get_y() << '\n';
         }
         std::cout << '\n';
     });
@@ -84,12 +86,14 @@ TEST(text_layout_test, test_text_layout) {
             std::cout << "  Shape: " << std::hex << std::setw(8) << std::setfill('0') << shape->color << std::dec << '\n';
             auto *rect_shape = dynamic_cast<text_layout_helper::rect_deco_info *>(shape.get());
             if (rect_shape) {
-                std::cout << "  Rect: " << rect_shape->xywh.get_x() << ", " << rect_shape->xywh.get_y() << ", " << rect_shape->xywh.get_z() << ", " << rect_shape->xywh.get_w() << '\n';
+                std::cout << "  Rect: " << rect_shape->xywh.get_x() << ", " << rect_shape->xywh.get_y() << ", " << rect_shape->xywh.get_z() << ", "
+                          << rect_shape->xywh.get_w() << '\n';
                 return;
             }
             auto *line_shape = dynamic_cast<text_layout_helper::line_deco_info *>(shape.get());
             if (line_shape) {
-                std::cout << "  Line: " << line_shape->start.get_x() << ", " << line_shape->start.get_y() << ", " << line_shape->end.get_x() << ", " << line_shape->end.get_y() << '\n';
+                std::cout << "  Line: " << line_shape->start.get_x() << ", " << line_shape->start.get_y() << ", " << line_shape->end.get_x() << ", "
+                          << line_shape->end.get_y() << '\n';
                 return;
             }
             auto *path_shape = dynamic_cast<text_layout_helper::path_deco_info *>(shape.get());

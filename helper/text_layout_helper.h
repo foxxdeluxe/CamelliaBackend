@@ -1,12 +1,6 @@
 #ifndef TEXT_LAYOUT_HELPER_H
 #define TEXT_LAYOUT_HELPER_H
 
-#include "include/core/SkData.h"
-#include "include/core/SkFont.h"
-#include "include/private/base/SkPoint_impl.h"
-#include "modules/skparagraph/include/Paragraph.h"
-#include "modules/skparagraph/include/ParagraphStyle.h"
-#include "modules/skparagraph/include/TextStyle.h"
 #include "variant.h"
 #include <camellia_typedef.h>
 #include <cmath>
@@ -58,32 +52,30 @@ struct path_deco_info : public deco_info {
     // TODO: Support path
 };
 
-class interceptor_painter : public skia::textlayout::ParagraphPainter {
+// Forward declarations for PIMPL
+class interceptor_painter_impl;
+class paragraph_style_impl;
+class text_style_impl;
+class font_impl;
+class text_paragraph_impl;
+class text_layout_engine_impl;
+
+class interceptor_painter {
 public:
-    void drawRect(const SkRect &rect, const SkPaintOrID &paint) override;
-    void drawFilledRect(const SkRect &rect, const DecorationStyle &decorStyle) override;
-    void drawPath(const SkPath &path, const DecorationStyle &decorStyle) override;
-    void drawLine(SkScalar x0, SkScalar y0, SkScalar x1, SkScalar y1, const DecorationStyle &decorStyle) override;
+    interceptor_painter();
+    ~interceptor_painter();
+    interceptor_painter(const interceptor_painter &) = delete;
+    interceptor_painter &operator=(const interceptor_painter &) = delete;
+    interceptor_painter(interceptor_painter &&) noexcept;
+    interceptor_painter &operator=(interceptor_painter &&) noexcept;
 
-    // Not intercepting these functions
-    void drawTextShadow(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, SkColor color, SkScalar blurSigma) override {};
-    void drawTextBlob(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, const SkPaintOrID &paint) override {};
-    void save() override {};
-    void restore() override {};
+    [[nodiscard]] const std::vector<std::unique_ptr<deco_info>> &get_shapes() const;
 
-    void clipRect(const SkRect &rect) override {};
-    void translate(SkScalar dx, SkScalar dy) override {
-        _offset_x += dx;
-        _offset_y += dy;
-    };
-
-    [[nodiscard]] const std::vector<std::unique_ptr<deco_info>> &get_shapes() const { return _shapes; }
-
+#ifndef SWIG
 private:
-    number_t _offset_x{0.0F};
-    number_t _offset_y{0.0F};
-
-    std::vector<std::unique_ptr<deco_info>> _shapes;
+    friend class text_paragraph;
+    std::unique_ptr<interceptor_painter_impl> _impl;
+#endif
 };
 
 class paragraph_style {
@@ -100,12 +92,12 @@ public:
     // Text overflow behavior
     enum class text_overflow : char { CLIP, ELLIPSIS, FADE };
 
-    paragraph_style() = default;
-    paragraph_style(const paragraph_style &other) = default;
-    paragraph_style &operator=(const paragraph_style &other) = default;
-    paragraph_style(paragraph_style &&other) noexcept = default;
-    paragraph_style &operator=(paragraph_style &&other) noexcept = default;
-    ~paragraph_style() = default;
+    paragraph_style();
+    paragraph_style(const paragraph_style &other);
+    paragraph_style &operator=(const paragraph_style &other);
+    paragraph_style(paragraph_style &&other) noexcept;
+    paragraph_style &operator=(paragraph_style &&other) noexcept;
+    ~paragraph_style();
 
     // Text alignment methods
     void set_text_align(text_align align);
@@ -134,11 +126,7 @@ public:
 #ifndef SWIG
 private:
     friend text_layout_engine;
-
-    skia::textlayout::ParagraphStyle _paragraph_style;
-
-    explicit paragraph_style(skia::textlayout::ParagraphStyle paragraph_style);
-    paragraph_style &operator=(skia::textlayout::ParagraphStyle paragraph_style);
+    std::unique_ptr<paragraph_style_impl> _impl;
 #endif
 };
 
@@ -166,12 +154,12 @@ public:
     // Text decoration style
     enum class decoration_style : char { SOLID, DOUBLE, DOTTED, DASHED, WAVY };
 
-    text_style() = default;
-    text_style(const text_style &other) = default;
-    text_style &operator=(const text_style &other) = default;
-    text_style(text_style &&other) noexcept = default;
-    text_style &operator=(text_style &&other) noexcept = default;
-    ~text_style() = default;
+    text_style();
+    text_style(const text_style &other);
+    text_style &operator=(const text_style &other);
+    text_style(text_style &&other) noexcept;
+    text_style &operator=(text_style &&other) noexcept;
+    ~text_style();
 
     // Font size methods
     void set_font_size(number_t size);
@@ -217,15 +205,12 @@ public:
     // Word spacing methods
     void set_word_spacing(number_t spacing);
     [[nodiscard]] number_t get_word_spacing() const;
+
 #ifndef SWIG
 private:
     friend class text_paragraph;
     friend class text_layout_engine;
-
-    skia::textlayout::TextStyle _text_style;
-
-    explicit text_style(skia::textlayout::TextStyle text_style);
-    text_style &operator=(skia::textlayout::TextStyle text_style);
+    std::unique_ptr<text_style_impl> _impl;
 #endif
 };
 
@@ -237,12 +222,12 @@ public:
     // Font edging modes
     enum class edging : char { ALIAS, ANTI_ALIAS, SUBPIXEL_ANTI_ALIAS };
 
-    font() = default;
-    font(const font &other) = default;
-    font &operator=(const font &other) = default;
-    font(font &&other) noexcept = default;
-    font &operator=(font &&other) noexcept = default;
-    ~font() = default;
+    font();
+    font(const font &other);
+    font &operator=(const font &other);
+    font(font &&other) noexcept;
+    font &operator=(font &&other) noexcept;
+    ~font();
 
     // Font size methods
     void set_size(number_t size);
@@ -289,13 +274,7 @@ public:
 private:
     friend class text_paragraph;
     friend class text_layout_engine;
-
-    SkFont _font;
-
-    explicit font(const SkFont &sk_font);
-    font &operator=(const SkFont &sk_font);
-
-    [[nodiscard]] const SkFont *get_sk_font() const;
+    std::unique_ptr<font_impl> _impl;
 #endif
 };
 
@@ -317,9 +296,8 @@ struct foreground_visit_info : public visit_info {
 public:
     [[nodiscard]] float_t get_offset_x() const { return _offset_x; }
     [[nodiscard]] float_t get_offset_y() const { return _offset_y; }
-    [[nodiscard]] const unsigned short *get_glyphs() const { return _glyphs; }
-    [[nodiscard]] vector2 get_position(integer_t index) const { return {_positions[index].x(), _positions[index].y()}; }
-    [[nodiscard]] size_t get_glyph_count() const { return _glyph_count; }
+    [[nodiscard]] const std::vector<unsigned short> &get_glyphs() const { return _glyphs; }
+    [[nodiscard]] const std::vector<vector2> &get_positions() const { return _positions; }
     [[nodiscard]] font get_font() const { return _font; }
     [[nodiscard]] text_style get_style() const { return _style; }
 
@@ -328,9 +306,8 @@ private:
 
     float_t _offset_x{0.0F};
     float_t _offset_y{0.0F};
-    const unsigned short *_glyphs{nullptr};
-    const SkPoint *_positions{nullptr};
-    size_t _glyph_count{0};
+    std::vector<unsigned short> _glyphs;
+    std::vector<vector2> _positions;
     font _font;
     text_style _style;
 };
@@ -349,12 +326,12 @@ class text_paragraph {
 public:
     void layout(number_t width);
 
-    text_paragraph() = default;
+    text_paragraph();
     text_paragraph(const text_paragraph &other) = delete;
     text_paragraph &operator=(const text_paragraph &other) = delete;
-    text_paragraph(text_paragraph &&other) noexcept = default;
-    text_paragraph &operator=(text_paragraph &&other) noexcept = default;
-    ~text_paragraph() = default;
+    text_paragraph(text_paragraph &&other) noexcept;
+    text_paragraph &operator=(text_paragraph &&other) noexcept;
+    ~text_paragraph();
 
 #ifndef SWIG
     using visit_foreground_cb = std::function<void(const foreground_visit_info &)>;
@@ -366,10 +343,7 @@ public:
 
 private:
     friend text_layout_engine;
-
-    std::unique_ptr<skia::textlayout::Paragraph> _p_paragraph;
-
-    explicit text_paragraph(std::unique_ptr<skia::textlayout::Paragraph> p_paragraph);
+    std::unique_ptr<text_paragraph_impl> _impl;
 #endif
 };
 
@@ -384,6 +358,11 @@ struct text_segment {
 class text_layout_engine {
 public:
     explicit text_layout_engine(const std::vector<bytes_t> &font_data_vector);
+    text_layout_engine(const text_layout_engine &other) = delete;
+    text_layout_engine &operator=(const text_layout_engine &other) = delete;
+    text_layout_engine(text_layout_engine &&other) noexcept;
+    text_layout_engine &operator=(text_layout_engine &&other) noexcept;
+    ~text_layout_engine();
 
     text_paragraph create_paragraph(const text_t &text, const paragraph_style &paragraph_style);
 
@@ -395,9 +374,7 @@ public:
 
 #ifndef SWIG
 private:
-    sk_sp<SkFontMgr> _p_font_mgr;
-    std::vector<sk_sp<SkData>> _font_data_vector;
-    sk_sp<skia::textlayout::FontCollection> _p_font_collection;
+    std::unique_ptr<text_layout_engine_impl> _impl;
 #endif
 };
 
