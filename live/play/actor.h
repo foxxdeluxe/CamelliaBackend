@@ -14,22 +14,20 @@ namespace camellia {
 // Forward declarations
 class stage;
 
-class actor : public dirty_attribute_handler {
-    NAMED_CLASS(actor)
+class actor : public live_object {
+    LIVE_OBJECT(actor)
+
+protected:
+    friend class manager;
+    explicit actor(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
     [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
     [[nodiscard]] attribute_registry &get_attributes();
-    boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
-    actor() = default;
-    ~actor() override = default;
-    actor(const actor &other);
-    actor &operator=(const actor &other);
+
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
-    actor(actor &&other) noexcept = default;
-    actor &operator=(actor &&other) noexcept = default;
 
     [[nodiscard]] activity &get_parent_activity() const;
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
@@ -37,13 +35,15 @@ public:
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
 
+    void set_dirty_attribute_handler(attribute_registry::dirty_attribute_cb cb) { _attributes.set_dirty_attribute_handler(cb); }
+
     constexpr static text_t POSITION_NAME = "position";
     constexpr static text_t SCALE_NAME = "scale";
     constexpr static text_t ROTATION_NAME = "rotation";
 
 private:
     std::shared_ptr<actor_data> _p_data{nullptr};
-    std::map<integer_t, activity> _children;
+    std::map<integer_t, std::unique_ptr<activity>> _children;
     stage *_p_stage{nullptr};
     activity *_p_parent_activity{nullptr};
     attribute_registry _attributes;

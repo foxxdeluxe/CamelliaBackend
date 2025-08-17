@@ -1,0 +1,13 @@
+{
+  "dependencies": [
+    "xxhash",
+    {
+      "name": "skia",
+      "features": [
+        "harfbuzz",
+        "freetype",
+        "icu"
+      ]
+    }
+  ]
+}

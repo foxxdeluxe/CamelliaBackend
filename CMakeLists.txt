@@ -10,61 +10,38 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
 set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
-# Testing
-add_subdirectory(test)
-
 include(FetchContent)
 
 # QuickJS-ng
-find_package(qjs REQUIRED)
+FetchContent_Declare(
+    quickjs-ng
+    GIT_REPOSITORY https://github.com/quickjs-ng/quickjs.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(quickjs-ng)
+
+# constexpr-xxh3 (header-only)
+FetchContent_Declare(
+    constexpr-xxh3
+    GIT_REPOSITORY https://github.com/chys87/constexpr-xxh3.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(constexpr-xxh3)
 
 # xxHash
-FetchContent_Declare(
-  xxHash
-  GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
-  GIT_TAG v0.8.3
-)
-FetchContent_MakeAvailable(xxHash)
+find_package(xxHash CONFIG REQUIRED)
 
-# Set Skia paths directly
-set(SKIA_ROOT_DIR "$ENV{SkiaParagraph_DIR}")
-set(SKIA_LIBRARY_DIR "${SKIA_ROOT_DIR}/out/Static")
-set(SKIA_INCLUDE_DIR "${SKIA_ROOT_DIR}/include")
-set(SKIA_MODULES_DIR "${SKIA_ROOT_DIR}/modules")
-
-# Set Skia library paths directly
-set(SKIA_LIBRARY "${SKIA_LIBRARY_DIR}/libskia.a")
-set(SKIA_PARAGRAPH_LIBRARY "${SKIA_LIBRARY_DIR}/libskparagraph.a")
-set(SKIA_SHAPER_LIBRARY "${SKIA_LIBRARY_DIR}/libskshaper.a")
-set(SKIA_UNICODE_CORE_LIBRARY "${SKIA_LIBRARY_DIR}/libskunicode_core.a")
-set(SKIA_UNICODE_ICU_LIBRARY "${SKIA_LIBRARY_DIR}/libskunicode_icu.a")
-set(SKIA_SKCMS_LIBRARY "${SKIA_LIBRARY_DIR}/libskcms.a")
-
-# Verify that all Skia libraries exist
-foreach(lib ${SKIA_LIBRARY} ${SKIA_PARAGRAPH_LIBRARY} ${SKIA_SHAPER_LIBRARY} 
-            ${SKIA_UNICODE_CORE_LIBRARY} ${SKIA_UNICODE_ICU_LIBRARY} ${SKIA_SKCMS_LIBRARY})
-    if(NOT EXISTS ${lib})
-        message(FATAL_ERROR "Required Skia library not found: ${lib}")
-    endif()
-endforeach()
-
-# Add system dependencies that Skia typically needs
-find_package(PkgConfig REQUIRED)
-find_package(Freetype REQUIRED)
-find_package(ICU REQUIRED COMPONENTS uc)
-# Use pkg-config for HarfBuzz since find_package may not work reliably
-pkg_check_modules(HARFBUZZ REQUIRED harfbuzz)
+# modified Skia
+find_package(unofficial-skia CONFIG REQUIRED)
 
 
 # Set up include directories
 include_directories(
     ${PROJECT_SOURCE_DIR} 
     # QuickJS-ng
-    ${qjs_SOURCE_DIR}
-    # xxHash
-    ${xxhash_SOURCE_DIR}
-    # Skia
-    ${SKIA_ROOT_DIR}
+    ${quickjs-ng_SOURCE_DIR}
+    # constexpr-xxh3
+    ${constexpr-xxh3_SOURCE_DIR}
 )
 
 # main C++ library
@@ -85,9 +62,6 @@ add_library(
         live/action/action_timeline.cpp
         attribute_registry.cpp
         data/stage_data.cpp
-        # xxHash (built as part of the project)
-        ${xxhash_SOURCE_DIR}/xxhash.c
-        ${xxhash_SOURCE_DIR}/xxh_x86dispatch.c
 )
 
 # Link libraries in correct order (dependencies matter)
@@ -95,17 +69,11 @@ target_link_libraries(
         CamelliaBackendCore PRIVATE
         # QuickJS-ng
         qjs
-        # Skia
-        ${SKIA_PARAGRAPH_LIBRARY}
-        ${SKIA_SHAPER_LIBRARY}
-        ${SKIA_UNICODE_ICU_LIBRARY}
-        ${SKIA_UNICODE_CORE_LIBRARY}
-        ${SKIA_LIBRARY}
-        ${SKIA_SKCMS_LIBRARY}
-        # Skia dependencies
-        ${HARFBUZZ_LIBRARIES}
-        Freetype::Freetype
-        ICU::uc
+        # xxHash
+        xxHash::xxhash
+        # modified Skia
+        unofficial::skia::skia
+        unofficial::skia::modules::skparagraph
 )
 
 # Install the static library
@@ -131,42 +99,8 @@ install(FILES live/play/actor.h DESTINATION include/camellia/live/play)
 install(FILES live/play/dialog.h DESTINATION include/camellia/live/play)
 install(FILES live/play/scene.h DESTINATION include/camellia/live/play)
 install(FILES live/play/stage.h DESTINATION include/camellia/live/play)
+install(FILES ${constexpr-xxh3_SOURCE_DIR}/constexpr-xxh3.h DESTINATION include/camellia/third_party)
 
-# swig
-find_package(SWIG REQUIRED)
-include(UseSWIG)
 
-# get_target_property(CAMELLIA_BACKEND_CORE_SOURCES CamelliaBackendCore SOURCES)
-set(SWIG_INTERFACE_FILES
-        interface/csharp/root.i
-)
-
-set_property(SOURCE ${SWIG_INTERFACE_FILES} PROPERTY CPLUSPLUS ON)
-# Add include directories for SWIG to find header files
-set_property(SOURCE ${SWIG_INTERFACE_FILES} PROPERTY SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}")
-# set_property(SOURCE ${SWIG_INTERFACE_FILES} APPEND PROPERTY OBJECT_DEPENDS "${CAMELLIA_BACKEND_CORE_SOURCES};${PROJECT_SOURCE_DIR}")
-swig_add_library(
-        CamelliaBackendCSharp
-        TYPE SHARED
-        LANGUAGE CSharp
-        OUTPUT_DIR csharp
-        SOURCES ${SWIG_INTERFACE_FILES}
-)
-set_property(TARGET CamelliaBackendCSharp PROPERTY SWIG_COMPILE_DEFINITIONS SWIG_CSHARP_NO_STRING_HELPER SWIG_CSHARP_NO_EXCEPTION_HELPER)
-
-target_link_libraries(
-        CamelliaBackendCSharp
-        PRIVATE CamelliaBackendCore)
-
-add_custom_command(
-        TARGET CamelliaBackendCSharp POST_BUILD
-        COMMENT "Copying SWIG C# bindings & build outputs..."
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_CSHARP_LIB_DIR}
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${EXPORT_CSHARP_GLUE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_CSHARP_LIB_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${EXPORT_CSHARP_GLUE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CamelliaBackendCSharp> ${EXPORT_CSHARP_LIB_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/csharp ${EXPORT_CSHARP_GLUE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E rm ${EXPORT_CSHARP_GLUE_DIR}/rootCSHARP_wrap.cxx
-        COMMAND ${CMAKE_COMMAND} -E rm ${EXPORT_CSHARP_GLUE_DIR}/rootCSHARP_wrap.h
-)
+# Testing (placed after dependencies and include dirs so tests inherit them)
+add_subdirectory(test)

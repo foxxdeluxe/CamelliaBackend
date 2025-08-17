@@ -16,8 +16,12 @@ class stage;
 class actor;
 
 #ifndef SWIG
-class activity : public dirty_attribute_handler {
-    NAMED_CLASS(activity)
+class activity : public live_object {
+    LIVE_OBJECT(activity)
+
+protected:
+    friend class manager;
+    explicit activity(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
     [[nodiscard]] stage &get_stage() const;
@@ -25,14 +29,6 @@ public:
     void fina(boolean_t keep_actor);
     number_t update(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
     [[nodiscard]] const std::map<hash_t, variant> &get_initial_values();
-    boolean_t handle_dirty_attribute(hash_t key, const variant &val) override;
-
-    activity() = default;
-    ~activity() override = default;
-    activity(const activity &other);
-    activity &operator=(const activity &other);
-    activity(activity &&other) noexcept = default;
-    activity &operator=(activity &&other) noexcept = default;
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
@@ -40,7 +36,7 @@ private:
     std::shared_ptr<activity_data> _p_data{nullptr};
     std::map<hash_t, variant> _initial_attributes;
     stage *_p_stage{nullptr};
-    action_timeline _timeline;
+    std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     integer_t _aid{-1};
     actor *_p_parent_actor{nullptr};
 };

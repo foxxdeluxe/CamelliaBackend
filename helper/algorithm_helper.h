@@ -2,15 +2,29 @@
 #define ALGORITHM_HELPER_H
 
 #include "../camellia_typedef.h"
+#include "constexpr-xxh3.h"
 #include <functional>
 #include <vector>
 
 namespace camellia::algorithm_helper {
 constexpr hash_t RESERVE_SIZE = 0x8000;
+constexpr hash_t XXHASH_SEED = 431134; // AELLEA
 
 boolean_t approx_equals(number_t a, number_t b);
 integer_t get_bbcode_string_length(const text_t &bbcode);
 hash_t calc_hash(const std::string &str) noexcept;
+consteval hash_t calc_hash_const(std::string_view str) noexcept {
+    auto hash = constexpr_xxh3::XXH3_64bits_withSeed_const(str.data(), str.size(), XXHASH_SEED);
+    if (hash >= RESERVE_SIZE) [[likely]] {
+        return hash;
+    }
+
+    // Jackpot!!!
+    for (auto seed = XXHASH_SEED + 1; hash < RESERVE_SIZE; seed++) {
+        hash = constexpr_xxh3::XXH3_64bits_withSeed_const(str.data(), str.size(), seed);
+    }
+    return hash;
+}
 
 #ifndef SWIG
 template <typename T> integer_t compare_to(T a, T b) {

@@ -15,35 +15,38 @@ namespace camellia {
 class stage;
 class dialog;
 
-class text_region : public dirty_attribute_handler {
-    NAMED_CLASS(text_region)
+class text_region : public live_object {
+    LIVE_OBJECT(text_region)
+
+protected:
+    friend class manager;
+    explicit text_region(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
+    using visibility_update_cb = boolean_t (*)(boolean_t is_visible);
+
     [[nodiscard]] text_t get_current_text() const;
     [[nodiscard]] text_t get_full_text() const;
     [[nodiscard]] boolean_t get_is_visible() const;
     [[nodiscard]] integer_t get_id() const;
     [[nodiscard]] number_t get_transition_duration() const;
     [[nodiscard]] number_t get_transition_speed() const;
+    [[nodiscard]] boolean_t pop_should_update_layout() { return std::exchange(_should_update_layout, false); }
     number_t update(number_t region_time);
-    virtual boolean_t handle_visibility_update(boolean_t is_visible) = 0;
 
-    text_region() = default;
-    ~text_region() override = default;
-    text_region(const text_region &other);
-    text_region &operator=(const text_region &other);
+    void set_visibility_update_cb(visibility_update_cb cb) { _visibility_update_cb = cb; }
+    void set_dirty_attribute_handler(attribute_registry::dirty_attribute_cb cb) { _attributes.set_dirty_attribute_handler(cb); }
+
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
-    text_region(text_region &&other) noexcept = default;
-    text_region &operator=(text_region &&other) noexcept = default;
 
     [[nodiscard]] dialog &get_parent_dialog() const;
     virtual void init(const std::shared_ptr<text_region_data> &data, dialog &parent);
     virtual void fina();
 
 private:
-    const static hash_t H_TEXT_NAME;
+    static constexpr hash_t H_TEXT_NAME = algorithm_helper::calc_hash_const("text");
 
     const static char *FULL_TEXT_LENGTH_NAME;
     const static char *TRANSITION_SPEED_NAME;
@@ -51,37 +54,33 @@ private:
     const static char *TIME_NAME;
     const static char *RUN_NAME;
 
-    action_timeline _timeline;
+    std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     std::shared_ptr<text_region_data> _data{nullptr};
     dialog *_parent_dialog{nullptr};
     scripting_helper::scripting_engine *_p_transition_script{nullptr};
-
+    visibility_update_cb _visibility_update_cb{nullptr};
     std::map<hash_t, variant> _initial_attributes;
     attribute_registry _attributes{};
 
-    boolean_t _is_visible{false}, _last_is_visible{false};
+    text_layout_helper::text_style _text_style;
+
+    boolean_t _is_visible{false}, _last_is_visible{false}, _should_update_layout{false};
 #endif
 };
 
 class dialog : public live_object {
-    NAMED_CLASS(dialog)
+    LIVE_OBJECT(dialog)
+
+protected:
+    friend class manager;
+    explicit dialog(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
-    virtual text_region &append_text_region() = 0;
-    [[nodiscard]] virtual text_region *get_text_region(size_t index) = 0;
-    [[nodiscard]] virtual size_t get_text_region_count() = 0;
-    virtual void trim_text_regions(size_t from_index) = 0;
     number_t update(number_t beat_time);
 
-    dialog() = default;
-    ~dialog() override = default;
-    dialog(const dialog &other);
-    dialog &operator=(const dialog &other);
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
-    dialog(dialog &&other) noexcept = default;
-    dialog &operator=(dialog &&other) noexcept = default;
 
     [[nodiscard]] stage &get_stage() const;
     void init(stage &st);
@@ -92,9 +91,11 @@ private:
     std::shared_ptr<dialog_data> _current{nullptr};
     stage *_parent_stage{};
 
-    action_timeline _region_life_timeline;
+    std::unique_ptr<action_timeline> _p_region_life_timeline{get_manager().new_live_object<action_timeline>()};
     boolean_t _use_life_timeline{false};
     boolean_t _hide_inactive_regions{true};
+
+    std::vector<std::unique_ptr<text_region>> _text_regions;
 #endif
 };
 

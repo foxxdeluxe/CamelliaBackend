@@ -15,8 +15,6 @@ const std::map<hash_t, variant> &actor::get_default_attributes() const {
 
 attribute_registry &actor::get_attributes() { return _attributes; }
 
-boolean_t actor::handle_dirty_attribute(hash_t /*key*/, const variant & /*val*/) { return true; }
-
 void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent) {
     REQUIRES_NOT_NULL(data);
     REQUIRES_VALID(*data);
@@ -33,11 +31,11 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
         auto it = _children.begin();
         while (it != _children.end()) {
             if (data->children.contains(it->first)) {
-                it->second.fina(true);
+                it->second->fina(true);
                 ++it;
             } else {
                 // remove redundant activity instances
-                it->second.fina(false);
+                it->second->fina(false);
                 it = _children.erase(it);
             }
         }
@@ -49,12 +47,12 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
             auto i = _children.find(it->first);
 
             if (i != _children.end()) {
-                i->second.init(it->second, true, *_p_stage, this);
+                i->second->init(it->second, true, *_p_stage, this);
             } else {
                 // add new activity instances
 
-                _children[it->first] = activity();
-                _children[it->first].init(it->second, false, *_p_stage, this);
+                _children[it->first] = get_manager().new_live_object<activity>();
+                _children[it->first]->init(it->second, false, *_p_stage, this);
             }
 
             ++it;
@@ -62,24 +60,30 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     }
 
     _is_initialized = true;
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
     number_t time_to_end = 0.0F;
     for (auto &child : _children) {
-        time_to_end = std::max(child.second.update(beat_time, parent_attributes), time_to_end);
+        time_to_end = std::max(child.second->update(beat_time, parent_attributes), time_to_end);
     }
     return time_to_end;
 }
 
 void actor::fina(boolean_t keep_children) {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
     _is_initialized = false;
     _p_data = nullptr;
     _p_parent_activity = nullptr;
 
     if (!keep_children) {
         for (auto &child : _children) {
-            child.second.fina(false);
+            child.second->fina(false);
         }
         _children.clear();
     }
@@ -90,16 +94,6 @@ void actor::fina(boolean_t keep_children) {
 activity &actor::get_parent_activity() const {
     REQUIRES_NOT_NULL(_p_parent_activity);
     return *_p_parent_activity;
-}
-
-actor::actor(const actor & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
-
-actor &actor::operator=(const actor &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
 }
 
 std::string actor::get_locator() const noexcept {

@@ -1,6 +1,7 @@
 ﻿#include <cmath>
 #include <cstddef>
 #include <format>
+#include <memory>
 
 #include "action.h"
 #include "action_timeline.h"
@@ -11,6 +12,7 @@
 #include "live/play/stage.h"
 
 namespace camellia {
+action_timeline_keyframe::~action_timeline_keyframe() = default;
 number_t action_timeline_keyframe::get_time() const {
     REQUIRES_NOT_NULL(_data);
     return _data->time;
@@ -67,13 +69,33 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     const auto action_data = parent->get_stage().get_action_data(data->h_action_name);
     THROW_IF(action_data == nullptr, std::format("Action data ({}) not found.", data->h_action_name));
 
-    _p_action = &action::allocate_action(action_data->get_action_type());
+    auto type = action_data->get_action_type();
+    switch (type) {
+    case action_data::ACTION_MODIFIER: {
+        _p_action = get_manager().new_live_object<modifier_action>();
+        break;
+    }
+    case action_data::ACTION_COMPOSITE: {
+        _p_action = get_manager().new_live_object<composite_action>();
+        break;
+    }
+    default:
+        THROW_NO_LOC(std::format("Unknown action type ({}).", type));
+    }
     _p_action->init(action_data, this);
 
     _is_initialized = true;
+
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 void action_timeline_keyframe::fina() {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
+
     _is_initialized = false;
     _data = nullptr;
     _parent_timeline = nullptr;
@@ -82,7 +104,6 @@ void action_timeline_keyframe::fina() {
 
     if (_p_action != nullptr) {
         _p_action->fina();
-        action::collect_action(*_p_action);
         _p_action = nullptr;
     }
 }
@@ -90,16 +111,6 @@ void action_timeline_keyframe::fina() {
 variant action_timeline_keyframe::query_param(const text_t &key) const {
     auto it = get_override_params()->find(key);
     return it == get_override_params()->end() ? variant() : it->second;
-}
-
-action_timeline_keyframe::action_timeline_keyframe(const action_timeline_keyframe &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
-
-action_timeline_keyframe &action_timeline_keyframe::operator=(const action_timeline_keyframe &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
 }
 
 stage &action_timeline::get_stage() const {
@@ -113,7 +124,7 @@ number_t action_timeline::get_effective_duration() const { return _effective_dur
 
 void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, live_object *p_parent) {
     for (size_t i = 0; i < data.size(); i++) {
-        REQUIRES_VALID_MSG(*data[i], std::format("Action timeline ata #{} is invalid", i));
+        REQUIRES_VALID_MSG(*data[i], std::format("Action timeline data #{} is invalid", i));
     }
 
     _data = data;
@@ -128,8 +139,7 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
             live_track.resize(track->keyframes.size());
             for (int i = 0; i < track->keyframes.size(); i++) {
                 auto keyframe = track->keyframes[i];
-                auto *live_keyframe = new action_timeline_keyframe();
-                live_track[i] = live_keyframe;
+                auto live_keyframe = get_manager().new_live_object<action_timeline_keyframe>();
                 auto preferred_duration = std::fabsf(keyframe->preferred_duration_signed);
 
                 auto effective_duration = keyframe->preferred_duration_signed < 0.0F ? NUMBER_POSITIVE_INFINITY : preferred_duration;
@@ -138,6 +148,7 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
                 }
 
                 live_keyframe->init(keyframe, this, track_index, i, effective_duration);
+                live_track[i] = std::move(live_keyframe);
             }
 
             _last_completed_keyframe_indices.push_back(-1);
@@ -147,9 +158,17 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
     }
 
     _is_initialized = true;
+
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 void action_timeline::fina() {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
+
     _is_initialized = false;
     _data.clear();
     _p_stage = nullptr;
@@ -159,7 +178,6 @@ void action_timeline::fina() {
     for (auto &track : _tracks) {
         for (auto &keyframe : track) {
             keyframe->fina();
-            delete keyframe;
         }
     }
 
@@ -172,12 +190,12 @@ std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t t
 
     std::vector<const action_timeline_keyframe *> res;
     for (const auto &track : _tracks) {
-        auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
-            track, [&](const action_timeline_keyframe *k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
+        auto index = algorithm_helper::upper_bound<std::unique_ptr<action_timeline_keyframe>>(
+            track, [&](const std::unique_ptr<action_timeline_keyframe> &k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
         if (index <= 0) {
             continue;
         }
-        res.push_back(track[index - 1]);
+        res.push_back(track[index - 1].get());
     }
     return res;
 }
@@ -195,13 +213,13 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     if (!continuous) {
         _last_completed_keyframe_indices.clear();
         for (auto &track : _tracks) {
-            auto index = algorithm_helper::upper_bound<action_timeline_keyframe *>(
-                track, [&](const action_timeline_keyframe *k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
+            auto index = algorithm_helper::upper_bound<std::unique_ptr<action_timeline_keyframe>>(
+                track, [&](const std::unique_ptr<action_timeline_keyframe> &k) { return algorithm_helper::compare_to(k->get_time(), timeline_time); });
             if (index <= 0) {
                 _last_completed_keyframe_indices.push_back(-1);
                 continue;
             }
-            auto &keyframe = track[index - 1];
+            auto *keyframe = track[index - 1].get();
             if (timeline_time <= keyframe->get_time() + keyframe->get_effective_duration()) {
                 if (!exclude_ongoing) {
                     ongoing_keyframes.push_back(keyframe);
@@ -216,7 +234,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
             auto &track = _tracks[i];
 
             while (_last_completed_keyframe_indices[i] < static_cast<integer_t>(track.size()) - 1) {
-                auto &k = track[_last_completed_keyframe_indices[i] + 1];
+                auto *k = track[_last_completed_keyframe_indices[i] + 1].get();
                 if (timeline_time <= k->get_time() + k->get_effective_duration()) {
                     if (!exclude_ongoing) {
                         ongoing_keyframes.push_back(k);
@@ -234,7 +252,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
 
     for (const auto *keyframe : finishing_keyframes) {
         auto *action = &keyframe->get_action();
-        switch (action->get_type()) {
+        switch (action->get_action_type()) {
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
             temp_attributes = ca->get_timeline().update(keyframe->get_preferred_duration(), temp_attributes, ref_attributes, continuous, true);
@@ -249,7 +267,7 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     for (const auto *keyframe : ongoing_keyframes) {
         auto *action = &keyframe->get_action();
         auto action_time = std::min(timeline_time - keyframe->get_time(), keyframe->get_preferred_duration());
-        switch (action->get_type()) {
+        switch (action->get_action_type()) {
         case action_data::action_types::ACTION_MODIFIER: {
             auto *ma = dynamic_cast<modifier_action *>(action);
             ma->apply_modifier(action_time, temp_attributes, ref_attributes);
@@ -267,16 +285,6 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     }
 
     return temp_attributes;
-}
-
-action_timeline::action_timeline(const action_timeline &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
-
-action_timeline &action_timeline::operator=(const action_timeline &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
 }
 
 std::string action_timeline::get_locator() const noexcept {

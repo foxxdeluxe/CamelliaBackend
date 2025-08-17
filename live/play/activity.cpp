@@ -39,12 +39,18 @@ void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_a
         REQUIRES_NOT_NULL_MSG(p_actor, "Could not keep actor if it doesn't exist.");
     }
 
-    _timeline.init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
+    _p_timeline->init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
 
     _is_initialized = true;
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 void activity::fina(boolean_t keep_actor) {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
     _is_initialized = false;
 
     if (!keep_actor) {
@@ -55,7 +61,7 @@ void activity::fina(boolean_t keep_actor) {
         }
     }
 
-    _timeline.fina();
+    _p_timeline->fina();
 
     _initial_attributes.clear();
     _p_stage = nullptr;
@@ -68,37 +74,18 @@ number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, varia
     auto *p_actor = _p_stage->get_actor(_aid);
     REQUIRES_NOT_NULL(p_actor);
 
-    auto updated = _timeline.update(beat_time, _initial_attributes, parent_attributes);
+    auto updated = _p_timeline->update(beat_time, _initial_attributes, parent_attributes);
 
     p_actor->get_attributes().update(updated);
-    p_actor->get_attributes().handle_dirty_attributes(*p_actor);
+    p_actor->get_attributes().handle_dirty_attributes();
 
     parent_attributes.push_back(updated);
-    auto res = std::max(p_actor->update_children(beat_time, parent_attributes), _timeline.get_effective_duration() - beat_time);
+    auto res = std::max(p_actor->update_children(beat_time, parent_attributes), _p_timeline->get_effective_duration() - beat_time);
     parent_attributes.pop_back();
     return res;
 }
 
 const std::map<hash_t, variant> &activity::get_initial_values() { return _initial_attributes; }
-
-boolean_t activity::handle_dirty_attribute(hash_t key, const variant &val) {
-    REQUIRES_NOT_NULL(_p_stage);
-
-    auto *p_actor = _p_stage->get_actor(_aid);
-    REQUIRES_NOT_NULL(p_actor);
-
-    return p_actor->handle_dirty_attribute(key, val);
-}
-
-activity::activity(const activity &other) : dirty_attribute_handler(other) { THROW_NO_LOC("Copying not allowed"); }
-
-activity &activity::operator=(const activity &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
-}
 
 std::string activity::get_locator() const noexcept {
     std::string parent_locator{"???"};

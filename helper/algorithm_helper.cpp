@@ -7,8 +7,6 @@
 #include <cstring>
 
 namespace camellia::algorithm_helper {
-constexpr hash_t XXHASH_SEED = 431134; // AELLEA
-
 boolean_t approx_equals(number_t a, number_t b) {
     auto tolerance = std::max({1.0F, std::fabsf(a), std::fabsf(b)});
     return std::fabsf(a - b) <= std::numeric_limits<float>::epsilon() * tolerance;

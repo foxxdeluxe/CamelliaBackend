@@ -8,27 +8,6 @@
 
 namespace camellia {
 
-manager::manager(manager &&other) noexcept : _stage_data_map(std::move(other._stage_data_map)), _id(other._id) { other._id = -1; }
-
-manager &manager::operator=(manager &&other) noexcept {
-    _stage_data_map = std::move(other._stage_data_map);
-    _id = other._id;
-
-    other._id = -1;
-
-    return *this;
-}
-
-manager::manager(const manager & /*other*/) { THROW_NO_LOC("Copying not allowed"); }
-
-manager &manager::operator=(const manager &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
-}
-
 void manager::register_stage_data(std::shared_ptr<stage_data> data) {
     REQUIRES_NOT_NULL(data);
     _stage_data_map.emplace(data->h_stage_name, data);
@@ -49,5 +28,14 @@ void manager::clean_stage(stage *s) const {
     s->fina();
 }
 
-std::string manager::get_locator() const noexcept { return std::format("Manager({})", _id); }
+std::string manager::get_locator() const noexcept { return std::format("Manager({})", _name); }
+
+unsigned int manager::_next_id = 0U;
+
+unsigned int live_object::_next_id = 0U;
+
+live_object::~live_object() noexcept { _p_mgr->_notify_live_object_deletion(this); }
+
+live_object::live_object(manager *p_mgr) : _handle(static_cast<hash_t>(p_mgr->get_id()) << 32ULL | _next_id++), _p_mgr(p_mgr) {}
+
 } // namespace camellia

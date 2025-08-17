@@ -4,25 +4,10 @@
 #include "camellia_macro.h"
 #include "live/play/stage.h"
 #include <format>
+#include <memory>
 #include <set>
 
 namespace camellia {
-action &action::allocate_action(const action_data::action_types type) {
-    switch (type) {
-    case action_data::ACTION_MODIFIER: {
-        return *new modifier_action();
-    }
-    case action_data::ACTION_COMPOSITE: {
-        return *new composite_action();
-    }
-    default: {
-        THROW_NO_LOC(std::format("Unknown action type ({}).", type));
-    }
-    }
-}
-
-void action::collect_action(const action &action) { delete &action; }
-
 action_timeline_keyframe &action::get_parent_keyframe() const {
     REQUIRES_NOT_NULL(_p_parent_keyframe);
     return *_p_parent_keyframe;
@@ -35,29 +20,24 @@ void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyf
     _p_parent_keyframe = parent;
 
     _is_initialized = true;
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 void action::fina() {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
+
     _is_initialized = false;
     _p_base_data = nullptr;
     _p_parent_keyframe = nullptr;
 }
 
-action::action(const action &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
-
-action &action::operator=(const action &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
-}
-
-action_data::action_types modifier_action::get_type() const { return action_data::action_types::ACTION_MODIFIER; }
-
 std::shared_ptr<modifier_action_data> modifier_action::get_data() const {
     REQUIRES_NOT_NULL(_p_base_data);
-    return std::dynamic_pointer_cast<modifier_action_data>(_p_base_data);
+    return std::static_pointer_cast<modifier_action_data>(_p_base_data);
 }
 
 hash_t modifier_action::get_name_hash() const {
@@ -99,8 +79,6 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     REQUIRES_NOT_NULL_MSG(mad, std::format("Failed to cast action data ({}) to modifier action data.", data->h_action_name));
     REQUIRES_VALID(*mad);
 
-    action::init(data, p_parent);
-
     _p_parent_keyframe = p_parent;
     _p_timeline = &_p_parent_keyframe->get_timeline();
 
@@ -124,7 +102,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     };
 
     process_params(*p_parent->get_override_params());
-    process_params(get_default_params());
+    process_params(mad->default_params);
 
     const auto *code = p_parent->get_timeline().get_stage().get_script_code(mad->h_script_name);
     THROW_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
@@ -216,19 +194,22 @@ void composite_action::init(const std::shared_ptr<action_data> &data, action_tim
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    _timeline.init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
+    _p_timeline->init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
 
     action::init(data, p_parent);
 }
 
 void composite_action::fina() {
     action::fina();
-    _timeline.fina();
+    _p_timeline->fina();
 }
 
-action_timeline &composite_action::get_timeline() { return _timeline; }
+action_timeline &composite_action::get_timeline() { return *_p_timeline; }
 
-action_data::action_types composite_action::get_type() const { return action_data::action_types::ACTION_COMPOSITE; }
+std::shared_ptr<composite_action_data> composite_action::get_data() const {
+    REQUIRES_NOT_NULL(_p_base_data);
+    return std::static_pointer_cast<composite_action_data>(_p_base_data);
+}
 
 std::string action::get_locator() const noexcept {
     if (_p_base_data == nullptr) {

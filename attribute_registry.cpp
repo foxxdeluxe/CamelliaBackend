@@ -36,13 +36,14 @@ void attribute_registry::reset() {
     _attributes.clear();
 }
 
-void attribute_registry::handle_dirty_attributes(dirty_attribute_handler &handler) {
+void attribute_registry::handle_dirty_attributes() {
     auto it = _dirty_attributes.begin();
     while (it != _dirty_attributes.end()) {
-        if (handler.handle_dirty_attribute(*it, _attributes[*it]))
+        if (_dirty_attribute_handler != nullptr && _dirty_attribute_handler(*it, _attributes[*it])) {
             _dirty_attributes.erase(it++);
-        else
+        } else {
             it++;
+        }
     }
 }
 

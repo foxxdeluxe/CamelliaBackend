@@ -5,23 +5,27 @@
 #include "../../camellia_macro.h"
 #include "../../camellia_typedef.h"
 #include "../../data/stage_data.h"
+#include "action.h"
 #include <map>
 #include <memory>
 #include <vector>
 
 namespace camellia {
 
-// Forward declarations
 class stage;
-class action;
 class action_timeline;
 class modifier_action;
 
 #ifndef SWIG
 class action_timeline_keyframe : public live_object {
-    NAMED_CLASS(action_timeline_keyframe)
+    LIVE_OBJECT(action_timeline_keyframe)
+
+protected:
+    friend class manager;
+    explicit action_timeline_keyframe(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
+    ~action_timeline_keyframe() override;
     [[nodiscard]] number_t get_time() const;
 
     [[nodiscard]] number_t get_preferred_duration() const;
@@ -50,25 +54,22 @@ public:
 
     [[nodiscard]] variant query_param(const text_t &key) const;
 
-    action_timeline_keyframe() = default;
-    ~action_timeline_keyframe() override = default;
-    action_timeline_keyframe(const action_timeline_keyframe &other);
-    action_timeline_keyframe &operator=(const action_timeline_keyframe &other);
-    action_timeline_keyframe(action_timeline_keyframe &&other) noexcept = default;
-    action_timeline_keyframe &operator=(action_timeline_keyframe &&other) noexcept = default;
-
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 private:
     std::shared_ptr<action_timeline_keyframe_data> _data{nullptr};
     action_timeline *_parent_timeline{nullptr};
     number_t _effective_duration{0.0F};
-    action *_p_action{nullptr};
+    std::unique_ptr<action> _p_action{nullptr};
     integer_t _track_index{-1}, _index{-1};
 };
 
 class action_timeline : public live_object {
-    NAMED_CLASS(action_timeline)
+    LIVE_OBJECT(action_timeline)
+
+protected:
+    friend class manager;
+    explicit action_timeline(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
     [[nodiscard]] stage &get_stage() const;
@@ -87,20 +88,13 @@ public:
                                                    std::vector<std::map<hash_t, variant>> &ref_attributes, boolean_t continuous = true,
                                                    boolean_t exclude_ongoing = false);
 
-    action_timeline() = default;
-    ~action_timeline() override = default;
-    action_timeline(const action_timeline &other);
-    action_timeline &operator=(const action_timeline &other);
-    action_timeline(action_timeline &&other) noexcept = default;
-    action_timeline &operator=(action_timeline &&other) noexcept = default;
-
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 private:
     std::vector<std::shared_ptr<action_timeline_data>> _data;
     number_t _effective_duration{0.0F};
     std::vector<integer_t> _last_completed_keyframe_indices;
-    std::vector<std::vector<action_timeline_keyframe *>> _tracks;
+    std::vector<std::vector<std::unique_ptr<action_timeline_keyframe>>> _tracks;
     const std::map<hash_t, variant> *_current_initial_attributes{nullptr};
 
     stage *_p_stage{nullptr};

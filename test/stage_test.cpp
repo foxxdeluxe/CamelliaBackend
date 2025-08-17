@@ -1,90 +1,71 @@
 #include <gtest/gtest.h>
+#include <iostream>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "helper/algorithm_helper.h"
+#include "live/play/dialog.h"
 #include "live/play/stage.h"
 #include "manager.h"
 
 using namespace camellia;
 
-// Mock classes for testing
-class mock_text_region : public text_region {
-public:
-    bool handle_visibility_update(bool is_visible) override { return true; }
-    bool handle_dirty_attribute(hash_t key, const variant &val) override { return true; }
-};
+// Simple wrappers via callbacks: capture created text regions for assertions
+namespace {
+std::map<hash_t, text_region *> &text_regions() {
+    static std::map<hash_t, text_region *> regions;
+    return regions;
+}
 
-class mock_dialog : public dialog {
-public:
-    text_region &append_text_region() override {
-        _mock_regions.push_back(new mock_text_region());
-        return *_mock_regions.back();
+void on_live_object_created(live_object *obj) {
+    std::cout << typeid(*obj).name() << " = " << obj->get_handle() << " created" << '\n';
+    if (auto *tr = dynamic_cast<text_region *>(obj)) {
+        // Accept all visibility updates; we do not assert on them here
+        tr->set_visibility_update_cb(+[](boolean_t) -> boolean_t { return true; });
+        // Accept all dirty attribute updates; assertions read attributes directly
+        tr->set_dirty_attribute_handler(+[](hash_t, const variant &) -> boolean_t { return true; });
+        text_regions().emplace(tr->get_handle(), tr);
     }
-    text_region *get_text_region(size_t index) override { return index < _mock_regions.size() ? _mock_regions[index] : nullptr; }
-    size_t get_text_region_count() override { return _mock_regions.size(); }
-    void trim_text_regions(size_t from_index) override {
-        for (size_t i = from_index; i < _mock_regions.size(); ++i) {
-            delete _mock_regions[i];
-        }
-        _mock_regions.erase(_mock_regions.begin() + from_index, _mock_regions.end());
+}
+
+void on_live_object_deleted(live_object *obj) {
+    std::cout << obj->get_handle() << " deleted" << '\n';
+    if (auto *tr = dynamic_cast<text_region *>(obj)) {
+        text_regions().erase(tr->get_handle());
+        std::cout << "text_region deleted" << '\n';
     }
+}
 
-private:
-    std::vector<mock_text_region *> _mock_regions{};
-};
+void on_log(const text_t & /*msg*/, manager::log_type /*type*/) {
+    // Silence logs in tests
+}
 
-class mock_manager : public manager {
-public:
-    explicit mock_manager(integer_t id) : manager(id) {}
-    void log(const text_t &msg, log_type type = log_type::LOG_INFO) const override {}
-};
-
-class mock_actor : public actor {
-public:
-    std::map<hash_t, variant> known_attributes{};
-
-    boolean_t handle_dirty_attribute(hash_t key, const variant &val) override {
-        known_attributes[key] = val;
-        return true;
-    }
-};
-
-class mock_stage : public stage {
-public:
-    dialog *get_main_dialog() override { return &_mock_dialog; }
-    actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) override {
-        _actors[aid] = new mock_actor();
-        return *_actors[aid];
-    }
-    actor *get_actor(integer_t aid) override {
-        auto it = _actors.find(aid);
-        return it != _actors.end() ? it->second : nullptr;
-    }
-    void collect_actor(integer_t aid) override {
-        delete _actors[aid];
-        _actors.erase(aid);
-    }
-
-private:
-    mock_dialog _mock_dialog{};
-    std::map<integer_t, actor *> _actors{};
-};
+constexpr number_t kTimelineDuration = 10.0F;
+constexpr number_t kTransitionDuration = 10.0F;
+constexpr number_t kUpdateTime1 = 1.0F;
+constexpr number_t kUpdateTime11 = 11.0F;
+constexpr number_t kUpdateTime30 = 30.0F;
+constexpr number_t kDefaultFontSize = 16.0F;
+constexpr integer_t kDefaultFontWeight = 400;
+} // namespace
 
 class stage_test : public ::testing::Test {
 protected:
     void SetUp() override {
-        _stage = std::make_unique<mock_stage>();
-        _manager = std::make_unique<mock_manager>(1);
+        text_regions().clear();
+        _manager = std::make_unique<manager>("test", on_live_object_created, on_live_object_deleted, on_log);
+        _stage = _manager->new_live_object<stage>();
     }
 
     void TearDown() override {
         _stage.reset();
         _manager.reset();
+        text_regions().clear();
     }
 
-    std::unique_ptr<mock_stage> _stage;
-    std::unique_ptr<mock_manager> _manager;
+    std::unique_ptr<manager> _manager;
+    std::unique_ptr<stage> _stage;
 };
 
 TEST_F(stage_test, simulation) {
@@ -94,7 +75,7 @@ TEST_F(stage_test, simulation) {
 
     auto action_data_1 = std::make_shared<modifier_action_data>();
     action_data_1->h_action_name = algorithm_helper::calc_hash("test_action_1");
-    action_data_1->default_params["test_param_1"] = variant(1.0f);
+    action_data_1->default_params["test_param_1"] = variant(1.0F);
     action_data_1->h_attribute_name = algorithm_helper::calc_hash(actor::POSITION_NAME);
     action_data_1->value_type = variant::VECTOR3;
     action_data_1->h_script_name = algorithm_helper::calc_hash("test_script_1");
@@ -102,11 +83,11 @@ TEST_F(stage_test, simulation) {
     auto test_actor_1_timeline_track = std::make_shared<action_timeline_track_data>();
     test_actor_1_timeline_track->keyframes = {
         std::make_shared<action_timeline_keyframe_data>(
-            action_timeline_keyframe_data{.time = 0.0F, .preferred_duration_signed = -10.0F, .h_action_name = action_data_1->h_action_name}),
+            action_timeline_keyframe_data{.time = 0.0F, .preferred_duration_signed = -kTimelineDuration, .h_action_name = action_data_1->h_action_name}),
     };
 
     auto test_actor_1_timeline = std::make_shared<action_timeline_data>();
-    test_actor_1_timeline->effective_duration = 10.0F;
+    test_actor_1_timeline->effective_duration = kTimelineDuration;
     test_actor_1_timeline->tracks = {test_actor_1_timeline_track};
 
     auto actor_data_1 = std::make_shared<actor_data>();
@@ -130,19 +111,19 @@ TEST_F(stage_test, simulation) {
     };
     test_beat_1_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
 
-    auto test_beat_1 = std::make_shared<beat_data>();
-    test_beat_1->activities = {{1, test_beat_1_activity_1}};
-    test_beat_1->dialog = test_beat_1_dialog_1;
-
     auto test_beat_2_dialog_1 = std::make_shared<dialog_data>();
     test_beat_2_dialog_1->h_actor_id = 0ULL;
     test_beat_2_dialog_1->regions = {
         std::make_shared<text_region_data>(text_region_data{.text = "test_text_2",
                                                             .timeline = std::make_shared<action_timeline_data>(),
-                                                            .transition_duration = 10.0F,
+                                                            .transition_duration = kTransitionDuration,
                                                             .h_transition_script_name = algorithm_helper::calc_hash("advance")}),
     };
     test_beat_2_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
+
+    auto test_beat_1 = std::make_shared<beat_data>();
+    test_beat_1->activities = {{1, test_beat_1_activity_1}};
+    test_beat_1->dialog = test_beat_1_dialog_1;
 
     auto test_beat_2 = std::make_shared<beat_data>();
     test_beat_2->activities = {};
@@ -167,33 +148,37 @@ TEST_F(stage_test, simulation) {
     data->actions = {
         {action_data_1->h_action_name, action_data_1},
     };
+    data->default_text_style = std::make_shared<text_style_data>();
+    data->default_text_style->font_size = kDefaultFontSize;
+    data->default_text_style->font_weight = kDefaultFontWeight;
+    data->default_text_style->font_style = 0;
+    data->default_text_style->font_family = "Arial";
+    data->default_text_style->color = 0x00000000;
+    data->default_text_style->background_color = 0x00000000;
+    data->default_text_style->decoration = 0;
+    data->default_text_style->decoration_color = 0x00000000;
 
     EXPECT_NO_THROW(_stage->init(data, *_manager));
 
     EXPECT_NO_THROW(_stage->advance());
 
-    auto *p_actor = dynamic_cast<mock_actor *>(_stage->get_actor(1));
+    auto *p_actor = _stage->get_actor(1);
 
-    EXPECT_NO_THROW(_stage->update(1.0F));
-    EXPECT_TRUE(p_actor->known_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)].approx_equals(vector3(.1F, .2F, .3F)));
+    EXPECT_NO_THROW(_stage->update(kUpdateTime1));
+    ASSERT_NE(p_actor, nullptr);
+    EXPECT_TRUE(p_actor->get_attributes().get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(.1F, .2F, .3F)));
 
-    EXPECT_NO_THROW(_stage->update(11.0F));
-    EXPECT_TRUE(p_actor->known_attributes[algorithm_helper::calc_hash(actor::POSITION_NAME)].approx_equals(vector3(1.0F, 2.0F, 3.0F)));
+    EXPECT_NO_THROW(_stage->update(kUpdateTime11));
+    EXPECT_TRUE(p_actor->get_attributes().get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(1.0F, 2.0F, 3.0F)));
 
-    auto *p_dialog = dynamic_cast<mock_dialog *>(_stage->get_main_dialog());
-    EXPECT_EQ(p_dialog->get_text_region_count(), 1);
-
-    auto *p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
-    EXPECT_EQ(p_text_region->get_current_text(), "test_text_1");
+    ASSERT_EQ(text_regions().size(), 1);
+    EXPECT_EQ(text_regions().begin()->second->get_current_text(), "test_text_1");
 
     EXPECT_NO_THROW(_stage->advance());
-    EXPECT_NO_THROW(_stage->update(30.0F));
+    EXPECT_NO_THROW(_stage->update(kUpdateTime30));
 
-    p_dialog = dynamic_cast<mock_dialog *>(_stage->get_main_dialog());
-    EXPECT_EQ(p_dialog->get_text_region_count(), 1);
-
-    p_text_region = dynamic_cast<mock_text_region *>(p_dialog->get_text_region(0));
-    EXPECT_EQ(p_text_region->get_current_text(), "test_text_2");
+    ASSERT_EQ(text_regions().size(), 1);
+    EXPECT_EQ(text_regions().begin()->second->get_current_text(), "test_text_2");
 
     EXPECT_NO_THROW(_stage->fina());
 }

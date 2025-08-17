@@ -12,3 +12,5 @@ _deps
 .*/
 cmake-build-*/
 build/
+CMakeUserPresets.json
+vcpkg_installed

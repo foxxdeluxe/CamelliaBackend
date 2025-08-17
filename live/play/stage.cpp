@@ -7,7 +7,7 @@
 
 namespace camellia {
 
-void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
+void stage::_set_beat(const std::shared_ptr<beat_data> &beat) {
     REQUIRES_NOT_NULL(beat);
     REQUIRES_VALID(*beat);
 
@@ -15,7 +15,22 @@ void stage::set_beat(const std::shared_ptr<beat_data> &beat) {
     REQUIRES_NOT_NULL(main_dialog);
 
     // Delegate beat handling to the current scene
-    _scenes.back().set_beat(beat, _stage_time);
+    _scenes.back()->set_beat(beat, _stage_time);
+}
+
+actor &stage::allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) {
+    if (_actors.contains(aid)) {
+        return *_actors.at(aid);
+    }
+    auto p_actor = get_manager().new_live_object<actor>();
+    _actors.insert({aid, std::move(p_actor)});
+    return *_actors.at(aid);
+}
+
+void stage::collect_actor(integer_t aid) {
+    if (_actors.contains(aid)) {
+        _actors.erase(aid);
+    }
 }
 
 void stage::advance() {
@@ -23,14 +38,14 @@ void stage::advance() {
 
     if (_time_to_end > 0.0F) {
         // Fast forward
-        _scenes.back().set_next_beat_time(_scenes.back().get_beat_time() + _time_to_end);
+        _scenes.back()->set_next_beat_time(_scenes.back()->get_beat_time() + _time_to_end);
         _time_to_end = 0.0F;
     } else {
         // Advance to next beat if available
         if (_next_beat_index >= _p_scenario->beats.size()) {
             return;
         }
-        set_beat(_p_scenario->beats[_next_beat_index]);
+        _set_beat(_p_scenario->beats[_next_beat_index]);
         _next_beat_index++;
     }
 }
@@ -52,26 +67,32 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     REQUIRES_VALID(*data);
 
     _p_scenario = data;
-    _p_parent_backend = &parent;
+    _p_parent_manager = &parent;
 
-    _scenes.emplace_back();
-    _scenes.back().init(_next_scene_id++, *this);
+    _scenes.emplace_back(parent.new_live_object<scene>());
+    _scenes.back()->init(_next_scene_id++, *this);
 
     get_main_dialog()->init(*this);
     _is_initialized = true;
+    if (_after_init_cb != nullptr) {
+        _after_init_cb(this);
+    }
 }
 
 void stage::fina() {
+    if (_before_fina_cb != nullptr) {
+        _before_fina_cb(this);
+    }
     _is_initialized = false;
     get_main_dialog()->fina();
 
     // Clean up all scenes
     for (auto &scene : _scenes) {
-        scene.fina();
+        scene->fina();
     }
     _scenes.clear();
 
-    _p_parent_backend = nullptr;
+    _p_parent_manager = nullptr;
     _p_scenario = nullptr;
     _next_beat_index = 0;
     _next_scene_id = 0;
@@ -86,7 +107,7 @@ number_t stage::update(const number_t stage_time) {
 
     _stage_time = stage_time;
 
-    _time_to_end = _scenes.back().update(stage_time);
+    _time_to_end = _scenes.back()->update(stage_time);
     return _time_to_end;
 }
 
@@ -96,26 +117,16 @@ const std::string *stage::get_script_code(const hash_t h_script_name) const {
     return it == _p_scenario->scripts.end() ? nullptr : &it->second;
 }
 
-manager &stage::get_parent_manager() {
-    REQUIRES_NOT_NULL(_p_parent_backend);
-    return *_p_parent_backend;
-}
-
-stage::stage(const stage &other) : live_object(other) { THROW_NO_LOC("Copying not allowed"); }
-
-stage &stage::operator=(const stage &other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    THROW_NO_LOC("Copying not allowed");
+std::shared_ptr<text_style_data> stage::get_default_text_style() const {
+    REQUIRES_NOT_NULL(_p_scenario);
+    return _p_scenario->default_text_style;
 }
 
 std::string stage::get_locator() const noexcept {
     if (_p_scenario == nullptr) {
-        return std::format(R"({} > Stage(???))", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???");
+        return std::format(R"({} > Stage(???))", _p_parent_manager != nullptr ? _p_parent_manager->get_locator() : "???");
     }
-    return std::format("{} > Stage({})", _p_parent_backend != nullptr ? _p_parent_backend->get_locator() : "???", _p_scenario->h_stage_name);
+    return std::format("{} > Stage({})", _p_parent_manager != nullptr ? _p_parent_manager->get_locator() : "???", _p_scenario->h_stage_name);
 }
 
 } // namespace camellia

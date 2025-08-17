@@ -145,14 +145,66 @@ public:
         BLACK = 900
     };
 
+    static boolean_t is_valid_font_weight(font_weight weight) {
+        switch (weight) {
+        case font_weight::THIN:
+        case font_weight::EXTRA_LIGHT:
+        case font_weight::LIGHT:
+        case font_weight::NORMAL:
+        case font_weight::MEDIUM:
+        case font_weight::SEMI_BOLD:
+        case font_weight::BOLD:
+        case font_weight::EXTRA_BOLD:
+        case font_weight::BLACK:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     // Font style
     enum class font_style : char { NORMAL, ITALIC };
 
+    static boolean_t is_valid_font_style(font_style style) {
+        switch (style) {
+        case font_style::NORMAL:
+        case font_style::ITALIC:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     // Text decoration
     enum class text_decoration : char { NONE = 0, UNDERLINE = 1, OVERLINE = 2, LINE_THROUGH = 4 };
+    
+    static boolean_t is_valid_text_decoration(text_decoration decoration) {
+        switch (decoration) {
+        case text_decoration::NONE:
+        case text_decoration::UNDERLINE:
+        case text_decoration::OVERLINE:
+        case text_decoration::LINE_THROUGH:
+            return true;
+        default:
+            return false;
+        }
+    }
 
     // Text decoration style
     enum class decoration_style : char { SOLID, DOUBLE, DOTTED, DASHED, WAVY };
+    
+    static boolean_t is_valid_decoration_style(decoration_style style) {
+        switch (style) {
+        case decoration_style::SOLID:
+        case decoration_style::DOUBLE:
+        case decoration_style::DOTTED:
+        case decoration_style::DASHED:
+        case decoration_style::WAVY:
+            return true;
+        default:
+            return false;
+        }
+    }
 
     text_style();
     text_style(const text_style &other);

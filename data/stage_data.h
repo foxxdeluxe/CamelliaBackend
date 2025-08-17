@@ -2,7 +2,9 @@
 #define CAMELLIA_DATA_STAGE_DATA_H
 
 #include "../camellia_typedef.h"
+#include "../helper/text_layout_helper.h"
 #include "../variant.h"
+#include "helper/algorithm_helper.h"
 #include <format>
 #include <map>
 #include <memory>
@@ -154,16 +156,52 @@ struct text_region_attachment_text_data : public text_region_attachment_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 };
 
+struct text_style_data {
+    static constexpr hash_t H_FONT_SIZE_NAME = algorithm_helper::calc_hash_const("font_size");
+    static constexpr hash_t H_FONT_WEIGHT_NAME = algorithm_helper::calc_hash_const("font_weight");
+    static constexpr hash_t H_FONT_STYLE_NAME = algorithm_helper::calc_hash_const("font_style");
+    static constexpr hash_t H_FONT_FAMILY_NAME = algorithm_helper::calc_hash_const("font_family");
+    static constexpr hash_t H_COLOR_NAME = algorithm_helper::calc_hash_const("color");
+    static constexpr hash_t H_BACKGROUND_COLOR_NAME = algorithm_helper::calc_hash_const("background_color");
+    static constexpr hash_t H_DECORATION_NAME = algorithm_helper::calc_hash_const("decoration");
+    static constexpr hash_t H_DECORATION_COLOR_NAME = algorithm_helper::calc_hash_const("decoration_color");
+    static constexpr hash_t H_DECORATION_STYLE_NAME = algorithm_helper::calc_hash_const("decoration_style");
+    static constexpr hash_t H_DECORATION_THICKNESS_NAME = algorithm_helper::calc_hash_const("decoration_thickness");
+    static constexpr hash_t H_LETTER_SPACING_NAME = algorithm_helper::calc_hash_const("letter_spacing");
+    static constexpr hash_t H_WORD_SPACING_NAME = algorithm_helper::calc_hash_const("word_spacing");
+
+    number_t font_size{0.0F};
+    integer_t font_weight{0};
+    integer_t font_style{0};
+    text_t font_family;
+    integer_t color{0};
+    integer_t background_color{0};
+    integer_t decoration{0};
+    integer_t decoration_color{0};
+    integer_t decoration_style{0};
+    number_t decoration_thickness{0.0F};
+    number_t letter_spacing{0.0F};
+    number_t word_spacing{0.0F};
+
+    [[nodiscard]] static boolean_t is_valid() {
+        // we do the validation in the text_style class
+        return true;
+    }
+};
+
 struct text_region_data {
+
     integer_t id{0};
     text_t text;
-    std::vector<std::shared_ptr<text_region_attachment_data>> attachments;
+    std::shared_ptr<text_style_data> text_style{nullptr};
+
+    // std::vector<std::shared_ptr<text_region_attachment_data>> attachments;
     std::shared_ptr<action_timeline_data> timeline{nullptr};
 
     number_t transition_duration{0.0F};
     hash_t h_transition_script_name{};
 
-    [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr; }
+    [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && (text_style == nullptr || text_style->is_valid()); }
 };
 
 struct dialog_data {
@@ -192,14 +230,15 @@ struct stage_data {
     std::map<hash_t, std::shared_ptr<actor_data>> actors;
     std::map<hash_t, std::shared_ptr<action_data>> actions;
 
+    std::shared_ptr<text_style_data> default_text_style{nullptr};
+
     ~stage_data() = default;
     stage_data() = default;
     stage_data(const stage_data &other);
     stage_data &operator=(const stage_data &other);
-    [[nodiscard]] boolean_t is_valid() const { return h_stage_name != 0ULL; }
+    [[nodiscard]] boolean_t is_valid() const { return h_stage_name != 0ULL && default_text_style != nullptr && default_text_style->is_valid(); }
 
 #ifndef SWIG
-    // pointers in data structs must point to new-ed objects
     stage_data(stage_data &&other) noexcept = default;
     stage_data &operator=(stage_data &&other) noexcept = default;
 #endif

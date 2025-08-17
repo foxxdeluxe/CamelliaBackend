@@ -10,6 +10,7 @@
 #include "dialog.h"
 #include "scene.h"
 #include <memory>
+#include <unordered_map>
 
 namespace camellia {
 
@@ -17,32 +18,33 @@ namespace camellia {
 class manager;
 
 class stage : public live_object {
-    NAMED_CLASS(stage)
+    LIVE_OBJECT(stage)
+
+protected:
+    friend class manager;
+    explicit stage(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
-    [[nodiscard]] virtual dialog *get_main_dialog() = 0;
-    virtual actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) = 0;
-    [[nodiscard]] virtual actor *get_actor(integer_t aid) = 0;
-    virtual void collect_actor(integer_t aid) = 0;
+    [[nodiscard]] dialog *get_main_dialog() { return _main_dialog.get(); };
+    [[nodiscard]] actor *get_actor(integer_t aid) { return _actors.at(aid).get(); };
+
+    actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid);
+    void collect_actor(integer_t aid);
+
     void advance();
     virtual number_t update(number_t stage_time);
-    [[nodiscard]] manager &get_parent_manager();
 
-    stage() = default;
-    ~stage() override = default;
-    stage(const stage &other);
-    stage &operator=(const stage &other);
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 #ifndef SWIG
-    stage(stage &&other) noexcept = default;
-    stage &operator=(stage &&other) noexcept = default;
 
     void init(const std::shared_ptr<stage_data> &data, manager &parent);
     void fina();
+
     [[nodiscard]] std::shared_ptr<actor_data> get_actor_data(hash_t h_id) const;
     [[nodiscard]] std::shared_ptr<action_data> get_action_data(hash_t h_id) const;
     [[nodiscard]] const std::string *get_script_code(hash_t h_script_name) const;
+    [[nodiscard]] std::shared_ptr<text_style_data> get_default_text_style() const;
 
 private:
     std::shared_ptr<stage_data> _p_scenario;
@@ -51,12 +53,16 @@ private:
 
     number_t _stage_time{0.0F}, _time_to_end{0.0F};
 
-    manager *_p_parent_backend{nullptr};
+    manager *_p_parent_manager{nullptr};
 
     // Scenes that handle beats and manage activities
-    std::vector<scene> _scenes;
+    std::vector<std::unique_ptr<scene>> _scenes;
 
-    void set_beat(const std::shared_ptr<beat_data> &beat);
+    std::unordered_map<integer_t, std::unique_ptr<actor>> _actors;
+
+    std::unique_ptr<dialog> _main_dialog{get_manager().new_live_object<dialog>()};
+
+    void _set_beat(const std::shared_ptr<beat_data> &beat);
 #endif
 };
 

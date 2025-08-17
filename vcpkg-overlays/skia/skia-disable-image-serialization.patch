@@ -1,0 +1,21 @@
+diff --git a/src/core/SkWriteBuffer.cpp b/src/core/SkWriteBuffer.cpp
+index 9199fdeb5c..f623ed2903 100644
+--- a/src/core/SkWriteBuffer.cpp
++++ b/src/core/SkWriteBuffer.cpp
+@@ -160,6 +160,8 @@ bool SkBinaryWriteBuffer::writeToStream(SkWStream* stream) const {
+ }
+
+ static sk_sp<SkData> serialize_image(const SkImage* image, SkSerialProcs procs) {
++// This function is now a dummy function, so that dependencies to image libraries could be eliminated.
++/*
+     sk_sp<SkData> data;
+     if (procs.fImageProc) {
+         data = procs.fImageProc(const_cast<SkImage*>(image), procs.fImageCtx);
+@@ -184,6 +186,7 @@ static sk_sp<SkData> serialize_image(const SkImage* image, SkSerialProcs procs)
+         return stream.detachAsData();
+     }
+ #endif
++*/
+     return nullptr;
+ }
+

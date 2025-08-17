@@ -16,7 +16,11 @@ class stage;
 
 #ifndef SWIG
 class scene : public live_object {
-    NAMED_CLASS(scene)
+    LIVE_OBJECT(scene)
+
+protected:
+    friend class manager;
+    explicit scene(manager *p_mgr) : live_object(p_mgr) {}
 
 public:
     void init(integer_t scene_id, stage &parent_stage);
@@ -29,13 +33,6 @@ public:
     [[nodiscard]] integer_t get_scene_id() const;
     [[nodiscard]] stage &get_stage() const;
 
-    scene() = default;
-    ~scene() override = default;
-    scene(const scene &other);
-    scene &operator=(const scene &other);
-    scene(scene &&other) noexcept = default;
-    scene &operator=(scene &&other) noexcept = default;
-
     [[nodiscard]] std::string get_locator() const noexcept override;
 
 private:
@@ -47,7 +44,7 @@ private:
     std::shared_ptr<beat_data> _current_beat{nullptr};
 
     // Map of activity_id to activity instances - retains state between beats like actors do
-    std::map<integer_t, activity> _activities;
+    std::map<integer_t, std::unique_ptr<activity>> _activities;
 };
 #endif
 

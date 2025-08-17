@@ -16,6 +16,7 @@
 #include "modules/skparagraph/src/ParagraphImpl.h"
 #include "variant.h"
 #include <cstddef>
+#include <stdexcept>
 
 namespace camellia::text_layout_helper {
 
@@ -404,11 +405,19 @@ text_style &text_style::operator=(text_style &&other) noexcept = default;
 
 text_style::~text_style() = default;
 
-void text_style::set_font_size(number_t size) { _impl->_text_style.setFontSize(size); }
+void text_style::set_font_size(number_t size) {
+    if (size < 0.0F) {
+        throw std::runtime_error(std::format("Invalid font size: {}", size));
+    }
+    _impl->_text_style.setFontSize(size);
+}
 
 number_t text_style::get_font_size() const { return _impl->_text_style.getFontSize(); }
 
 void text_style::set_font_weight(font_weight weight) {
+    if (!is_valid_font_weight(weight)) {
+        throw std::runtime_error(std::format("Invalid font weight: {}", static_cast<integer_t>(weight)));
+    }
     auto current_style = _impl->_text_style.getFontStyle();
     SkFontStyle new_style(to_skia_font_weight(weight), current_style.width(), current_style.slant());
     _impl->_text_style.setFontStyle(new_style);
@@ -417,6 +426,9 @@ void text_style::set_font_weight(font_weight weight) {
 text_style::font_weight text_style::get_font_weight() const { return static_cast<text_style::font_weight>(_impl->_text_style.getFontStyle().weight()); }
 
 void text_style::set_font_style(font_style style) {
+    if (!is_valid_font_style(style)) {
+        throw std::runtime_error(std::format("Invalid font style: {}", static_cast<integer_t>(style)));
+    }
     auto current_style = _impl->_text_style.getFontStyle();
     SkFontStyle new_style(current_style.weight(), current_style.width(), to_skia_font_slant(style));
     _impl->_text_style.setFontStyle(new_style);
@@ -425,6 +437,7 @@ void text_style::set_font_style(font_style style) {
 text_style::font_style text_style::get_font_style() const { return from_skia_font_slant(_impl->_text_style.getFontStyle().slant()); }
 
 void text_style::set_font_family(const text_t &family) {
+    // we don't know if the font family is valid yet, so we just set it
     std::vector<SkString> families = {SkString(family.c_str())};
     _impl->_text_style.setFontFamilies(families);
 }
@@ -455,7 +468,12 @@ integer_t text_style::get_background_color() const {
     return 0x00000000; // Transparent
 }
 
-void text_style::set_decoration(text_decoration decoration) { _impl->_text_style.setDecoration(static_cast<skia::textlayout::TextDecoration>(decoration)); }
+void text_style::set_decoration(text_decoration decoration) {
+    if (!is_valid_text_decoration(decoration)) {
+        throw std::runtime_error(std::format("Invalid text decoration: {}", static_cast<integer_t>(decoration)));
+    }
+    _impl->_text_style.setDecoration(static_cast<skia::textlayout::TextDecoration>(decoration));
+}
 
 text_style::text_decoration text_style::get_decoration() const { return static_cast<text_style::text_decoration>(_impl->_text_style.getDecoration().fType); }
 
@@ -463,11 +481,21 @@ void text_style::set_decoration_color(integer_t color) { _impl->_text_style.setD
 
 integer_t text_style::get_decoration_color() const { return static_cast<integer_t>(_impl->_text_style.getDecorationColor()); }
 
-void text_style::set_decoration_style(decoration_style style) { _impl->_text_style.setDecorationStyle(to_skia_decoration_style(style)); }
+void text_style::set_decoration_style(decoration_style style) {
+    if (!is_valid_decoration_style(style)) {
+        throw std::runtime_error(std::format("Invalid decoration style: {}", static_cast<integer_t>(style)));
+    }
+    _impl->_text_style.setDecorationStyle(to_skia_decoration_style(style));
+}
 
 text_style::decoration_style text_style::get_decoration_style() const { return from_skia_decoration_style(_impl->_text_style.getDecorationStyle()); }
 
-void text_style::set_decoration_thickness(number_t thickness) { _impl->_text_style.setDecorationThicknessMultiplier(thickness); }
+void text_style::set_decoration_thickness(number_t thickness) {
+    if (thickness < 0.0F) {
+        throw std::runtime_error(std::format("Invalid decoration thickness: {}", thickness));
+    }
+    _impl->_text_style.setDecorationThicknessMultiplier(thickness);
+}
 
 number_t text_style::get_decoration_thickness() const { return _impl->_text_style.getDecorationThicknessMultiplier(); }
 
