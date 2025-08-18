@@ -1,13 +1,13 @@
 #include "scene.h"
 #include "camellia_macro.h"
-#include "live/play/stage.h"
+#include "stage.h"
 #include <format>
 
 namespace camellia {
 
 void scene::init(integer_t scene_id, stage &parent_stage) {
     _scene_id = scene_id;
-    _p_parent_stage = &parent_stage;
+    _p_parent = &parent_stage;
 
     _is_initialized = true;
     if (_after_init_cb != nullptr) {
@@ -30,20 +30,20 @@ void scene::fina() {
     _next_beat_time = -1.0F;
     _current_beat_time = 0.0F;
     _current_beat = nullptr;
-    _p_parent_stage = nullptr;
+    _p_parent = nullptr;
     _scene_id = -1;
 }
 
 void scene::set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time) {
     REQUIRES_NOT_NULL(beat);
     REQUIRES_VALID(*beat);
-    REQUIRES_NOT_NULL(_p_parent_stage);
+    REQUIRES_NOT_NULL(_p_parent);
 
     _beat_begin_time = stage_time;
     _current_beat = beat;
 
     // Handle dialog
-    auto *main_dialog = _p_parent_stage->get_main_dialog();
+    auto *main_dialog = static_cast<stage *>(_p_parent)->get_main_dialog();
     REQUIRES_NOT_NULL(main_dialog);
     main_dialog->advance(beat->dialog);
 
@@ -71,11 +71,11 @@ void scene::set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time
 
             if (activity_it != _activities.end()) {
                 // Reinitialize existing activity (keeping actor state)
-                activity_it->second->init(it->second, true, *_p_parent_stage, nullptr);
+                activity_it->second->init(it->second, true, *static_cast<stage *>(_p_parent), nullptr);
             } else {
                 // Create new activity
                 _activities[it->first] = get_manager().new_live_object<activity>();
-                _activities[it->first]->init(it->second, false, *_p_parent_stage, nullptr);
+                _activities[it->first]->init(it->second, false, *static_cast<stage *>(_p_parent), nullptr);
             }
 
             ++it;
@@ -88,7 +88,7 @@ number_t scene::get_beat_time() const { return _current_beat_time; }
 void scene::set_next_beat_time(number_t beat_time) { _next_beat_time = beat_time; }
 
 number_t scene::update(number_t stage_time) {
-    REQUIRES_NOT_NULL(_p_parent_stage);
+    REQUIRES_NOT_NULL(_p_parent);
 
     if (_next_beat_time >= 0.0F) {
         // Time travel!
@@ -101,7 +101,7 @@ number_t scene::update(number_t stage_time) {
     number_t time_to_end = 0.0F;
 
     // Update dialog
-    auto *main_dialog = _p_parent_stage->get_main_dialog();
+    auto *main_dialog = static_cast<stage *>(_p_parent)->get_main_dialog();
     REQUIRES_NOT_NULL(main_dialog);
     time_to_end = std::max(main_dialog->update(beat_time), time_to_end);
 
@@ -117,15 +117,15 @@ number_t scene::update(number_t stage_time) {
 integer_t scene::get_scene_id() const { return _scene_id; }
 
 stage &scene::get_stage() const {
-    REQUIRES_NOT_NULL(_p_parent_stage);
-    return *_p_parent_stage;
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<stage *>(_p_parent);
 }
 
 std::string scene::get_locator() const noexcept {
-    if (_p_parent_stage == nullptr) {
+    if (_p_parent == nullptr) {
         return std::format("Scene({})", _scene_id);
     }
-    return std::format("{} > Scene({})", _p_parent_stage->get_locator(), _scene_id);
+    return std::format("{} > Scene({})", _p_parent->get_locator(), _scene_id);
 }
 
 } // namespace camellia

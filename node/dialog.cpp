@@ -3,7 +3,7 @@
 #include "camellia_macro.h"
 #include "dialog.h"
 #include "helper/algorithm_helper.h"
-#include "live/play/stage.h"
+#include "stage.h"
 
 namespace camellia {
 
@@ -23,8 +23,8 @@ text_t text_region::get_full_text() const {
 }
 
 dialog &text_region::get_parent_dialog() const {
-    REQUIRES_NOT_NULL(_parent_dialog);
-    return *_parent_dialog;
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<dialog *>(_p_parent);
 }
 
 boolean_t text_region::get_is_visible() const { return _is_visible; }
@@ -40,9 +40,9 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
     REQUIRES_VALID(*data);
 
     _data = data;
-    _parent_dialog = &parent;
+    _p_parent = &parent;
 
-    auto text_style = data->text_style != nullptr ? data->text_style : parent.get_stage().get_default_text_style();
+    auto text_style = data->text_style != nullptr ? data->text_style : parent.get_parent_stage().get_default_text_style();
 
     // set initial attributes
     _initial_attributes[H_TEXT_NAME] = data->text;
@@ -61,10 +61,10 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
 
     _is_visible = false;
 
-    _p_timeline->init({data->timeline}, parent.get_stage(), this);
+    _p_timeline->init({data->timeline}, parent.get_parent_stage(), this);
 
     if (data->h_transition_script_name != 0ULL) {
-        const auto *const p_transition_code = parent.get_stage().get_script_code(data->h_transition_script_name);
+        const auto *const p_transition_code = parent.get_parent_stage().get_script_code(data->h_transition_script_name);
         THROW_IF(p_transition_code == nullptr, std::format("Could not find text region transition script.\n"
                                                            "Script = {}",
                                                            data->h_transition_script_name));
@@ -98,7 +98,7 @@ void text_region::fina() {
     }
     _is_initialized = false;
     _data = nullptr;
-    _parent_dialog = nullptr;
+    _p_parent = nullptr;
 
     _attributes.reset();
     _initial_attributes.clear();
@@ -213,13 +213,13 @@ number_t text_region::update(const number_t region_time) {
     return _p_timeline->get_effective_duration() - region_time;
 }
 
-stage &dialog::get_stage() const {
-    REQUIRES_NOT_NULL(_parent_stage);
-    return *_parent_stage;
+stage &dialog::get_parent_stage() const {
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<stage *>(_p_parent);
 }
 
 void dialog::init(stage &st) {
-    _parent_stage = &st;
+    _p_parent = &st;
     _is_initialized = true;
     if (_after_init_cb != nullptr) {
         _after_init_cb(this);
@@ -231,7 +231,7 @@ void dialog::fina() {
         _before_fina_cb(this);
     }
     _is_initialized = false;
-    _parent_stage = nullptr;
+    _p_parent = nullptr;
 
     _text_regions.clear();
 }
@@ -242,7 +242,7 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     _current = data;
 
     if (data->region_life_timeline->effective_duration >= 0.0F) {
-        _p_region_life_timeline->init({data->region_life_timeline}, *_parent_stage, this);
+        _p_region_life_timeline->init({data->region_life_timeline}, get_parent_stage(), this);
         _use_life_timeline = true;
     } else {
         _use_life_timeline = false;
@@ -324,8 +324,8 @@ number_t dialog::update(number_t beat_time) {
     return time_to_end;
 }
 
-std::string dialog::get_locator() const noexcept { return std::format("{} > Dialog", _parent_stage != nullptr ? _parent_stage->get_locator() : "???"); }
+std::string dialog::get_locator() const noexcept { return std::format("{} > Dialog", _p_parent != nullptr ? _p_parent->get_locator() : "???"); }
 std::string text_region::get_locator() const noexcept {
-    return std::format("{} > TextRegion({})", _parent_dialog != nullptr ? _parent_dialog->get_locator() : "???", _data->id);
+    return std::format("{} > TextRegion({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _data->id);
 }
 } // namespace camellia

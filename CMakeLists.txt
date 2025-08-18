@@ -11,6 +11,17 @@ set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
 set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
 include(FetchContent)
+include(GenerateExportHeader)
+include(CheckIPOSupported)
+
+check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_OUTPUT)
+
+if(IPO_SUPPORTED)
+    message(STATUS "IPO supported. Enabling IPO.")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+else()
+    message(STATUS "IPO not supported: \n${IPO_OUTPUT}")
+endif()
 
 # QuickJS-ng
 FetchContent_Declare(
@@ -44,40 +55,61 @@ include_directories(
     ${constexpr-xxh3_SOURCE_DIR}
 )
 
+add_library(
+    CamelliaBackendDeps INTERFACE
+)
+
+# Link libraries in correct order (dependencies matter)
+target_link_libraries(
+    CamelliaBackendDeps INTERFACE
+    # QuickJS-ng
+    qjs
+    # xxHash
+    xxHash::xxhash
+    # modified Skia
+    unofficial::skia::modules::skparagraph
+)
+
 # main C++ library
 add_library(
-        CamelliaBackendCore
-        STATIC
+        CamelliaBackendObject
+        OBJECT
         variant.cpp
         helper/algorithm_helper.cpp
         helper/scripting_helper.cpp
         helper/text_layout_helper.cpp
         manager.cpp
-        live/play/activity.cpp
-        live/play/actor.cpp
-        live/play/dialog.cpp
-        live/play/scene.cpp
-        live/play/stage.cpp
-        live/action/action.cpp
-        live/action/action_timeline.cpp
+        node/activity.cpp
+        node/actor.cpp
+        node/dialog.cpp
+        node/scene.cpp
+        node/stage.cpp
+        node/action/action.cpp
+        node/action/action_timeline.cpp
         attribute_registry.cpp
         data/stage_data.cpp
 )
 
-# Link libraries in correct order (dependencies matter)
+# Link dependencies to CamelliaBackendObject for compilation
 target_link_libraries(
-        CamelliaBackendCore PRIVATE
-        # QuickJS-ng
-        qjs
-        # xxHash
-        xxHash::xxhash
-        # modified Skia
-        unofficial::skia::skia
-        unofficial::skia::modules::skparagraph
+        CamelliaBackendObject PRIVATE
+        CamelliaBackendDeps
+)
+
+add_library(
+        CamelliaBackendStatic
+        STATIC
+        $<TARGET_OBJECTS:CamelliaBackendObject>
+)
+
+# Link the same dependencies as CamelliaBackendObject to CamelliaBackendStatic
+target_link_libraries(
+        CamelliaBackendStatic PUBLIC
+        CamelliaBackendDeps
 )
 
 # Install the static library
-install(TARGETS CamelliaBackendCore
+install(TARGETS CamelliaBackendStatic
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin)
@@ -92,15 +124,32 @@ install(FILES data/stage_data.h DESTINATION include/camellia/data)
 install(FILES helper/algorithm_helper.h DESTINATION include/camellia/helper)
 install(FILES helper/scripting_helper.h DESTINATION include/camellia/helper)
 install(FILES helper/text_layout_helper.h DESTINATION include/camellia/helper)
-install(FILES live/action/action_timeline.h DESTINATION include/camellia/live/action)
-install(FILES live/action/action.h DESTINATION include/camellia/live/action)
-install(FILES live/play/activity.h DESTINATION include/camellia/live/play)
-install(FILES live/play/actor.h DESTINATION include/camellia/live/play)
-install(FILES live/play/dialog.h DESTINATION include/camellia/live/play)
-install(FILES live/play/scene.h DESTINATION include/camellia/live/play)
-install(FILES live/play/stage.h DESTINATION include/camellia/live/play)
+install(FILES node/action/action_timeline.h DESTINATION include/camellia/node/action)
+install(FILES node/action/action.h DESTINATION include/camellia/node/action)
+install(FILES node/activity.h DESTINATION include/camellia/node)
+install(FILES node/actor.h DESTINATION include/camellia/node)
+install(FILES node/dialog.h DESTINATION include/camellia/node)
+install(FILES node/scene.h DESTINATION include/camellia/node)
+install(FILES node/stage.h DESTINATION include/camellia/node)
 install(FILES ${constexpr-xxh3_SOURCE_DIR}/constexpr-xxh3.h DESTINATION include/camellia/third_party)
 
+add_library(
+    CamelliaBackendShared
+    SHARED
+    $<TARGET_OBJECTS:CamelliaBackendObject>
+)
+
+target_link_libraries(
+        CamelliaBackendShared PRIVATE
+        CamelliaBackendDeps
+)
+
+# On ELF platforms, drop unused DT_NEEDED entries to prune transitive deps
+if(UNIX AND NOT APPLE)
+    target_link_options(CamelliaBackendShared PRIVATE "-Wl,--as-needed")
+endif()
+
+generate_export_header(CamelliaBackendShared)
 
 # Testing (placed after dependencies and include dirs so tests inherit them)
 add_subdirectory(test)

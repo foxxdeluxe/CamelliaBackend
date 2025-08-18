@@ -1,9 +1,9 @@
 #ifndef CAMELLIA_LIVE_PLAY_SCENE_H
 #define CAMELLIA_LIVE_PLAY_SCENE_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
 #include "activity.h"
 #include "camellia_macro.h"
 #include <map>
@@ -15,12 +15,12 @@ namespace camellia {
 class stage;
 
 #ifndef SWIG
-class scene : public live_object {
-    LIVE_OBJECT(scene)
+class scene : public node {
+    NODE(scene)
 
 protected:
     friend class manager;
-    explicit scene(manager *p_mgr) : live_object(p_mgr) {}
+    explicit scene(manager *p_mgr) : node(p_mgr) {}
 
 public:
     void init(integer_t scene_id, stage &parent_stage);
@@ -40,7 +40,6 @@ private:
     number_t _beat_begin_time{0.0F};
     number_t _current_beat_time{0.0F};
     number_t _next_beat_time{-1.0F};
-    stage *_p_parent_stage{nullptr};
     std::shared_ptr<beat_data> _current_beat{nullptr};
 
     // Map of activity_id to activity instances - retains state between beats like actors do

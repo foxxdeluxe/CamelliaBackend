@@ -1,6 +1,6 @@
 ﻿#include "actor.h"
 #include "camellia_macro.h"
-#include "live/play/stage.h"
+#include "stage.h"
 
 namespace camellia {
 const std::shared_ptr<actor_data> &actor::get_data() const {
@@ -21,7 +21,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
 
     _p_data = data;
     _p_stage = &sta;
-    _p_parent_activity = &parent;
+    _p_parent = &parent;
 
     for (const auto &attribute : parent.get_initial_values()) {
         _attributes.set(attribute.first, attribute.second);
@@ -79,7 +79,7 @@ void actor::fina(boolean_t keep_children) {
     }
     _is_initialized = false;
     _p_data = nullptr;
-    _p_parent_activity = nullptr;
+    _p_parent = nullptr;
 
     if (!keep_children) {
         for (auto &child : _children) {
@@ -92,11 +92,11 @@ void actor::fina(boolean_t keep_children) {
 }
 
 activity &actor::get_parent_activity() const {
-    REQUIRES_NOT_NULL(_p_parent_activity);
-    return *_p_parent_activity;
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<activity *>(_p_parent);
 }
 
 std::string actor::get_locator() const noexcept {
-    return std::format("{} > Actor({})", _p_parent_activity != nullptr ? _p_parent_activity->get_locator() : "???", _p_data->h_actor_id);
+    return std::format("{} > Actor({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_data->h_actor_id);
 }
 } // namespace camellia

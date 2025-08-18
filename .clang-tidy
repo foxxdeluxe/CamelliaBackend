@@ -19,6 +19,7 @@ Checks: "*,
         -cppcoreguidelines-pro-type-reinterpret-cast,
         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
         -misc-no-recursion,
+        -cppcoreguidelines-pro-type-static-cast-downcast,
 "
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

@@ -9,10 +9,9 @@
 #include "camellia_macro.h"
 #include "helper/algorithm_helper.h"
 #include "helper/resource_helper.h"
-#include "live/play/stage.h"
+#include "node/stage.h"
 
 namespace camellia {
-action_timeline_keyframe::~action_timeline_keyframe() = default;
 number_t action_timeline_keyframe::get_time() const {
     REQUIRES_NOT_NULL(_data);
     return _data->time;
@@ -51,9 +50,9 @@ action &action_timeline_keyframe::get_action() const {
     return *_p_action;
 }
 
-action_timeline &action_timeline_keyframe::get_timeline() const {
-    REQUIRES_NOT_NULL(_parent_timeline);
-    return *_parent_timeline;
+action_timeline &action_timeline_keyframe::get_parent_timeline() const {
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<action_timeline *>(_p_parent);
 }
 
 void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i,
@@ -61,7 +60,7 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     REQUIRES_VALID(*data);
 
     _data = data;
-    _parent_timeline = parent;
+    _p_parent = parent;
     _effective_duration = effective_duration;
     _track_index = ti;
     _index = i;
@@ -98,7 +97,7 @@ void action_timeline_keyframe::fina() {
 
     _is_initialized = false;
     _data = nullptr;
-    _parent_timeline = nullptr;
+    _p_parent = nullptr;
     _track_index = -1;
     _index = -1;
 
@@ -118,11 +117,9 @@ stage &action_timeline::get_stage() const {
     return *_p_stage;
 }
 
-live_object *action_timeline::get_parent() const { return _p_parent; }
-
 number_t action_timeline::get_effective_duration() const { return _effective_duration; }
 
-void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, live_object *p_parent) {
+void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, node *p_parent) {
     for (size_t i = 0; i < data.size(); i++) {
         REQUIRES_VALID_MSG(*data[i], std::format("Action timeline data #{} is invalid", i));
     }
@@ -298,7 +295,7 @@ std::string action_timeline::get_locator() const noexcept {
 }
 
 std::string action_timeline_keyframe::get_locator() const noexcept {
-    return std::format("{} > ActionTimelineKeyframe(T{}, #{}, @{})", _parent_timeline != nullptr ? _parent_timeline->get_locator() : "???", _track_index,
-                       _index, _data->time);
+    return std::format("{} > ActionTimelineKeyframe(T{}, #{}, @{})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _track_index, _index,
+                       _data->time);
 }
 } // namespace camellia

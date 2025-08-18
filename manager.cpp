@@ -2,7 +2,7 @@
 #include "manager.h"
 #include "camellia_macro.h"
 #include "data/stage_data.h"
-#include "live/play/stage.h"
+#include "node/stage.h"
 #include <format>
 #include <stdexcept>
 
@@ -32,10 +32,10 @@ std::string manager::get_locator() const noexcept { return std::format("Manager(
 
 unsigned int manager::_next_id = 0U;
 
-unsigned int live_object::_next_id = 0U;
+unsigned int node::_next_id = 0U;
 
-live_object::~live_object() noexcept { _p_mgr->_notify_live_object_deletion(this); }
+node::~node() noexcept { _p_mgr->_notify_live_object_deletion(this); }
 
-live_object::live_object(manager *p_mgr) : _handle(static_cast<hash_t>(p_mgr->get_id()) << 32ULL | _next_id++), _p_mgr(p_mgr) {}
+node::node(manager *p_mgr) : _handle(static_cast<hash_t>(p_mgr->get_id()) << 32ULL | _next_id++), _p_mgr(p_mgr) {}
 
 } // namespace camellia

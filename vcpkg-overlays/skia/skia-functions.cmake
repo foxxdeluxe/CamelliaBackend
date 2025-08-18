@@ -347,7 +347,12 @@ function(skia_gn_install_build_type)
 
     file(MAKE_DIRECTORY "${arg_INSTALL_DIR}/share/unofficial-${PORT}")
 
-    list(TRANSFORM arg_TARGETS PREPEND "//")
+    # For GN desc JSON, convert bare names (e.g. 'skia') to root-scope labels (':skia')
+    # before prefixing with '//'. This keeps ninja TARGETS (passed earlier) unchanged.
+    set(_normalized_targets "${arg_TARGETS}")
+    list(TRANSFORM _normalized_targets REPLACE "^([^/:]+)$" ":\\1")
+    list(TRANSFORM _normalized_targets PREPEND "//")
+    set(arg_TARGETS "${_normalized_targets}")
     file(READ "${CURRENT_BUILDTREES_DIR}/desc-${arg_LABEL}-out.log" desc)
     string(REGEX REPLACE "^([^{]+)\n{\n" "{\n" desc "${desc}")
     if(NOT "${CMAKE_MATCH_1}" STREQUAL "")

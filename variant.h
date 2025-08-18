@@ -107,6 +107,10 @@ public:
     static variant from_desc(const text_t &descriptor);
     [[nodiscard]] text_t to_desc() const;
 
+    // Binary conversion functions
+    static variant from_binary(const bytes_t &binary_data);
+    [[nodiscard]] bytes_t to_binary() const;
+
     constexpr static char VOID_PREFIX = 'V';
     constexpr static char INTEGER_PREFIX = 'I';
     constexpr static char NUMBER_PREFIX = 'N';

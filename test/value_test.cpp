@@ -283,3 +283,288 @@ TEST(variant_test_suite, from_desc_error_handling) {
     // Malformed hash
     ASSERT_EQ(variant::from_desc("Axyz"), variant(hash_t(0))); // Should return 0
 }
+
+TEST(variant_test_suite, to_binary_basic_types) {
+    // VOID type
+    auto void_var = variant();
+    auto void_binary = void_var.to_binary();
+    ASSERT_EQ(void_binary.size(), 1);
+    ASSERT_EQ(void_binary[0], variant::VOID);
+
+    // INTEGER type
+    auto int_var = variant(42);
+    auto int_binary = int_var.to_binary();
+    ASSERT_EQ(int_binary.size(), 5); // 1 byte type + 4 bytes data
+    ASSERT_EQ(int_binary[0], variant::INTEGER);
+
+    auto int_negative_var = variant(-123);
+    auto int_negative_binary = int_negative_var.to_binary();
+    ASSERT_EQ(int_negative_binary.size(), 5);
+    ASSERT_EQ(int_negative_binary[0], variant::INTEGER);
+
+    // NUMBER type
+    auto number_var = variant(3.14159F);
+    auto number_binary = number_var.to_binary();
+    ASSERT_EQ(number_binary.size(), 5); // 1 byte type + 4 bytes data
+    ASSERT_EQ(number_binary[0], variant::NUMBER);
+
+    // BOOLEAN type
+    auto bool_true_var = variant(true);
+    auto bool_true_binary = bool_true_var.to_binary();
+    ASSERT_EQ(bool_true_binary.size(), 2); // 1 byte type + 1 byte data
+    ASSERT_EQ(bool_true_binary[0], variant::BOOLEAN);
+    ASSERT_EQ(bool_true_binary[1], 1);
+
+    auto bool_false_var = variant(false);
+    auto bool_false_binary = bool_false_var.to_binary();
+    ASSERT_EQ(bool_false_binary.size(), 2);
+    ASSERT_EQ(bool_false_binary[0], variant::BOOLEAN);
+    ASSERT_EQ(bool_false_binary[1], 0);
+
+    // TEXT type
+    auto text_var = variant("hello world");
+    auto text_binary = text_var.to_binary();
+    ASSERT_EQ(text_binary.size(), 1 + 4 + 11); // type + length + text
+    ASSERT_EQ(text_binary[0], variant::TEXT);
+
+    auto empty_text_var = variant("");
+    auto empty_text_binary = empty_text_var.to_binary();
+    ASSERT_EQ(empty_text_binary.size(), 5); // type + length(0) + no text
+    ASSERT_EQ(empty_text_binary[0], variant::TEXT);
+
+    // ERROR type
+    auto error_var = variant("error message", true);
+    auto error_binary = error_var.to_binary();
+    ASSERT_EQ(error_binary.size(), 1 + 4 + 13); // type + length + error text
+    ASSERT_EQ(error_binary[0], static_cast<unsigned char>(variant::ERROR));
+}
+
+TEST(variant_test_suite, to_binary_vector_types) {
+    // VECTOR2 type
+    auto vec2_var = variant(vector2(1.5F, -2.7F));
+    auto vec2_binary = vec2_var.to_binary();
+    ASSERT_EQ(vec2_binary.size(), 9); // 1 byte type + 8 bytes data (2 floats)
+    ASSERT_EQ(vec2_binary[0], variant::VECTOR2);
+
+    // VECTOR3 type
+    auto vec3_var = variant(vector3(1.1F, 2.2F, -3.3F));
+    auto vec3_binary = vec3_var.to_binary();
+    ASSERT_EQ(vec3_binary.size(), 13); // 1 byte type + 12 bytes data (3 floats)
+    ASSERT_EQ(vec3_binary[0], variant::VECTOR3);
+
+    // VECTOR4 type
+    auto vec4_var = variant(vector4(1.0F, 2.0F, 3.0F, -4.0F));
+    auto vec4_binary = vec4_var.to_binary();
+    ASSERT_EQ(vec4_binary.size(), 17); // 1 byte type + 16 bytes data (4 floats)
+    ASSERT_EQ(vec4_binary[0], variant::VECTOR4);
+}
+
+TEST(variant_test_suite, to_binary_bytes_type) {
+    // Empty bytes
+    bytes_t empty_bytes;
+    auto empty_bytes_var = variant(empty_bytes);
+    auto empty_bytes_binary = empty_bytes_var.to_binary();
+    ASSERT_EQ(empty_bytes_binary.size(), 5); // 1 byte type + 4 bytes length + 0 data
+    ASSERT_EQ(empty_bytes_binary[0], variant::BYTES);
+
+    // Single byte
+    bytes_t single_byte = {0x42};
+    auto single_byte_var = variant(single_byte);
+    auto single_byte_binary = single_byte_var.to_binary();
+    ASSERT_EQ(single_byte_binary.size(), 6); // 1 byte type + 4 bytes length + 1 byte data
+    ASSERT_EQ(single_byte_binary[0], variant::BYTES);
+
+    // Multi bytes
+    bytes_t multi_bytes = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+    auto multi_bytes_var = variant(multi_bytes);
+    auto multi_bytes_binary = multi_bytes_var.to_binary();
+    ASSERT_EQ(multi_bytes_binary.size(), 13); // 1 byte type + 4 bytes length + 8 bytes data
+    ASSERT_EQ(multi_bytes_binary[0], variant::BYTES);
+}
+
+TEST(variant_test_suite, to_binary_array_type) {
+    // Empty array
+    std::vector<variant> empty_array;
+    auto empty_array_var = variant(empty_array);
+    auto empty_array_binary = empty_array_var.to_binary();
+    ASSERT_EQ(empty_array_binary.size(), 5); // 1 byte type + 4 bytes count + 0 elements
+    ASSERT_EQ(empty_array_binary[0], variant::ARRAY);
+
+    // Array with single element
+    std::vector<variant> single_elem = {variant(42)};
+    auto single_elem_var = variant(single_elem);
+    auto single_elem_binary = single_elem_var.to_binary();
+    ASSERT_EQ(single_elem_binary.size(), 10); // 1 byte type + 4 bytes count + 5 bytes element
+    ASSERT_EQ(single_elem_binary[0], variant::ARRAY);
+
+    // Array with multiple elements
+    std::vector<variant> multi_elem = {variant(1), variant(2.5F), variant(true)};
+    auto multi_elem_var = variant(multi_elem);
+    auto multi_elem_binary = multi_elem_var.to_binary();
+    ASSERT_EQ(multi_elem_binary.size(), 17); // 1 + 4 + (5 + 5 + 2) bytes
+    ASSERT_EQ(multi_elem_binary[0], variant::ARRAY);
+}
+
+TEST(variant_test_suite, to_binary_attribute_type) {
+    // ATTRIBUTE type with hash values
+    auto attr_zero = variant(hash_t(0));
+    auto attr_zero_binary = attr_zero.to_binary();
+    ASSERT_EQ(attr_zero_binary.size(), 9); // 1 byte type + 8 bytes hash
+    ASSERT_EQ(attr_zero_binary[0], variant::ATTRIBUTE);
+
+    auto attr_var = variant(hash_t(0x123456789ABCDEF0));
+    auto attr_binary = attr_var.to_binary();
+    ASSERT_EQ(attr_binary.size(), 9); // 1 byte type + 8 bytes hash
+    ASSERT_EQ(attr_binary[0], variant::ATTRIBUTE);
+
+    auto attr_max = variant(hash_t(0xFFFFFFFFFFFFFFFF));
+    auto attr_max_binary = attr_max.to_binary();
+    ASSERT_EQ(attr_max_binary.size(), 9); // 1 byte type + 8 bytes hash
+    ASSERT_EQ(attr_max_binary[0], variant::ATTRIBUTE);
+}
+
+TEST(variant_test_suite, from_binary_basic_types) {
+    // VOID type
+    bytes_t void_data = {variant::VOID};
+    ASSERT_EQ(variant::from_binary(void_data), variant());
+
+    // Empty data should return VOID
+    bytes_t empty_data;
+    ASSERT_EQ(variant::from_binary(empty_data), variant());
+
+    // INTEGER type
+    bytes_t int_data = {variant::INTEGER, 0x2A, 0x00, 0x00, 0x00}; // 42 in little-endian
+    ASSERT_EQ(variant::from_binary(int_data), variant(42));
+
+    bytes_t int_negative_data = {variant::INTEGER, 0x85, 0xFF, 0xFF, 0xFF}; // -123 in little-endian
+    ASSERT_EQ(variant::from_binary(int_negative_data), variant(-123));
+
+    // NUMBER type (approximation due to float precision)
+    bytes_t number_data = {variant::NUMBER, 0xDB, 0x0F, 0x49, 0x40}; // ~3.1415927 in little-endian
+    auto number_result = variant::from_binary(number_data);
+    ASSERT_EQ(number_result.get_value_type(), variant::NUMBER);
+    ASSERT_TRUE(number_result.approx_equals(variant(3.1415927F)));
+
+    // BOOLEAN type
+    bytes_t bool_true_data = {variant::BOOLEAN, 0x01};
+    ASSERT_EQ(variant::from_binary(bool_true_data), variant(true));
+
+    bytes_t bool_false_data = {variant::BOOLEAN, 0x00};
+    ASSERT_EQ(variant::from_binary(bool_false_data), variant(false));
+
+    // TEXT type
+    bytes_t text_data = {variant::TEXT, 0x05, 0x00, 0x00, 0x00, 'h', 'e', 'l', 'l', 'o'};
+    ASSERT_EQ(variant::from_binary(text_data), variant("hello"));
+
+    bytes_t empty_text_data = {variant::TEXT, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ(variant::from_binary(empty_text_data), variant(""));
+
+    // ERROR type
+    bytes_t error_data = {static_cast<unsigned char>(variant::ERROR), 0x05, 0x00, 0x00, 0x00, 'e', 'r', 'r', 'o', 'r'};
+    ASSERT_EQ(variant::from_binary(error_data), variant("error", true));
+}
+
+TEST(variant_test_suite, from_binary_vector_types) {
+    // VECTOR2 type (1.5, -2.7 as little-endian floats)
+    bytes_t vec2_data = {variant::VECTOR2,
+                         0x00,
+                         0x00,
+                         0xC0,
+                         0x3F, // 1.5 in little-endian
+                         0xCD,
+                         0xCC,
+                         0x2C,
+                         0xC0}; // -2.7 in little-endian
+    auto vec2_result = variant::from_binary(vec2_data);
+    ASSERT_EQ(vec2_result.get_value_type(), variant::VECTOR2);
+    ASSERT_TRUE(vec2_result.approx_equals(variant(vector2(1.5F, -2.7F))));
+
+    // VECTOR3 type (1.1, 2.2, -3.3)
+    bytes_t vec3_data = {variant::VECTOR3,
+                         0xCD,
+                         0xCC,
+                         0x8C,
+                         0x3F, // 1.1
+                         0xCD,
+                         0xCC,
+                         0x0C,
+                         0x40, // 2.2
+                         0x33,
+                         0x33,
+                         0x53,
+                         0xC0}; // -3.3
+    auto vec3_result = variant::from_binary(vec3_data);
+    ASSERT_EQ(vec3_result.get_value_type(), variant::VECTOR3);
+    ASSERT_TRUE(vec3_result.approx_equals(variant(vector3(1.1F, 2.2F, -3.3F))));
+
+    // VECTOR4 type (1.0, 2.0, 3.0, -4.0)
+    bytes_t vec4_data = {variant::VECTOR4,
+                         0x00,
+                         0x00,
+                         0x80,
+                         0x3F, // 1.0
+                         0x00,
+                         0x00,
+                         0x00,
+                         0x40, // 2.0
+                         0x00,
+                         0x00,
+                         0x40,
+                         0x40, // 3.0
+                         0x00,
+                         0x00,
+                         0x80,
+                         0xC0}; // -4.0
+    auto vec4_result = variant::from_binary(vec4_data);
+    ASSERT_EQ(vec4_result.get_value_type(), variant::VECTOR4);
+    ASSERT_TRUE(vec4_result.approx_equals(variant(vector4(1.0F, 2.0F, 3.0F, -4.0F))));
+}
+
+TEST(variant_test_suite, from_binary_bytes_type) {
+    // Empty bytes
+    bytes_t empty_bytes_data = {variant::BYTES, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ(variant::from_binary(empty_bytes_data), variant(bytes_t()));
+
+    // Single byte
+    bytes_t single_byte_data = {variant::BYTES, 0x01, 0x00, 0x00, 0x00, 0x42};
+    bytes_t expected_single = {0x42};
+    ASSERT_EQ(variant::from_binary(single_byte_data), variant(expected_single));
+
+    // Multiple bytes
+    bytes_t multi_bytes_data = {variant::BYTES, 0x04, 0x00, 0x00, 0x00, 0x01, 0x23, 0x45, 0x67};
+    bytes_t expected_multi = {0x01, 0x23, 0x45, 0x67};
+    ASSERT_EQ(variant::from_binary(multi_bytes_data), variant(expected_multi));
+}
+
+TEST(variant_test_suite, from_binary_array_type) {
+    // Empty array
+    bytes_t empty_array_data = {variant::ARRAY, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ(variant::from_binary(empty_array_data), variant(std::vector<variant>()));
+
+    // Array with single element (integer 42)
+    bytes_t single_elem_data = {variant::ARRAY,   0x01, 0x00, 0x00, 0x00,  // count = 1
+                                variant::INTEGER, 0x2A, 0x00, 0x00, 0x00}; // 42
+    std::vector<variant> expected_single = {variant(42)};
+    ASSERT_EQ(variant::from_binary(single_elem_data), variant(expected_single));
+
+    // Array with multiple elements
+    bytes_t multi_elem_data = {variant::ARRAY,   0x02, 0x00, 0x00, 0x00, // count = 2
+                               variant::INTEGER, 0x01, 0x00, 0x00, 0x00, // 1
+                               variant::BOOLEAN, 0x01};                  // true
+    std::vector<variant> expected_multi = {variant(1), variant(true)};
+    ASSERT_EQ(variant::from_binary(multi_elem_data), variant(expected_multi));
+}
+
+TEST(variant_test_suite, from_binary_attribute_type) {
+    // ATTRIBUTE type with hash value 0
+    bytes_t attr_zero_data = {variant::ATTRIBUTE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ(variant::from_binary(attr_zero_data), variant(hash_t(0)));
+
+    // ATTRIBUTE type with specific hash value
+    bytes_t attr_data = {variant::ATTRIBUTE, 0xF0, 0xDE, 0xBC, 0x9A, 0x78, 0x56, 0x34, 0x12}; // 0x123456789ABCDEF0 in little-endian
+    ASSERT_EQ(variant::from_binary(attr_data), variant(hash_t(0x123456789ABCDEF0)));
+
+    // ATTRIBUTE type with max hash value
+    bytes_t attr_max_data = {variant::ATTRIBUTE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    ASSERT_EQ(variant::from_binary(attr_max_data), variant(hash_t(0xFFFFFFFFFFFFFFFF)));
+}

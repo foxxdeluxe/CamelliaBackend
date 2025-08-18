@@ -11,10 +11,6 @@
   "license": null,
   "supports": "!(windows & arm32) & !mingw",
   "dependencies": [
-    "expat",
-    "libjpeg-turbo",
-    "libpng",
-    "libwebp",
     {
       "name": "opengl",
       "default-features": false,
@@ -39,8 +35,7 @@
     {
       "name": "vcpkg-tool-gn",
       "host": true
-    },
-    "zlib"
+    }
   ],
   "default-features": [
     {

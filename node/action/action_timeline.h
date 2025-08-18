@@ -17,15 +17,14 @@ class action_timeline;
 class modifier_action;
 
 #ifndef SWIG
-class action_timeline_keyframe : public live_object {
-    LIVE_OBJECT(action_timeline_keyframe)
+class action_timeline_keyframe : public node {
+    NODE(action_timeline_keyframe)
 
 protected:
     friend class manager;
-    explicit action_timeline_keyframe(manager *p_mgr) : live_object(p_mgr) {}
+    explicit action_timeline_keyframe(manager *p_mgr) : node(p_mgr) {}
 
 public:
-    ~action_timeline_keyframe() override;
     [[nodiscard]] number_t get_time() const;
 
     [[nodiscard]] number_t get_preferred_duration() const;
@@ -46,7 +45,7 @@ public:
 
     [[nodiscard]] action &get_action() const;
 
-    [[nodiscard]] action_timeline &get_timeline() const;
+    [[nodiscard]] action_timeline &get_parent_timeline() const;
 
     void init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i, number_t effective_duration);
 
@@ -58,27 +57,24 @@ public:
 
 private:
     std::shared_ptr<action_timeline_keyframe_data> _data{nullptr};
-    action_timeline *_parent_timeline{nullptr};
     number_t _effective_duration{0.0F};
     std::unique_ptr<action> _p_action{nullptr};
     integer_t _track_index{-1}, _index{-1};
 };
 
-class action_timeline : public live_object {
-    LIVE_OBJECT(action_timeline)
+class action_timeline : public node {
+    NODE(action_timeline)
 
 protected:
     friend class manager;
-    explicit action_timeline(manager *p_mgr) : live_object(p_mgr) {}
+    explicit action_timeline(manager *p_mgr) : node(p_mgr) {}
 
 public:
     [[nodiscard]] stage &get_stage() const;
 
-    [[nodiscard]] live_object *get_parent() const;
-
     [[nodiscard]] number_t get_effective_duration() const;
 
-    void init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, live_object *p_parent);
+    void init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, node *p_parent);
 
     void fina();
 
@@ -98,7 +94,6 @@ private:
     const std::map<hash_t, variant> *_current_initial_attributes{nullptr};
 
     stage *_p_stage{nullptr};
-    live_object *_p_parent{nullptr};
 };
 #endif
 

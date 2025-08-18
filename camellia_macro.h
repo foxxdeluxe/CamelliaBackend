@@ -26,7 +26,7 @@
     static constexpr std::string get_class_name() { return #N; }                                                                                               \
     static_assert(sizeof(N *));
 
-#define LIVE_OBJECT(N)                                                                                                                                         \
+#define NODE(N)                                                                                                                                         \
     NAMED_CLASS(N)                                                                                                                                             \
 public:                                                                                                                                                        \
     [[nodiscard]] hash_t get_type() const noexcept override { return algorithm_helper::calc_hash_const(#N); }                                                  \
@@ -34,7 +34,7 @@ public:                                                                         
 private:
 
 #else
-#define LIVE_OBJECT(N)
+#define NODE(N)
 #endif
 
 #endif // CAMELLIA_MACROS_H

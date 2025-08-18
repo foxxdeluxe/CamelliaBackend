@@ -109,10 +109,39 @@ string(JOIN " " OPTIONS
     skia_use_jpeg_gainmaps=false
     skia_use_libheif=false
     skia_use_lua=false
+    # Prune unused subsystems/codecs/GPU backends
+    skia_enable_gpu=false
+    skia_enable_pdf=false
+    skia_enable_svg=false
+    skia_enable_skottie=false
+    skia_use_expat=false
+    # JPEG
+    skia_use_libjpeg_turbo=false
+    skia_use_libjpeg_turbo_decode=false
+    skia_use_libjpeg_turbo_encode=false
+    # PNG
+    skia_use_libpng=false
+    skia_use_libpng_decode=false
+    skia_use_libpng_encode=false
+    # WEBP
+    skia_use_libwebp=false
+    skia_use_libwebp_decode=false
+    skia_use_libwebp_encode=false
+    # RAW supporting libs
+    skia_use_dng_sdk=false
+    skia_use_piex=false
+    skia_use_wuffs=false
+    skia_use_zlib=false
 )
 set(OPTIONS_DBG "is_debug=true")
 set(OPTIONS_REL "is_official_build=true")
-vcpkg_list(SET SKIA_TARGETS :skia :modules)
+# Only build core and the text layout modules we need
+vcpkg_list(SET SKIA_TARGETS
+    :skia
+    modules/skshaper:skshaper
+    modules/skparagraph:skparagraph
+    modules/skunicode:skunicode
+)
 
 if(VCPKG_TARGET_IS_ANDROID)
     string(APPEND OPTIONS " target_os=\"android\"")
@@ -136,16 +165,8 @@ else()
     string(APPEND OPTIONS " is_component_build=false")
 endif()
 
-set(required_externals
-    dng_sdk
-    expat
-    libjpeg
-    libpng
-    libwebp
-    piex
-    zlib
-    wuffs
-)
+# Only add externals explicitly required by selected features below.
+vcpkg_list(SET required_externals)
 
 if("fontconfig" IN_LIST FEATURES)
     list(APPEND required_externals fontconfig)

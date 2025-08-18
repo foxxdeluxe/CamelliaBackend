@@ -2,22 +2,22 @@
 #include "attribute_registry.h"
 #include "camellia.h"
 #include "camellia_macro.h"
-#include "live/play/stage.h"
+#include "node/stage.h"
 #include <format>
 #include <memory>
 #include <set>
 
 namespace camellia {
 action_timeline_keyframe &action::get_parent_keyframe() const {
-    REQUIRES_NOT_NULL(_p_parent_keyframe);
-    return *_p_parent_keyframe;
+    REQUIRES_NOT_NULL(_p_parent);
+    return *static_cast<action_timeline_keyframe *>(_p_parent);
 }
 
 void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent) {
     REQUIRES_VALID(*data);
 
     _p_base_data = data;
-    _p_parent_keyframe = parent;
+    _p_parent = parent;
 
     _is_initialized = true;
     if (_after_init_cb != nullptr) {
@@ -32,7 +32,7 @@ void action::fina() {
 
     _is_initialized = false;
     _p_base_data = nullptr;
-    _p_parent_keyframe = nullptr;
+    _p_parent = nullptr;
 }
 
 std::shared_ptr<modifier_action_data> modifier_action::get_data() const {
@@ -47,13 +47,13 @@ hash_t modifier_action::get_name_hash() const {
 }
 
 number_t modifier_action::get_actual_duration() const {
-    REQUIRES_NOT_NULL(_p_parent_keyframe);
-    return _p_parent_keyframe->get_actual_duration();
+    REQUIRES_NOT_NULL(_p_parent);
+    return static_cast<action_timeline_keyframe *>(_p_parent)->get_actual_duration();
 }
 
 number_t modifier_action::get_preferred_duration() const {
-    REQUIRES_NOT_NULL(_p_parent_keyframe);
-    return _p_parent_keyframe->get_preferred_duration();
+    REQUIRES_NOT_NULL(_p_parent);
+    return static_cast<action_timeline_keyframe *>(_p_parent)->get_preferred_duration();
 }
 
 hash_t modifier_action::get_attribute_name_hash() const {
@@ -79,8 +79,8 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     REQUIRES_NOT_NULL_MSG(mad, std::format("Failed to cast action data ({}) to modifier action data.", data->h_action_name));
     REQUIRES_VALID(*mad);
 
-    _p_parent_keyframe = p_parent;
-    _p_timeline = &_p_parent_keyframe->get_timeline();
+    _p_parent = p_parent;
+    _p_timeline = &static_cast<action_timeline_keyframe *>(_p_parent)->get_parent_timeline();
 
     _p_script = new scripting_helper::scripting_engine();
 
@@ -104,7 +104,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     process_params(*p_parent->get_override_params());
     process_params(mad->default_params);
 
-    const auto *code = p_parent->get_timeline().get_stage().get_script_code(mad->h_script_name);
+    const auto *code = p_parent->get_parent_timeline().get_stage().get_script_code(mad->h_script_name);
     THROW_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
                                           "{}",
                                           mad->h_script_name, mad->h_action_name, get_locator()));
@@ -194,7 +194,7 @@ void composite_action::init(const std::shared_ptr<action_data> &data, action_tim
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    _p_timeline->init({cad->timeline}, p_parent->get_timeline().get_stage(), this);
+    _p_timeline->init({cad->timeline}, p_parent->get_parent_timeline().get_stage(), this);
 
     action::init(data, p_parent);
 }
@@ -213,23 +213,23 @@ std::shared_ptr<composite_action_data> composite_action::get_data() const {
 
 std::string action::get_locator() const noexcept {
     if (_p_base_data == nullptr) {
-        return std::format(R"({} > Action(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+        return std::format(R"({} > Action(???))", _p_parent != nullptr ? _p_parent->get_locator() : "???");
     }
-    return std::format("{} > Action({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
+    return std::format("{} > Action({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string modifier_action::get_locator() const noexcept {
     if (_p_base_data == nullptr) {
-        return std::format(R"({} > ModifierAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+        return std::format(R"({} > ModifierAction(???))", _p_parent != nullptr ? _p_parent->get_locator() : "???");
     }
-    return std::format("{} > ModifierAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
+    return std::format("{} > ModifierAction({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 std::string composite_action::get_locator() const noexcept {
     if (_p_base_data == nullptr) {
-        return std::format(R"({} > CompositeAction(???))", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???");
+        return std::format(R"({} > CompositeAction(???))", _p_parent != nullptr ? _p_parent->get_locator() : "???");
     }
-    return std::format("{} > CompositeAction({})", _p_parent_keyframe != nullptr ? _p_parent_keyframe->get_locator() : "???", _p_base_data->h_action_name);
+    return std::format("{} > CompositeAction({})", _p_parent != nullptr ? _p_parent->get_locator() : "???", _p_base_data->h_action_name);
 }
 
 } // namespace camellia

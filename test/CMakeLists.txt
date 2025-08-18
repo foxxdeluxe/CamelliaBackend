@@ -28,7 +28,7 @@ add_executable(test_run value_test.cpp
 # Link the same libraries as CamelliaBackendCore
 target_link_libraries(
         test_run PRIVATE
-        CamelliaBackendCore
+        CamelliaBackendStatic
         GTest::gtest_main
 )
 

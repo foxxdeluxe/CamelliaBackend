@@ -1,9 +1,9 @@
 #ifndef CAMELLIA_LIVE_PLAY_ACTOR_H
 #define CAMELLIA_LIVE_PLAY_ACTOR_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
 #include "activity.h"
 #include "camellia_macro.h"
 #include <map>
@@ -14,12 +14,12 @@ namespace camellia {
 // Forward declarations
 class stage;
 
-class actor : public live_object {
-    LIVE_OBJECT(actor)
+class actor : public node {
+    NODE(actor)
 
 protected:
     friend class manager;
-    explicit actor(manager *p_mgr) : live_object(p_mgr) {}
+    explicit actor(manager *p_mgr) : node(p_mgr) {}
 
 public:
     [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
@@ -45,7 +45,6 @@ private:
     std::shared_ptr<actor_data> _p_data{nullptr};
     std::map<integer_t, std::unique_ptr<activity>> _children;
     stage *_p_stage{nullptr};
-    activity *_p_parent_activity{nullptr};
     attribute_registry _attributes;
 #endif
 };

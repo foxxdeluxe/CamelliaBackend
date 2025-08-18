@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "helper/algorithm_helper.h"
-#include "live/play/dialog.h"
-#include "live/play/stage.h"
+#include "node/dialog.h"
+#include "node/stage.h"
 #include "manager.h"
 
 using namespace camellia;
@@ -18,7 +18,7 @@ std::map<hash_t, text_region *> &text_regions() {
     return regions;
 }
 
-void on_live_object_created(live_object *obj) {
+void on_live_object_created(node *obj) {
     std::cout << typeid(*obj).name() << " = " << obj->get_handle() << " created" << '\n';
     if (auto *tr = dynamic_cast<text_region *>(obj)) {
         // Accept all visibility updates; we do not assert on them here
@@ -29,7 +29,7 @@ void on_live_object_created(live_object *obj) {
     }
 }
 
-void on_live_object_deleted(live_object *obj) {
+void on_live_object_deleted(node *obj) {
     std::cout << obj->get_handle() << " deleted" << '\n';
     if (auto *tr = dynamic_cast<text_region *>(obj)) {
         text_regions().erase(tr->get_handle());

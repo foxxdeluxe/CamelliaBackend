@@ -2,7 +2,7 @@
 
 #include "camellia_macro.h"
 #include "helper/algorithm_helper.h"
-#include "live/play/stage.h"
+#include "stage.h"
 #include "manager.h"
 
 namespace camellia {
@@ -67,7 +67,6 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     REQUIRES_VALID(*data);
 
     _p_scenario = data;
-    _p_parent_manager = &parent;
 
     _scenes.emplace_back(parent.new_live_object<scene>());
     _scenes.back()->init(_next_scene_id++, *this);
@@ -92,7 +91,6 @@ void stage::fina() {
     }
     _scenes.clear();
 
-    _p_parent_manager = nullptr;
     _p_scenario = nullptr;
     _next_beat_index = 0;
     _next_scene_id = 0;
@@ -124,9 +122,9 @@ std::shared_ptr<text_style_data> stage::get_default_text_style() const {
 
 std::string stage::get_locator() const noexcept {
     if (_p_scenario == nullptr) {
-        return std::format(R"({} > Stage(???))", _p_parent_manager != nullptr ? _p_parent_manager->get_locator() : "???");
+        return std::format(R"({} > Stage(???))", get_manager().get_locator());
     }
-    return std::format("{} > Stage({})", _p_parent_manager != nullptr ? _p_parent_manager->get_locator() : "???", _p_scenario->h_stage_name);
+    return std::format("{} > Stage({})", get_manager().get_locator(), _p_scenario->h_stage_name);
 }
 
 } // namespace camellia

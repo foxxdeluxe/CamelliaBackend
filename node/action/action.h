@@ -1,10 +1,10 @@
 #ifndef CAMELLIA_LIVE_ACTION_ACTION_H
 #define CAMELLIA_LIVE_ACTION_ACTION_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
-#include "../../helper/scripting_helper.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
+#include "helper/scripting_helper.h"
 #include "camellia_macro.h"
 #include "variant.h"
 #include <map>
@@ -17,12 +17,12 @@ class action_timeline;
 class action_timeline_keyframe;
 
 #ifndef SWIG
-class action : public live_object {
-    LIVE_OBJECT(action)
+class action : public node {
+    NODE(action)
 
 protected:
     friend class manager;
-    explicit action(manager *p_mgr) : live_object(p_mgr) {}
+    explicit action(manager *p_mgr) : node(p_mgr) {}
 
 public:
     virtual void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *parent);
@@ -37,11 +37,10 @@ public:
 
 protected:
     std::shared_ptr<action_data> _p_base_data{nullptr};
-    action_timeline_keyframe *_p_parent_keyframe{nullptr};
 };
 
 class modifier_action : public action {
-    LIVE_OBJECT(modifier_action)
+    NODE(modifier_action)
 
 protected:
     friend class manager;
@@ -84,7 +83,6 @@ private:
     const static char *PREV_NAME;
     const static char *ORIG_NAME;
 
-    action_timeline_keyframe *_p_parent_keyframe{nullptr};
     action_timeline *_p_timeline{nullptr};
     scripting_helper::scripting_engine *_p_script{nullptr};
     std::map<text_t, hash_t> _ref_params;
@@ -93,7 +91,7 @@ private:
 };
 
 class composite_action : public action {
-    LIVE_OBJECT(composite_action)
+    NODE(composite_action)
 
 protected:
     friend class manager;

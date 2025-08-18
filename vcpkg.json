@@ -3,6 +3,7 @@
     "xxhash",
     {
       "name": "skia",
+      "default-features": false,
       "features": [
         "harfbuzz",
         "freetype",

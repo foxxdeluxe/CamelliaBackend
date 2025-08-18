@@ -1,9 +1,9 @@
 #ifndef CAMELLIA_LIVE_PLAY_STAGE_H
 #define CAMELLIA_LIVE_PLAY_STAGE_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
 #include "activity.h"
 #include "actor.h"
 #include "camellia_macro.h"
@@ -17,12 +17,12 @@ namespace camellia {
 // Forward declarations
 class manager;
 
-class stage : public live_object {
-    LIVE_OBJECT(stage)
+class stage : public node {
+    NODE(stage)
 
 protected:
     friend class manager;
-    explicit stage(manager *p_mgr) : live_object(p_mgr) {}
+    explicit stage(manager *p_mgr) : node(p_mgr) {}
 
 public:
     [[nodiscard]] dialog *get_main_dialog() { return _main_dialog.get(); };
@@ -52,8 +52,6 @@ private:
     integer_t _next_scene_id{0};
 
     number_t _stage_time{0.0F}, _time_to_end{0.0F};
-
-    manager *_p_parent_manager{nullptr};
 
     // Scenes that handle beats and manage activities
     std::vector<std::unique_ptr<scene>> _scenes;

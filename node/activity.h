@@ -1,10 +1,10 @@
 #ifndef CAMELLIA_LIVE_PLAY_ACTIVITY_H
 #define CAMELLIA_LIVE_PLAY_ACTIVITY_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
-#include "../action/action_timeline.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
+#include "action/action_timeline.h"
 #include "camellia_macro.h"
 #include <map>
 #include <memory>
@@ -16,12 +16,12 @@ class stage;
 class actor;
 
 #ifndef SWIG
-class activity : public live_object {
-    LIVE_OBJECT(activity)
+class activity : public node {
+    NODE(activity)
 
 protected:
     friend class manager;
-    explicit activity(manager *p_mgr) : live_object(p_mgr) {}
+    explicit activity(manager *p_mgr) : node(p_mgr) {}
 
 public:
     [[nodiscard]] stage &get_stage() const;
@@ -38,7 +38,6 @@ private:
     stage *_p_stage{nullptr};
     std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     integer_t _aid{-1};
-    actor *_p_parent_actor{nullptr};
 };
 #endif
 

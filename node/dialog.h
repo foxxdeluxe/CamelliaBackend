@@ -1,11 +1,11 @@
 #ifndef CAMELLIA_LIVE_PLAY_DIALOG_H
 #define CAMELLIA_LIVE_PLAY_DIALOG_H
 
-#include "../../attribute_registry.h"
-#include "../../camellia_typedef.h"
-#include "../../data/stage_data.h"
-#include "../../helper/scripting_helper.h"
-#include "../action/action_timeline.h"
+#include "attribute_registry.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
+#include "helper/scripting_helper.h"
+#include "action/action_timeline.h"
 #include "camellia_macro.h"
 #include <memory>
 
@@ -15,12 +15,12 @@ namespace camellia {
 class stage;
 class dialog;
 
-class text_region : public live_object {
-    LIVE_OBJECT(text_region)
+class text_region : public node {
+    NODE(text_region)
 
 protected:
     friend class manager;
-    explicit text_region(manager *p_mgr) : live_object(p_mgr) {}
+    explicit text_region(manager *p_mgr) : node(p_mgr) {}
 
 public:
     using visibility_update_cb = boolean_t (*)(boolean_t is_visible);
@@ -56,7 +56,6 @@ private:
 
     std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     std::shared_ptr<text_region_data> _data{nullptr};
-    dialog *_parent_dialog{nullptr};
     scripting_helper::scripting_engine *_p_transition_script{nullptr};
     visibility_update_cb _visibility_update_cb{nullptr};
     std::map<hash_t, variant> _initial_attributes;
@@ -68,12 +67,12 @@ private:
 #endif
 };
 
-class dialog : public live_object {
-    LIVE_OBJECT(dialog)
+class dialog : public node {
+    NODE(dialog)
 
 protected:
     friend class manager;
-    explicit dialog(manager *p_mgr) : live_object(p_mgr) {}
+    explicit dialog(manager *p_mgr) : node(p_mgr) {}
 
 public:
     number_t update(number_t beat_time);
@@ -82,14 +81,13 @@ public:
 
 #ifndef SWIG
 
-    [[nodiscard]] stage &get_stage() const;
+    [[nodiscard]] stage &get_parent_stage() const;
     void init(stage &st);
     void fina();
     void advance(const std::shared_ptr<dialog_data> &data);
 
 private:
     std::shared_ptr<dialog_data> _current{nullptr};
-    stage *_parent_stage{};
 
     std::unique_ptr<action_timeline> _p_region_life_timeline{get_manager().new_live_object<action_timeline>()};
     boolean_t _use_life_timeline{false};
