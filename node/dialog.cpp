@@ -270,7 +270,7 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     for (auto j = i; j < region_count; j++) {
         _text_regions[j]->fina();
     }
-    _text_regions.erase(_text_regions.begin() + i, _text_regions.end());
+    _text_regions.erase(_text_regions.begin() + static_cast<integer_t>(i), _text_regions.end());
 }
 
 number_t dialog::update(number_t beat_time) {

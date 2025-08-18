@@ -20,6 +20,7 @@ Checks: "*,
         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
         -misc-no-recursion,
         -cppcoreguidelines-pro-type-static-cast-downcast,
+        -cppcoreguidelines-avoid-magic-numbers,
 "
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

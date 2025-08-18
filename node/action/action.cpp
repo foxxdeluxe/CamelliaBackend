@@ -1,6 +1,5 @@
 ﻿#include "action.h"
 #include "attribute_registry.h"
-#include "camellia.h"
 #include "camellia_macro.h"
 #include "node/stage.h"
 #include <format>

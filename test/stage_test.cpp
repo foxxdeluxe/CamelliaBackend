@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
 #include "helper/algorithm_helper.h"

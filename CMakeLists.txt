@@ -115,7 +115,6 @@ install(TARGETS CamelliaBackendStatic
         RUNTIME DESTINATION bin)
 
 # Install header files with directory structure
-install(FILES camellia.h DESTINATION include/camellia)
 install(FILES camellia_typedef.h DESTINATION include/camellia)
 install(FILES variant.h DESTINATION include/camellia)
 install(FILES attribute_registry.h DESTINATION include/camellia)

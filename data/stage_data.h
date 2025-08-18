@@ -8,7 +8,6 @@
 #include <format>
 #include <map>
 #include <memory>
-#include <variant>
 #include <vector>
 
 namespace camellia {

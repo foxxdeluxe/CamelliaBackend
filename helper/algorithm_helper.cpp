@@ -1,6 +1,5 @@
 ﻿
 #include "algorithm_helper.h"
-#include "camellia.h"
 #include "xxhash.h"
 #include <algorithm>
 #include <cmath>
