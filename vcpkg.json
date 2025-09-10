@@ -1,14 +1,20 @@
 {
+  "name": "camelliabackend",
+  "version": "0.1.0",
+  "description": "The core of Camellia Engine - just another visual novel engine",
+  "homepage": "https://github.com/foxxdeluxe/CamelliaBackend",
   "dependencies": [
-    "xxhash",
+    "quickjs-ng",
     {
       "name": "skia",
       "default-features": false,
       "features": [
-        "harfbuzz",
         "freetype",
+        "harfbuzz",
         "icu"
       ]
-    }
+    },
+    "xxhash",
+    "constexpr-xxh3"
   ]
 }

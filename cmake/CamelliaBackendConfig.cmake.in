@@ -1,0 +1,35 @@
+@PACKAGE_INIT@
+
+# CamelliaBackend CMake configuration file
+
+include(CMakeFindDependencyMacro)
+
+# Find dependencies that CamelliaBackend needs
+find_dependency(qjs CONFIG REQUIRED)
+find_dependency(xxHash CONFIG REQUIRED)
+find_dependency(unofficial-skia CONFIG REQUIRED)
+
+# Set path variables
+set_and_check(CamelliaBackend_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/camellia")
+set_and_check(CamelliaBackend_LIB_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+
+# Include the exported targets
+if(NOT TARGET CamelliaBackend::CamelliaBackendStatic)
+    include("${CMAKE_CURRENT_LIST_DIR}/CamelliaBackendTargets.cmake")
+endif()
+
+# Define convenience variables for the user
+set(CamelliaBackend_LIBRARIES CamelliaBackend::CamelliaBackendStatic)
+set(CamelliaBackend_INCLUDE_DIRS ${CamelliaBackend_INCLUDE_DIR})
+
+# Provide both static and shared library targets
+if(TARGET CamelliaBackend::CamelliaBackendStatic)
+    set(CamelliaBackend_STATIC_LIBRARY CamelliaBackend::CamelliaBackendStatic)
+endif()
+
+if(TARGET CamelliaBackend::CamelliaBackendShared)
+    set(CamelliaBackend_SHARED_LIBRARY CamelliaBackend::CamelliaBackendShared)
+endif()
+
+# Mark as found
+check_required_components(CamelliaBackend)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(CamelliaBackend)
+project(CamelliaBackend VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -13,6 +13,7 @@ set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 include(FetchContent)
 include(GenerateExportHeader)
 include(CheckIPOSupported)
+include(GNUInstallDirs)
 
 check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_OUTPUT)
 
@@ -24,20 +25,7 @@ else()
 endif()
 
 # QuickJS-ng
-FetchContent_Declare(
-    quickjs-ng
-    GIT_REPOSITORY https://github.com/quickjs-ng/quickjs.git
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(quickjs-ng)
-
-# constexpr-xxh3 (header-only)
-FetchContent_Declare(
-    constexpr-xxh3
-    GIT_REPOSITORY https://github.com/chys87/constexpr-xxh3.git
-    GIT_TAG main
-)
-FetchContent_MakeAvailable(constexpr-xxh3)
+find_package(qjs CONFIG REQUIRED)
 
 # xxHash
 find_package(xxHash CONFIG REQUIRED)
@@ -45,14 +33,9 @@ find_package(xxHash CONFIG REQUIRED)
 # modified Skia
 find_package(unofficial-skia CONFIG REQUIRED)
 
-
 # Set up include directories
 include_directories(
-    ${PROJECT_SOURCE_DIR} 
-    # QuickJS-ng
-    ${quickjs-ng_SOURCE_DIR}
-    # constexpr-xxh3
-    ${constexpr-xxh3_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}
 )
 
 add_library(
@@ -108,29 +91,11 @@ target_link_libraries(
         CamelliaBackendDeps
 )
 
-# Install the static library
-install(TARGETS CamelliaBackendStatic
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
-
-# Install header files with directory structure
-install(FILES camellia_typedef.h DESTINATION include/camellia)
-install(FILES variant.h DESTINATION include/camellia)
-install(FILES attribute_registry.h DESTINATION include/camellia)
-install(FILES manager.h DESTINATION include/camellia)
-install(FILES data/stage_data.h DESTINATION include/camellia/data)
-install(FILES helper/algorithm_helper.h DESTINATION include/camellia/helper)
-install(FILES helper/scripting_helper.h DESTINATION include/camellia/helper)
-install(FILES helper/text_layout_helper.h DESTINATION include/camellia/helper)
-install(FILES node/action/action_timeline.h DESTINATION include/camellia/node/action)
-install(FILES node/action/action.h DESTINATION include/camellia/node/action)
-install(FILES node/activity.h DESTINATION include/camellia/node)
-install(FILES node/actor.h DESTINATION include/camellia/node)
-install(FILES node/dialog.h DESTINATION include/camellia/node)
-install(FILES node/scene.h DESTINATION include/camellia/node)
-install(FILES node/stage.h DESTINATION include/camellia/node)
-install(FILES ${constexpr-xxh3_SOURCE_DIR}/constexpr-xxh3.h DESTINATION include/camellia/third_party)
+# Set up proper target properties for static library
+set_target_properties(CamelliaBackendStatic PROPERTIES
+    OUTPUT_NAME camellia-backend
+    PUBLIC_HEADER ""
+)
 
 add_library(
     CamelliaBackendShared
@@ -149,6 +114,88 @@ if(UNIX AND NOT APPLE)
 endif()
 
 generate_export_header(CamelliaBackendShared)
+
+# Set up proper target properties for shared library
+set_target_properties(CamelliaBackendShared PROPERTIES
+    OUTPUT_NAME camellia-backend
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    PUBLIC_HEADER ""
+)
+
+# Install all targets with export sets
+install(TARGETS CamelliaBackendStatic CamelliaBackendShared CamelliaBackendDeps
+        EXPORT CamelliaBackendTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install all headers while preserving directory structure
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/camellia
+        FILES_MATCHING PATTERN "*.h"
+        PATTERN "build*" EXCLUDE
+        PATTERN "cmake-build*" EXCLUDE
+        PATTERN "_deps" EXCLUDE
+        PATTERN "test" EXCLUDE
+        PATTERN ".git*" EXCLUDE
+        PATTERN ".cache*" EXCLUDE
+        PATTERN ".idea*" EXCLUDE
+        PATTERN ".vscode*" EXCLUDE
+        PATTERN "vcpkg_installed*" EXCLUDE
+)
+
+# Install the export header
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/camelliabackendshared_export.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/camellia
+)
+
+# Install constexpr-xxh3 header
+find_path(CONSTEXPR_XXH3_INCLUDE_DIR constexpr-xxh3.h REQUIRED)
+install(FILES ${CONSTEXPR_XXH3_INCLUDE_DIR}/constexpr-xxh3.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/camellia
+)
+
+# Install constexpr-xxh3 license file
+find_path(CONSTEXPR_XXH3_LICENSE_DIR copyright PATHS ${CMAKE_BINARY_DIR}/vcpkg_installed/*/share/constexpr-xxh3 REQUIRED)
+install(FILES ${CONSTEXPR_XXH3_LICENSE_DIR}/copyright
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/camellia/licenses
+        RENAME constexpr-xxh3-copyright
+)
+
+# Install the targets export file
+install(EXPORT CamelliaBackendTargets
+        FILE CamelliaBackendTargets.cmake
+        NAMESPACE CamelliaBackend::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CamelliaBackend
+)
+
+# Create and install config files
+include(CMakePackageConfigHelpers)
+
+# Generate the config file
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CamelliaBackendConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/CamelliaBackendConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CamelliaBackend
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
+)
+
+# Generate the version file
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/CamelliaBackendConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+# Install the config files
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/CamelliaBackendConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/CamelliaBackendConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CamelliaBackend
+)
 
 # Testing (placed after dependencies and include dirs so tests inherit them)
 add_subdirectory(test)
