@@ -10,6 +10,8 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
 set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
+option(BUILD_TESTS "Build tests" OFF)
+
 include(FetchContent)
 include(GenerateExportHeader)
 include(CheckIPOSupported)
@@ -198,4 +200,6 @@ install(FILES
 )
 
 # Testing (placed after dependencies and include dirs so tests inherit them)
-add_subdirectory(test)
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
