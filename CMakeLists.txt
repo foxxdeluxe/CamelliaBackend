@@ -159,7 +159,7 @@ install(FILES ${CONSTEXPR_XXH3_INCLUDE_DIR}/constexpr-xxh3.h
 )
 
 # Install constexpr-xxh3 license file
-find_path(CONSTEXPR_XXH3_LICENSE_DIR copyright PATHS ${CMAKE_BINARY_DIR}/vcpkg_installed/*/share/constexpr-xxh3 REQUIRED)
+find_path(CONSTEXPR_XXH3_LICENSE_DIR copyright PATHS ${_VCPKG_INSTALLED_DIR}/*/share/constexpr-xxh3 REQUIRED)
 install(FILES ${CONSTEXPR_XXH3_LICENSE_DIR}/copyright
         DESTINATION ${CMAKE_INSTALL_DATADIR}/camellia/licenses
         RENAME constexpr-xxh3-copyright
