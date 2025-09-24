@@ -42,15 +42,11 @@ void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_a
     _p_timeline->init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
 
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void activity::fina(boolean_t keep_actor) {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
 
     if (!keep_actor) {
@@ -77,7 +73,11 @@ number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, varia
     auto updated = _p_timeline->update(beat_time, _initial_attributes, parent_attributes);
 
     p_actor->get_attributes().update(updated);
-    p_actor->get_attributes().handle_dirty_attributes();
+    const auto &dirty = p_actor->get_attributes().peek_dirty_attributes();
+    for (const auto &h_key : dirty) {
+        get_manager().notify_event(node_attribute_dirty_event(*p_actor, h_key, p_actor->get_attributes().get(h_key)));
+    }
+    p_actor->get_attributes().clear_dirty_attributes();
 
     parent_attributes.push_back(updated);
     auto res = std::max(p_actor->update_children(beat_time, parent_attributes), _p_timeline->get_effective_duration() - beat_time);

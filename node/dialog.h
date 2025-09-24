@@ -34,8 +34,6 @@ public:
     [[nodiscard]] boolean_t pop_should_update_layout() { return std::exchange(_should_update_layout, false); }
     number_t update(number_t region_time);
 
-    void set_visibility_update_cb(visibility_update_cb cb) { _visibility_update_cb = cb; }
-    void set_dirty_attribute_handler(attribute_registry::dirty_attribute_cb cb) { _attributes.set_dirty_attribute_handler(cb); }
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
@@ -57,7 +55,6 @@ private:
     std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     std::shared_ptr<text_region_data> _data{nullptr};
     scripting_helper::scripting_engine *_p_transition_script{nullptr};
-    visibility_update_cb _visibility_update_cb{nullptr};
     std::map<hash_t, variant> _initial_attributes;
     attribute_registry _attributes{};
 

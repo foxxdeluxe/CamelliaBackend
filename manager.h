@@ -4,8 +4,10 @@
 #include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "helper/algorithm_helper.h"
+#include "message.h"
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace camellia {
@@ -17,7 +19,7 @@ class manager;
 
 class node {
 public:
-    virtual ~node() noexcept;
+    virtual ~node() noexcept = default;
     node(const node &) = delete;
     node &operator=(const node &) = delete;
 
@@ -31,9 +33,6 @@ public:
     // Lifecycle callbacks
     using lifecycle_cb = void (*)(node *obj);
 
-    void set_after_init_callback(lifecycle_cb cb) noexcept { _after_init_cb = cb; }
-    void set_before_fina_callback(lifecycle_cb cb) noexcept { _before_fina_cb = cb; }
-
 #ifndef SWIG
     node(node &&) noexcept = delete;
     node &operator=(node &&) noexcept = delete;
@@ -46,12 +45,6 @@ protected:
     hash_t _handle;
     node *_p_parent{nullptr};
 
-    // Optional lifecycle hooks. If set, derived classes should invoke:
-    // - `_after_init_cb(this)` at the end of init
-    // - `_before_fina_cb(this)` at the beginning of fina
-    lifecycle_cb _after_init_cb{nullptr};
-    lifecycle_cb _before_fina_cb{nullptr};
-
     explicit node(manager *p_mgr);
 
     static unsigned int _next_id;
@@ -63,8 +56,9 @@ class manager {
     NAMED_CLASS(manager)
 
 public:
-    enum log_type : char { LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
-    using log_cb = void (*)(const text_t &msg, log_type type);
+    using event_cb = void (*)(unsigned int manager_id, const event &e);
+    static void subscribe_events(event_cb cb);
+    static void unsubscribe_events(event_cb cb);
 
     // Provide stage data to the manager for future use
     void register_stage_data(std::shared_ptr<stage_data> data);
@@ -73,12 +67,11 @@ public:
     // Do some clean up for a stage instance so it can be configured again
     void clean_stage(stage *s) const;
 
-    manager(text_t name, node::lifecycle_cb creation_handler, node::lifecycle_cb deletion_handler, log_cb log_handler)
-        : _name(std::move(name)), _log_handler(log_handler), _live_object_creation_handler(creation_handler), _live_object_deletion_handler(deletion_handler),
-          _id(_next_id++) {}
+    manager(text_t name) : _name(std::move(name)), _id(_next_id++) {}
 
     [[nodiscard]] const text_t &get_name() const noexcept { return _name; }
     [[nodiscard]] std::string get_locator() const noexcept;
+    void notify_event(const event &e) const;
 
 #ifndef SWIG
 
@@ -88,27 +81,17 @@ private:
     // Maps hashes to stage data
     std::unordered_map<hash_t, std::shared_ptr<stage_data>> _stage_data_map;
 
-    log_cb _log_handler{nullptr};
-    node::lifecycle_cb _live_object_creation_handler{nullptr};
-    node::lifecycle_cb _live_object_deletion_handler{nullptr};
+    static std::unordered_set<event_cb> _event_handlers;
     text_t _name;
 
     unsigned int _id{0U};
     static unsigned int _next_id;
 
-    void _notify_live_object_deletion(node *obj) noexcept {
-        if (_live_object_deletion_handler != nullptr) {
-            _live_object_deletion_handler(obj);
-        }
-    }
 #endif
 
 public:
     template <typename T> std::unique_ptr<T> new_live_object() {
         T *obj = new T(this);
-        if (_live_object_creation_handler != nullptr) {
-            _live_object_creation_handler(obj);
-        }
         return std::unique_ptr<T>(obj);
     }
 

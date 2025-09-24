@@ -87,15 +87,11 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
     }
 
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void text_region::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
     _data = nullptr;
     _p_parent = nullptr;
@@ -142,7 +138,7 @@ number_t text_region::update(const number_t region_time) {
     }
 
     try {
-        for (const auto &h_key : _attributes.get_dirty_attributes()) {
+        for (const auto &h_key : _attributes.peek_dirty_attributes()) {
             switch (h_key) {
             case H_TEXT_NAME:
                 _should_update_layout = true;
@@ -204,9 +200,14 @@ number_t text_region::update(const number_t region_time) {
         // TODO: Report warning
     }
 
-    _attributes.handle_dirty_attributes();
+    const auto &dirty = _attributes.peek_dirty_attributes();
+    for (const auto &h_key : dirty) {
+        get_manager().notify_event(node_attribute_dirty_event(*this, h_key, _attributes.get(h_key)));
+    }
+    _attributes.clear_dirty_attributes();
 
-    if (_is_visible != _last_is_visible && _visibility_update_cb != nullptr && _visibility_update_cb(_is_visible)) {
+    if (_is_visible != _last_is_visible) {
+        get_manager().notify_event(node_visibility_update_event(*this, _is_visible));
         _last_is_visible = _is_visible;
     }
 
@@ -221,15 +222,11 @@ stage &dialog::get_parent_stage() const {
 void dialog::init(stage &st) {
     _p_parent = &st;
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void dialog::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
     _p_parent = nullptr;
 

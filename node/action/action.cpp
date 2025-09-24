@@ -19,15 +19,11 @@ void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyf
     _p_parent = parent;
 
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void action::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
 
     _is_initialized = false;
     _p_base_data = nullptr;

@@ -1,12 +1,12 @@
 #ifndef CAMELLIA_LIVE_PLAY_STAGE_H
 #define CAMELLIA_LIVE_PLAY_STAGE_H
 
-#include "attribute_registry.h"
-#include "camellia_typedef.h"
-#include "data/stage_data.h"
 #include "activity.h"
 #include "actor.h"
+#include "attribute_registry.h"
 #include "camellia_macro.h"
+#include "camellia_typedef.h"
+#include "data/stage_data.h"
 #include "dialog.h"
 #include "scene.h"
 #include <memory>
@@ -25,8 +25,11 @@ protected:
     explicit stage(manager *p_mgr) : node(p_mgr) {}
 
 public:
-    [[nodiscard]] dialog *get_main_dialog() { return _main_dialog.get(); };
-    [[nodiscard]] actor *get_actor(integer_t aid) { return _actors.at(aid).get(); };
+    [[nodiscard]] dialog *get_main_dialog() { return _main_dialog.get(); }
+    [[nodiscard]] actor *get_actor(integer_t aid) {
+        auto it = _actors.find(aid);
+        return it != _actors.end() ? it->second.get() : nullptr;
+    }
 
     actor &allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid);
     void collect_actor(integer_t aid);

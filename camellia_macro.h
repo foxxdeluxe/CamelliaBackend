@@ -1,7 +1,6 @@
 #ifndef CAMELLIA_MACROS_H
 #define CAMELLIA_MACROS_H
 
-#ifndef SWIG
 #define RETURN_IF_NULL(P, X)                                                                                                                                   \
     if (P == nullptr) [[unlikely]]                                                                                                                             \
     return X
@@ -26,15 +25,11 @@
     static constexpr std::string get_class_name() { return #N; }                                                                                               \
     static_assert(sizeof(N *));
 
-#define NODE(N)                                                                                                                                         \
+#define NODE(N)                                                                                                                                                \
     NAMED_CLASS(N)                                                                                                                                             \
 public:                                                                                                                                                        \
     [[nodiscard]] hash_t get_type() const noexcept override { return algorithm_helper::calc_hash_const(#N); }                                                  \
                                                                                                                                                                \
 private:
-
-#else
-#define NODE(N)
-#endif
 
 #endif // CAMELLIA_MACROS_H

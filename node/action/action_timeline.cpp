@@ -85,15 +85,11 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
 
     _is_initialized = true;
 
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void action_timeline_keyframe::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
 
     _is_initialized = false;
     _data = nullptr;
@@ -156,15 +152,11 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
 
     _is_initialized = true;
 
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void action_timeline::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
 
     _is_initialized = false;
     _data.clear();

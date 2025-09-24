@@ -1,43 +1,46 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
+#include "camellia_typedef.h"
 #include "helper/algorithm_helper.h"
+#include "manager.h"
+#include "message.h"
 #include "node/dialog.h"
 #include "node/stage.h"
-#include "manager.h"
+#include "variant.h"
 
 using namespace camellia;
 
 // Simple wrappers via callbacks: capture created text regions for assertions
 namespace {
-std::map<hash_t, text_region *> &text_regions() {
-    static std::map<hash_t, text_region *> regions;
+std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> &text_regions() {
+    static std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> regions;
     return regions;
 }
 
-void on_live_object_created(node *obj) {
-    std::cout << typeid(*obj).name() << " = " << obj->get_handle() << " created" << '\n';
-    if (auto *tr = dynamic_cast<text_region *>(obj)) {
-        // Accept all visibility updates; we do not assert on them here
-        tr->set_visibility_update_cb(+[](boolean_t) -> boolean_t { return true; });
-        // Accept all dirty attribute updates; assertions read attributes directly
-        tr->set_dirty_attribute_handler(+[](hash_t, const variant &) -> boolean_t { return true; });
-        text_regions().emplace(tr->get_handle(), tr);
-    }
+std::map<unsigned int, manager *> &managers() {
+    static std::map<unsigned int, manager *> managers;
+    return managers;
 }
 
-void on_live_object_deleted(node *obj) {
-    std::cout << obj->get_handle() << " deleted" << '\n';
-    if (auto *tr = dynamic_cast<text_region *>(obj)) {
-        text_regions().erase(tr->get_handle());
-        std::cout << "text_region deleted" << '\n';
-    }
-}
+void on_event(unsigned int manager_id, const event &e) {
+    auto *mgr = managers().at(manager_id);
 
-void on_log(const text_t & /*msg*/, manager::log_type /*type*/) {
-    // Silence logs in tests
+    if (e.get_event_type() == camellia::EVENT_NODE_INIT) {
+        const auto *nce = static_cast<const node_init_event *>(&e);
+        if (nce->node_type == algorithm_helper::calc_hash_const("text_region")) {
+            text_regions()[nce->node_handle] = std::unordered_map<hash_t, camellia::variant>();
+        }
+    } else if (e.get_event_type() == EVENT_NODE_ATTRIBUTE_DIRTY) {
+        const auto *nde = static_cast<const node_attribute_dirty_event *>(&e);
+        if (text_regions().contains(nde->node_handle)) {
+            text_regions()[nde->node_handle][nde->attribute_key] = *nde->attribute_value;
+        }
+    }
 }
 
 constexpr number_t kTimelineDuration = 10.0F;
@@ -53,7 +56,10 @@ class stage_test : public ::testing::Test {
 protected:
     void SetUp() override {
         text_regions().clear();
-        _manager = std::make_unique<manager>("test", on_live_object_created, on_live_object_deleted, on_log);
+        _manager = std::make_unique<manager>("test");
+        managers().insert({_manager->get_id(), _manager.get()});
+
+        _manager->subscribe_events(on_event);
         _stage = _manager->new_live_object<stage>();
     }
 
@@ -61,6 +67,7 @@ protected:
         _stage.reset();
         _manager.reset();
         text_regions().clear();
+        managers().clear();
     }
 
     std::unique_ptr<manager> _manager;
@@ -171,13 +178,13 @@ TEST_F(stage_test, simulation) {
     EXPECT_TRUE(p_actor->get_attributes().get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(1.0F, 2.0F, 3.0F)));
 
     ASSERT_EQ(text_regions().size(), 1);
-    EXPECT_EQ(text_regions().begin()->second->get_current_text(), "test_text_1");
+    EXPECT_EQ(text_regions().begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_1");
 
     EXPECT_NO_THROW(_stage->advance());
     EXPECT_NO_THROW(_stage->update(kUpdateTime30));
 
     ASSERT_EQ(text_regions().size(), 1);
-    EXPECT_EQ(text_regions().begin()->second->get_current_text(), "test_text_2");
+    EXPECT_EQ(text_regions().begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_2");
 
     EXPECT_NO_THROW(_stage->fina());
 }

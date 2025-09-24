@@ -2,11 +2,16 @@
 #include "manager.h"
 #include "camellia_macro.h"
 #include "data/stage_data.h"
+#include "message.h"
 #include "node/stage.h"
 #include <format>
 #include <stdexcept>
 
 namespace camellia {
+
+void manager::subscribe_events(event_cb cb) { _event_handlers.insert(cb); }
+
+void manager::unsubscribe_events(event_cb cb) { _event_handlers.erase(cb); }
 
 void manager::register_stage_data(std::shared_ptr<stage_data> data) {
     REQUIRES_NOT_NULL(data);
@@ -30,11 +35,16 @@ void manager::clean_stage(stage *s) const {
 
 std::string manager::get_locator() const noexcept { return std::format("Manager({})", _name); }
 
+void manager::notify_event(const event &e) const {
+    for (const auto &cb : _event_handlers) {
+        cb(get_id(), e);
+    }
+}
+
 unsigned int manager::_next_id = 0U;
+std::unordered_set<manager::event_cb> manager::_event_handlers{};
 
 unsigned int node::_next_id = 0U;
-
-node::~node() noexcept { _p_mgr->_notify_live_object_deletion(this); }
 
 node::node(manager *p_mgr) : _handle(static_cast<hash_t>(p_mgr->get_id()) << 32ULL | _next_id++), _p_mgr(p_mgr) {}
 

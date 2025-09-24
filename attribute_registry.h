@@ -10,8 +10,6 @@
 namespace camellia {
 class attribute_registry {
 public:
-    using dirty_attribute_cb = boolean_t (*)(hash_t key, const variant &val);
-
     void add(hash_t h_key, const variant &val);
     boolean_t contains_key(hash_t h_key);
     boolean_t remove(hash_t h_key);
@@ -20,9 +18,8 @@ public:
     void clear();
     [[nodiscard]] size_t get_count() const;
     void reset();
-    [[nodiscard]] const std::unordered_set<hash_t> &get_dirty_attributes() const { return _dirty_attributes; }
-    void set_dirty_attribute_handler(dirty_attribute_cb cb) { _dirty_attribute_handler = cb; }
-    void handle_dirty_attributes();
+    [[nodiscard]] const std::unordered_set<hash_t> &peek_dirty_attributes() const { return _dirty_attributes; }
+    void clear_dirty_attributes() { _dirty_attributes.clear(); }
     void update(const std::map<hash_t, variant> &values);
 
 #ifndef SWIG
@@ -31,7 +28,6 @@ public:
 private:
     std::map<hash_t, variant> _attributes;
     std::unordered_set<hash_t> _dirty_attributes;
-    dirty_attribute_cb _dirty_attribute_handler{nullptr};
 #endif
 };
 

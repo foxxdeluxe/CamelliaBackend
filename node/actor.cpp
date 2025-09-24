@@ -60,9 +60,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     }
 
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    get_manager().notify_event(node_init_event(*this));
 }
 
 number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
@@ -74,9 +72,7 @@ number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t,
 }
 
 void actor::fina(boolean_t keep_children) {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
     _p_data = nullptr;
     _p_parent = nullptr;

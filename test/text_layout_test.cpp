@@ -11,7 +11,7 @@
 using namespace camellia;
 
 TEST(text_layout_test, test_text_layout) {
-    std::ifstream font_file("/usr/share/fonts/open-sans/OpenSans-Regular.ttf", std::ios::binary);
+    std::ifstream font_file("/usr/share/fonts/TTF/OpenSans-Regular.ttf", std::ios::binary);
     bytes_t font_data;
     font_file.seekg(0, std::ios::end);
     font_data.resize(font_file.tellg());

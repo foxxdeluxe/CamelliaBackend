@@ -73,15 +73,12 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
 
     get_main_dialog()->init(*this);
     _is_initialized = true;
-    if (_after_init_cb != nullptr) {
-        _after_init_cb(this);
-    }
+    
+    get_manager().notify_event(node_init_event(*this));
 }
 
 void stage::fina() {
-    if (_before_fina_cb != nullptr) {
-        _before_fina_cb(this);
-    }
+    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
     get_main_dialog()->fina();
 

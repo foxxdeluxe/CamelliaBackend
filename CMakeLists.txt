@@ -62,8 +62,10 @@ add_library(
         variant.cpp
         helper/algorithm_helper.cpp
         helper/scripting_helper.cpp
+        helper/serialization_helper.cpp
         helper/text_layout_helper.cpp
         manager.cpp
+        message.cpp
         node/activity.cpp
         node/actor.cpp
         node/dialog.cpp

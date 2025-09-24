@@ -35,8 +35,6 @@ public:
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
 
-    void set_dirty_attribute_handler(attribute_registry::dirty_attribute_cb cb) { _attributes.set_dirty_attribute_handler(cb); }
-
     constexpr static text_t POSITION_NAME = "position";
     constexpr static text_t SCALE_NAME = "scale";
     constexpr static text_t ROTATION_NAME = "rotation";
