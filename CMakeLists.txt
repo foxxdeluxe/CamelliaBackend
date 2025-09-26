@@ -7,8 +7,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 
-set(EXPORT_CSHARP_LIB_DIR "${CMAKE_BINARY_DIR}/export/csharp/lib")
-set(EXPORT_CSHARP_GLUE_DIR "${CMAKE_BINARY_DIR}/export/csharp/glue")
 
 option(BUILD_TESTS "Build tests" OFF)
 
@@ -74,7 +72,6 @@ add_library(
         node/action/action.cpp
         node/action/action_timeline.cpp
         attribute_registry.cpp
-        data/stage_data.cpp
 )
 
 # Link dependencies to CamelliaBackendObject for compilation

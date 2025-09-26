@@ -17,7 +17,6 @@ public:
     variant guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type);
     void set_property(const std::string &prop_name, const variant &prop_val);
 
-#ifndef SWIG
     scripting_engine(const scripting_engine &other) = delete;
     scripting_engine &operator=(const scripting_engine &other) = delete;
     scripting_engine(scripting_engine &&other) noexcept = delete;
@@ -48,7 +47,6 @@ private:
     JSValue _new_typed_array(JSTypedArrayEnum array_type, size_t length, void *&data);
     void *_get_typed_array(JSValue typed_array, size_t &data_size) const;
     scripting_engine_error _get_exception();
-#endif
 };
 
 } // namespace camellia::scripting_helper

@@ -2,7 +2,6 @@
 #define CAMELLIA_DATA_STAGE_DATA_H
 
 #include "../camellia_typedef.h"
-#include "../helper/text_layout_helper.h"
 #include "../variant.h"
 #include "helper/algorithm_helper.h"
 #include <format>
@@ -30,20 +29,13 @@ struct action_data {
     std::map<text_t, variant> default_params;
 
     [[nodiscard]] virtual action_types get_action_type() const { return ACTION_INVALID; }
-    virtual ~action_data() = default;
-    action_data() = default;
-    action_data(const action_data &other) = default;
-    action_data &operator=(const action_data &other) = default;
 
     [[nodiscard]] boolean_t is_valid() const {
         auto type = get_action_type();
         return h_action_name != 0ULL && type > ACTION_TYPE_MIN && type < ACTION_TYPE_MAX;
     }
-
-#ifndef SWIG
-    action_data(action_data &&other) noexcept = default;
-    action_data &operator=(action_data &&other) noexcept = default;
-#endif
+    
+    virtual ~action_data() = default;
 };
 
 struct action_timeline_keyframe_data {
@@ -135,16 +127,9 @@ struct text_region_attachment_data {
     number_t rotation{0.0F};
 
     [[nodiscard]] virtual attachment_types get_attachment_type() const { return INVALID_ATTACHMENT; }
-    virtual ~text_region_attachment_data() = default;
-    text_region_attachment_data() = default;
-    text_region_attachment_data(const text_region_attachment_data &other) = default;
-    text_region_attachment_data &operator=(const text_region_attachment_data &other) = default;
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
-#ifndef SWIG
-    text_region_attachment_data(text_region_attachment_data &&other) noexcept = default;
-    text_region_attachment_data &operator=(text_region_attachment_data &&other) noexcept = default;
-#endif
+    virtual ~text_region_attachment_data() = default;
 };
 
 struct text_region_attachment_text_data : public text_region_attachment_data {
@@ -237,15 +222,12 @@ struct stage_data {
     stage_data &operator=(const stage_data &other);
     [[nodiscard]] boolean_t is_valid() const { return h_stage_name != 0ULL && default_text_style != nullptr && default_text_style->is_valid(); }
 
-#ifndef SWIG
     stage_data(stage_data &&other) noexcept = default;
     stage_data &operator=(stage_data &&other) noexcept = default;
-#endif
 };
 
 } // namespace camellia
 
-#ifndef SWIG
 template <> struct std::formatter<camellia::action_data::action_types> {
     static constexpr auto parse(const std::format_parse_context &ctx) { return ctx.begin(); }
 
@@ -267,6 +249,5 @@ template <> struct std::formatter<camellia::action_data::action_types> {
 private:
     std::formatter<std::string> fmt;
 };
-#endif
 
 #endif // CAMELLIA_DATA_STAGE_DATA_H

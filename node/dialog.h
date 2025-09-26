@@ -1,12 +1,13 @@
 #ifndef CAMELLIA_LIVE_PLAY_DIALOG_H
 #define CAMELLIA_LIVE_PLAY_DIALOG_H
 
+#include "action/action_timeline.h"
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
 #include "helper/scripting_helper.h"
-#include "action/action_timeline.h"
-#include "camellia_macro.h"
+#include "helper/text_layout_helper.h"
 #include <memory>
 
 namespace camellia {
@@ -34,10 +35,7 @@ public:
     [[nodiscard]] boolean_t pop_should_update_layout() { return std::exchange(_should_update_layout, false); }
     number_t update(number_t region_time);
 
-
     [[nodiscard]] std::string get_locator() const noexcept override;
-
-#ifndef SWIG
 
     [[nodiscard]] dialog &get_parent_dialog() const;
     virtual void init(const std::shared_ptr<text_region_data> &data, dialog &parent);
@@ -61,7 +59,6 @@ private:
     text_layout_helper::text_style _text_style;
 
     boolean_t _is_visible{false}, _last_is_visible{false}, _should_update_layout{false};
-#endif
 };
 
 class dialog : public node {
@@ -76,8 +73,6 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-#ifndef SWIG
-
     [[nodiscard]] stage &get_parent_stage() const;
     void init(stage &st);
     void fina();
@@ -91,7 +86,6 @@ private:
     boolean_t _hide_inactive_regions{true};
 
     std::vector<std::unique_ptr<text_region>> _text_regions;
-#endif
 };
 
 } // namespace camellia

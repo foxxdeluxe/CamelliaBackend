@@ -34,7 +34,6 @@ struct event {
 };
 
 struct node_event : public event {
-    hash_t node_type{0ULL};
     hash_t node_handle{0ULL};
 
     explicit node_event(const node &n);
@@ -42,6 +41,9 @@ struct node_event : public event {
 };
 
 struct node_init_event : public node_event {
+    hash_t node_type{0ULL};
+    hash_t parent_handle{0ULL};
+
     explicit node_init_event(const node &n);
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_INIT; }
 };

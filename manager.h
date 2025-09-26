@@ -30,10 +30,6 @@ public:
     [[nodiscard]] virtual boolean_t is_initialized() const noexcept { return _is_initialized; }
     [[nodiscard]] node *get_parent() const noexcept { return _p_parent; }
 
-    // Lifecycle callbacks
-    using lifecycle_cb = void (*)(node *obj);
-
-#ifndef SWIG
     node(node &&) noexcept = delete;
     node &operator=(node &&) noexcept = delete;
 
@@ -48,8 +44,6 @@ protected:
     explicit node(manager *p_mgr);
 
     static unsigned int _next_id;
-
-#endif
 };
 
 class manager {
@@ -60,8 +54,11 @@ public:
     static void subscribe_events(event_cb cb);
     static void unsubscribe_events(event_cb cb);
 
-    // Provide stage data to the manager for future use
-    void register_stage_data(std::shared_ptr<stage_data> data);
+    // Provide a stage data to the manager for future use
+    hash_t register_stage_data(std::shared_ptr<stage_data> data);
+    hash_t register_stage_data(bytes_t data);
+    // Dereference a stage data from the manager
+    void unregister_stage_data(hash_t h_stage_name);
     // Initialize a stage instance with the specified stage data
     void configure_stage(stage *s, hash_t h_stage_name);
     // Do some clean up for a stage instance so it can be configured again
@@ -72,8 +69,6 @@ public:
     [[nodiscard]] const text_t &get_name() const noexcept { return _name; }
     [[nodiscard]] std::string get_locator() const noexcept;
     void notify_event(const event &e) const;
-
-#ifndef SWIG
 
 private:
     friend class node;
@@ -86,8 +81,6 @@ private:
 
     unsigned int _id{0U};
     static unsigned int _next_id;
-
-#endif
 
 public:
     template <typename T> std::unique_ptr<T> new_live_object() {

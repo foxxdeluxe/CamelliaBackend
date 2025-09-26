@@ -1,6 +1,7 @@
 ﻿
 #include "manager.h"
 #include "camellia_macro.h"
+#include "camellia_typedef.h"
 #include "data/stage_data.h"
 #include "message.h"
 #include "node/stage.h"
@@ -13,10 +14,18 @@ void manager::subscribe_events(event_cb cb) { _event_handlers.insert(cb); }
 
 void manager::unsubscribe_events(event_cb cb) { _event_handlers.erase(cb); }
 
-void manager::register_stage_data(std::shared_ptr<stage_data> data) {
+hash_t manager::register_stage_data(std::shared_ptr<stage_data> data) {
     REQUIRES_NOT_NULL(data);
     _stage_data_map.emplace(data->h_stage_name, data);
+    return data->h_stage_name;
 }
+
+hash_t manager::register_stage_data(bytes_t data) {
+    // TODO: Implement deserialization logic
+    return 0ULL;
+}
+
+void manager::unregister_stage_data(hash_t h_stage_name) { _stage_data_map.erase(h_stage_name); }
 
 void manager::configure_stage(stage *s, hash_t h_stage_name) {
     REQUIRES_NOT_NULL(s);

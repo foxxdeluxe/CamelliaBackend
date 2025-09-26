@@ -22,13 +22,11 @@ public:
     void clear_dirty_attributes() { _dirty_attributes.clear(); }
     void update(const std::map<hash_t, variant> &values);
 
-#ifndef SWIG
     void set(hash_t h_key, variant &&val);
 
 private:
     std::map<hash_t, variant> _attributes;
     std::unordered_set<hash_t> _dirty_attributes;
-#endif
 };
 
 } // namespace camellia

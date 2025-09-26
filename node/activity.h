@@ -1,11 +1,11 @@
 #ifndef CAMELLIA_LIVE_PLAY_ACTIVITY_H
 #define CAMELLIA_LIVE_PLAY_ACTIVITY_H
 
+#include "action/action_timeline.h"
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
-#include "action/action_timeline.h"
-#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -15,7 +15,6 @@ namespace camellia {
 class stage;
 class actor;
 
-#ifndef SWIG
 class activity : public node {
     NODE(activity)
 
@@ -39,7 +38,6 @@ private:
     std::unique_ptr<action_timeline> _p_timeline{get_manager().new_live_object<action_timeline>()};
     integer_t _aid{-1};
 };
-#endif
 
 } // namespace camellia
 

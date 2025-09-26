@@ -2,10 +2,10 @@
 #define CAMELLIA_LIVE_ACTION_ACTION_H
 
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
 #include "helper/scripting_helper.h"
-#include "camellia_macro.h"
 #include "variant.h"
 #include <map>
 #include <memory>
@@ -16,7 +16,6 @@ namespace camellia {
 class action_timeline;
 class action_timeline_keyframe;
 
-#ifndef SWIG
 class action : public node {
     NODE(action)
 
@@ -108,7 +107,6 @@ public:
 private:
     std::unique_ptr<action_timeline> _p_timeline{nullptr};
 };
-#endif
 
 } // namespace camellia
 

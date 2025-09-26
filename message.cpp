@@ -11,9 +11,9 @@ bytes_t event::serialize() const {
     return result;
 }
 
-node_event::node_event(const node &n) : node_type(n.get_type()), node_handle(n.get_handle()) {}
+node_event::node_event(const node &n) : node_handle(n.get_handle()) {}
 
-node_init_event::node_init_event(const node &n) : node_event(n) {}
+node_init_event::node_init_event(const node &n) : node_event(n), node_type(n.get_type()), parent_handle(n.get_parent() != nullptr ? n.get_parent()->get_handle() : 0ULL) {}
 
 node_fina_event::node_fina_event(const node &n) : node_event(n) {}
 

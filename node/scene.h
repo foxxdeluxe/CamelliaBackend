@@ -1,11 +1,11 @@
 #ifndef CAMELLIA_LIVE_PLAY_SCENE_H
 #define CAMELLIA_LIVE_PLAY_SCENE_H
 
+#include "activity.h"
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
-#include "activity.h"
-#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -14,7 +14,6 @@ namespace camellia {
 // Forward declarations
 class stage;
 
-#ifndef SWIG
 class scene : public node {
     NODE(scene)
 
@@ -45,7 +44,6 @@ private:
     // Map of activity_id to activity instances - retains state between beats like actors do
     std::map<integer_t, std::unique_ptr<activity>> _activities;
 };
-#endif
 
 } // namespace camellia
 

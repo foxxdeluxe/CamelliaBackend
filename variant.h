@@ -28,9 +28,7 @@ struct vector2 {
 
     void set_y(number_t y);
 
-#ifndef SWIG
     std::array<number_t, 2> dim;
-#endif
 };
 
 struct vector3 {
@@ -50,9 +48,7 @@ struct vector3 {
 
     void set_z(number_t z);
 
-#ifndef SWIG
     std::array<number_t, 3> dim;
-#endif
 };
 
 struct vector4 {
@@ -76,9 +72,7 @@ struct vector4 {
 
     void set_w(number_t w);
 
-#ifndef SWIG
     std::array<number_t, 4> dim;
-#endif
 };
 
 class variant {
@@ -136,18 +130,6 @@ public:
 
     constexpr static char ESCAPE_CHAR = '\\';
 
-#ifdef SWIG
-   variant(integer_t i);
-   variant(number_t n);
-   variant(boolean_t b);
-   variant(const text_t &t, boolean_t is_error = false);
-   variant(const vector2 &v);
-   variant(const vector3 &v);
-   variant(const vector4 &v);
-   variant(const bytes_t &b);
-   variant(const std::vector<variant> &a);
-   variant(hash_t h);
-#else
     variant(const variant &v) = default;
     variant &operator=(variant &&v) noexcept;
     variant(variant &&v) noexcept;
@@ -186,12 +168,10 @@ private:
     variant_storage _data;
 
     explicit variant(types t);
-#endif
 };
 
 } // namespace camellia
 
-#ifndef SWIG
 template <> struct std::formatter<camellia::variant::types> {
     static constexpr auto parse(const std::format_parse_context &ctx) { return ctx.begin(); }
 
@@ -243,6 +223,5 @@ template <> struct std::formatter<camellia::variant::types> {
 private:
     std::formatter<std::string> fmt;
 };
-#endif
 
 #endif // CAMELLIA_VARIANT_H

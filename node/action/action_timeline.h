@@ -16,7 +16,6 @@ class stage;
 class action_timeline;
 class modifier_action;
 
-#ifndef SWIG
 class action_timeline_keyframe : public node {
     NODE(action_timeline_keyframe)
 
@@ -95,7 +94,6 @@ private:
 
     stage *_p_stage{nullptr};
 };
-#endif
 
 } // namespace camellia
 

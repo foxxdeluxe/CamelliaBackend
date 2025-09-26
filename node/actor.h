@@ -1,11 +1,11 @@
 #ifndef CAMELLIA_LIVE_PLAY_ACTOR_H
 #define CAMELLIA_LIVE_PLAY_ACTOR_H
 
+#include "activity.h"
 #include "attribute_registry.h"
+#include "camellia_macro.h"
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
-#include "activity.h"
-#include "camellia_macro.h"
 #include <map>
 #include <memory>
 
@@ -27,8 +27,6 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-#ifndef SWIG
-
     [[nodiscard]] activity &get_parent_activity() const;
     [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
     void init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent);
@@ -44,7 +42,6 @@ private:
     std::map<integer_t, std::unique_ptr<activity>> _children;
     stage *_p_stage{nullptr};
     attribute_registry _attributes;
-#endif
 };
 
 } // namespace camellia

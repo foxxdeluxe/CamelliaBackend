@@ -71,11 +71,9 @@ public:
 
     [[nodiscard]] const std::vector<std::unique_ptr<deco_info>> &get_shapes() const;
 
-#ifndef SWIG
 private:
     friend class text_paragraph;
     std::unique_ptr<interceptor_painter_impl> _impl;
-#endif
 };
 
 class paragraph_style {
@@ -123,11 +121,9 @@ public:
     void set_text_overflow(text_overflow overflow);
     [[nodiscard]] text_overflow get_text_overflow() const;
 
-#ifndef SWIG
 private:
     friend text_layout_engine;
     std::unique_ptr<paragraph_style_impl> _impl;
-#endif
 };
 
 class text_style {
@@ -177,7 +173,7 @@ public:
 
     // Text decoration
     enum class text_decoration : char { NONE = 0, UNDERLINE = 1, OVERLINE = 2, LINE_THROUGH = 4 };
-    
+
     static boolean_t is_valid_text_decoration(text_decoration decoration) {
         switch (decoration) {
         case text_decoration::NONE:
@@ -192,7 +188,7 @@ public:
 
     // Text decoration style
     enum class decoration_style : char { SOLID, DOUBLE, DOTTED, DASHED, WAVY };
-    
+
     static boolean_t is_valid_decoration_style(decoration_style style) {
         switch (style) {
         case decoration_style::SOLID:
@@ -258,12 +254,10 @@ public:
     void set_word_spacing(number_t spacing);
     [[nodiscard]] number_t get_word_spacing() const;
 
-#ifndef SWIG
 private:
     friend class text_paragraph;
     friend class text_layout_engine;
     std::unique_ptr<text_style_impl> _impl;
-#endif
 };
 
 class font {
@@ -322,12 +316,10 @@ public:
     void set_edging(edging edge);
     [[nodiscard]] edging get_edging() const;
 
-#ifndef SWIG
 private:
     friend class text_paragraph;
     friend class text_layout_engine;
     std::unique_ptr<font_impl> _impl;
-#endif
 };
 
 struct visit_info {
@@ -385,7 +377,6 @@ public:
     text_paragraph &operator=(text_paragraph &&other) noexcept;
     ~text_paragraph();
 
-#ifndef SWIG
     using visit_foreground_cb = std::function<void(const foreground_visit_info &)>;
     using visit_background_cb = std::function<void(const shape_visit_info &)>;
     using visit_decoration_cb = std::function<void(const shape_visit_info &)>;
@@ -396,7 +387,6 @@ public:
 private:
     friend text_layout_engine;
     std::unique_ptr<text_paragraph_impl> _impl;
-#endif
 };
 
 // Create a paragraph consists of styled text segments
@@ -424,10 +414,8 @@ public:
     font create_font() const;
     font create_font(number_t size) const;
 
-#ifndef SWIG
 private:
     std::unique_ptr<text_layout_engine_impl> _impl;
-#endif
 };
 
 } // namespace camellia::text_layout_helper

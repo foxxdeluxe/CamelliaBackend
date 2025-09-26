@@ -26,7 +26,6 @@ consteval hash_t calc_hash_const(std::string_view str) noexcept {
     return hash;
 }
 
-#ifndef SWIG
 template <typename T> integer_t compare_to(T a, T b) {
     if (a > b) {
         return 1;
@@ -70,7 +69,6 @@ template <class T> integer_t lower_bound(const std::vector<T> &list, std::functi
 }
 
 hash_t calc_hash(const char *str) noexcept;
-#endif
 
 } // namespace camellia::algorithm_helper
 

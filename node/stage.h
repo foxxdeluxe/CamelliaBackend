@@ -39,8 +39,6 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-#ifndef SWIG
-
     void init(const std::shared_ptr<stage_data> &data, manager &parent);
     void fina();
 
@@ -64,7 +62,6 @@ private:
     std::unique_ptr<dialog> _main_dialog{get_manager().new_live_object<dialog>()};
 
     void _set_beat(const std::shared_ptr<beat_data> &beat);
-#endif
 };
 
 } // namespace camellia
