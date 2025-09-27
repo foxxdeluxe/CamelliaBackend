@@ -1,11 +1,15 @@
 ﻿#include "variant.h"
+#include "camellia_typedef.h"
 #include "helper/algorithm_helper.h"
+#include "helper/serialization_helper.h"
+#include "variant_generated.h"
 #include <cstdio>
 #include <cstring>
+#include <flatbuffers/buffer.h>
 #include <sstream>
 #include <string>
 #include <variant>
-#include "helper/serialization_helper.h"
+#include <vector>
 
 #define IMPL_VECTOR_COMMON_OPS(X)                                                                                                                              \
     bool vector##X ::operator==(const vector##X &other) const {                                                                                                \
@@ -709,6 +713,150 @@ bytes_t variant::to_binary() const {
     }
 
     return result;
+}
+
+variant variant::from_flatbuffers(const fb::Variant &v) {
+    variant res;
+    switch (v.data_type()) {
+    case fb::VariantData_error_value:
+        res._type = ERROR;
+        res._data = v.data_as_error_value()->c_str();
+        break;
+    case fb::VariantData_NONE:
+        res._type = VOID;
+        break;
+    case fb::VariantData_integer_value:
+        res._type = INTEGER;
+        res._data = v.data_as_integer_value()->value();
+        break;
+    case fb::VariantData_number_value:
+        res._type = NUMBER;
+        res._data = v.data_as_number_value()->value();
+        break;
+    case fb::VariantData_boolean_value:
+        res._type = BOOLEAN;
+        res._data = v.data_as_boolean_value()->value();
+        break;
+    case fb::VariantData_text_value:
+        res._type = TEXT;
+        res._data = v.data_as_text_value()->c_str();
+        break;
+    case fb::VariantData_vector2_value: {
+        const auto *vec = v.data_as_vector2_value();
+        res._type = VECTOR2;
+        res._data = vector2(vec->x(), vec->y());
+        break;
+    }
+    case fb::VariantData_vector3_value: {
+        const auto *vec = v.data_as_vector3_value();
+        res._type = VECTOR3;
+        res._data = vector3(vec->x(), vec->y(), vec->z());
+        break;
+    }
+    case fb::VariantData_vector4_value: {
+        const auto *vec = v.data_as_vector4_value();
+        res._type = VECTOR4;
+        res._data = vector4(vec->x(), vec->y(), vec->z(), vec->w());
+        break;
+    }
+    case fb::VariantData_bytes_value: {
+        const auto *b = v.data_as_bytes_value()->value();
+        res._type = BYTES;
+        res._data = bytes_t(b->begin(), b->end());
+        break;
+    }
+    case fb::VariantData_array_value: {
+        const auto *arr = v.data_as_array_value()->value();
+        res._type = ARRAY;
+        std::vector<variant> vec;
+        vec.reserve(arr->size());
+
+        for (const auto *item : *arr) {
+            vec.push_back(from_flatbuffers(*item));
+        }
+        res._data = vec;
+
+        break;
+    }
+    case fb::VariantData_attribute_value:
+        res._type = ATTRIBUTE;
+        res._data = v.data_as_attribute_value()->value();
+        break;
+    }
+
+    return res;
+}
+
+flatbuffers::Offset<fb::Variant> variant::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    fb::VariantData native_type{fb::VariantData_NONE};
+    flatbuffers::Offset<void> data_offset{0};
+    switch (_type) {
+    case ERROR:
+        native_type = fb::VariantData_error_value;
+        data_offset = builder.CreateString(get_text().c_str()).o;
+        break;
+    case VOID:
+        break;
+    case INTEGER:
+        native_type = fb::VariantData_integer_value;
+        data_offset = fb::CreateInt32Value(builder, static_cast<integer_t>(*this)).o;
+        break;
+    case NUMBER:
+        native_type = fb::VariantData_number_value;
+        data_offset = fb::CreateFloatValue(builder, static_cast<number_t>(*this)).o;
+        break;
+    case BOOLEAN:
+        native_type = fb::VariantData_boolean_value;
+        data_offset = fb::CreateBoolValue(builder, static_cast<boolean_t>(*this)).o;
+        break;
+    case TEXT:
+        native_type = fb::VariantData_text_value;
+        data_offset = builder.CreateString(get_text().c_str()).o;
+        break;
+    case VECTOR2: {
+        const auto& vec = get_vector2();
+        native_type = fb::VariantData_vector2_value;
+        data_offset = fb::CreateVector2(builder, vec.get_x(), vec.get_y()).o;
+        break;
+    }
+    case VECTOR3: {
+        const auto& vec = get_vector3();
+        native_type = fb::VariantData_vector3_value;
+        data_offset = fb::CreateVector3(builder, vec.get_x(), vec.get_y(), vec.get_z()).o;
+        break;
+    }
+    case VECTOR4: {
+        const auto& vec = get_vector4();
+        native_type = fb::VariantData_vector4_value;
+        data_offset = fb::CreateVector4(builder, vec.get_x(), vec.get_y(), vec.get_z(), vec.get_w()).o;
+        break;
+    }
+    case BYTES: {
+        const auto& bytes = get_bytes();
+        native_type = fb::VariantData_bytes_value;
+        data_offset = fb::CreateByteVectorValue(builder, builder.CreateVector(bytes)).o;
+        break;
+    }
+    case ARRAY: {
+        const auto& arr = get_array();
+        std::vector<flatbuffers::Offset<fb::Variant>> vec;
+        vec.reserve(arr.size());
+
+        for (const auto& item : arr) {
+            vec.push_back(item.to_flatbuffers(builder));
+        }
+
+        native_type = fb::VariantData_array_value;
+        data_offset = fb::CreateVariantVectorValue(builder, builder.CreateVector(vec)).o;
+        break;
+    }
+    case ATTRIBUTE:
+        native_type = fb::VariantData_attribute_value;
+        data_offset = fb::CreateUInt64Value(builder, static_cast<uint64_t>(*this)).o;
+        break;
+    }
+    
+    return fb::CreateVariant(builder, native_type, data_offset);
 }
 
 variant variant::from_binary(const bytes_t &binary_data) {

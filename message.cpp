@@ -1,48 +1,45 @@
 #include "message.h"
 #include "helper/serialization_helper.h"
 #include "manager.h"
+#include "message_generated.h"
+#include <flatbuffers/buffer.h>
 
 namespace camellia {
 using namespace serialization_helper;
 
-bytes_t event::serialize() const {
-    bytes_t result;
-    write_le32(result, static_cast<integer_t>(get_event_type()));
-    return result;
-}
-
 node_event::node_event(const node &n) : node_handle(n.get_handle()) {}
 
-node_init_event::node_init_event(const node &n) : node_event(n), node_type(n.get_type()), parent_handle(n.get_parent() != nullptr ? n.get_parent()->get_handle() : 0ULL) {}
+flatbuffers::Offset<void> node_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    return fb::CreateNodeEvent(builder, node_handle).o;
+}
+
+node_init_event::node_init_event(const node &n)
+    : node_event(n), node_type(n.get_type()), parent_handle(n.get_parent() != nullptr ? n.get_parent()->get_handle() : 0ULL) {}
+
+flatbuffers::Offset<void> node_init_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    auto base_node = node_event::to_flatbuffers(builder);
+    return fb::CreateNodeInitEvent(builder, base_node.o, node_type, parent_handle).o;
+}
 
 node_fina_event::node_fina_event(const node &n) : node_event(n) {}
 
-bytes_t node_event::serialize() const {
-    auto result = event::serialize();
-    write_le64(result, node_handle);
-    return result;
+flatbuffers::Offset<void> node_fina_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    auto base_node = node_event::to_flatbuffers(builder);
+    return fb::CreateNodeFinaEvent(builder, base_node.o).o;
 }
 
-bytes_t node_visibility_update_event::serialize() const {
-    auto result = node_event::serialize();
-    result.push_back(static_cast<unsigned char>(is_visible));
-    return result;
+flatbuffers::Offset<void> node_visibility_update_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    auto base_node = node_event::to_flatbuffers(builder);
+    return fb::CreateNodeVisibilityUpdateEvent(builder, base_node.o, is_visible).o;
 }
 
-bytes_t node_attribute_dirty_event::serialize() const {
-    auto result = node_event::serialize();
-    write_le64(result, attribute_key);
-    auto bin_attribute_value = attribute_value->to_binary();
-    result.insert(result.end(), bin_attribute_value.begin(), bin_attribute_value.end());
-    return result;
+flatbuffers::Offset<void> node_attribute_dirty_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    auto base_node = node_event::to_flatbuffers(builder);
+    return fb::CreateNodeAttributeDirtyEvent(builder, base_node.o, attribute_key, attribute_value->to_flatbuffers(builder)).o;
 }
 
-bytes_t log_event::serialize() const {
-    auto result = event::serialize();
-    auto bin_message = message.to_binary();
-    result.insert(result.end(), bin_message.begin(), bin_message.end());
-    result.push_back(static_cast<unsigned char>(level));
-    return result;
+flatbuffers::Offset<void> log_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    return fb::CreateLogEvent(builder, message.to_flatbuffers(builder), static_cast<fb::LogLevel>(level)).o;
 }
 
 } // namespace camellia

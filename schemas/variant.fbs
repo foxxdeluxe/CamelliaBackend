@@ -1,0 +1,84 @@
+namespace camellia.fb;
+
+// Variant type enum
+enum VariantType: int8 {
+    ERROR = -1,
+    VOID = 0,
+    INTEGER = 1,
+    NUMBER = 2,
+    BOOLEAN = 3,
+    TEXT = 4,
+    VECTOR2 = 5,
+    VECTOR3 = 6,
+    VECTOR4 = 7,
+    BYTES = 8,
+    ARRAY = 9,
+    ATTRIBUTE = 10
+}
+
+// Vector types
+table Vector2 {
+    x: float;
+    y: float;
+}
+
+table Vector3 {
+    x: float;
+    y: float;
+    z: float;
+}
+
+table Vector4 {
+    x: float;
+    y: float;
+    z: float;
+    w: float;
+}
+
+// Wrapper tables for primitive types
+table Int32Value {
+    value: int32;
+}
+
+table FloatValue {
+    value: float;
+}
+
+table BoolValue {
+    value: bool;
+}
+
+table ByteVectorValue {
+    value: [uint8];
+}
+
+table UInt64Value {
+    value: uint64;
+}
+
+table VariantVectorValue {
+    value: [Variant];
+}
+
+// Variant union
+union VariantData {
+    error_value: string,
+    integer_value: Int32Value,
+    number_value: FloatValue,
+    boolean_value: BoolValue,
+    text_value: string,
+    vector2_value: Vector2,
+    vector3_value: Vector3,
+    vector4_value: Vector4,
+    bytes_value: ByteVectorValue,
+    array_value: VariantVectorValue,
+    attribute_value: UInt64Value
+}
+
+// Variant table
+table Variant {
+    data: VariantData;
+}
+
+// Root type
+root_type Variant;

@@ -1,0 +1,66 @@
+// Include variant schema
+include "variant.fbs";
+
+namespace camellia.fb;
+
+// Log level enum
+enum LogLevel: int8 {
+    LOG_DEBUG = 0,
+    LOG_INFO = 1,
+    LOG_WARN = 2,
+    LOG_ERROR = 3,
+    LOG_FATAL = 4
+}
+
+// Base node event
+table NodeEvent {
+    node_handle: uint64;
+}
+
+// Node init event
+table NodeInitEvent {
+    base_node: NodeEvent;
+    node_type: uint64;
+    parent_handle: uint64;
+}
+
+// Node finalization event
+table NodeFinaEvent {
+    base_node: NodeEvent;
+}
+
+// Node visibility update event
+table NodeVisibilityUpdateEvent {
+    base_node: NodeEvent;
+    is_visible: bool;
+}
+
+// Node attribute dirty event
+table NodeAttributeDirtyEvent {
+    base_node: NodeEvent;
+    attribute_key: uint64;
+    attribute_value: Variant;
+}
+
+// Log event
+table LogEvent {
+    message: Variant;
+    level: LogLevel;
+}
+
+// Event union
+union EventData {
+    NodeInitEvent,
+    NodeFinaEvent,
+    NodeVisibilityUpdateEvent,
+    NodeAttributeDirtyEvent,
+    LogEvent
+}
+
+// Event table
+table Event {
+    data: EventData;
+}
+
+// Root type
+root_type Event;

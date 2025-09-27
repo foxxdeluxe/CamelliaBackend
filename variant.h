@@ -2,6 +2,8 @@
 #define CAMELLIA_VARIANT_H
 
 #include "camellia_typedef.h"
+#include "flatbuffers/flatbuffer_builder.h"
+#include "variant_generated.h"
 #include <array>
 #include <format>
 #include <variant>
@@ -104,6 +106,10 @@ public:
     // Binary conversion functions
     static variant from_binary(const bytes_t &binary_data);
     [[nodiscard]] bytes_t to_binary() const;
+
+    // FlatBuffers conversion functions
+    static variant from_flatbuffers(const fb::Variant &v);
+    flatbuffers::Offset<fb::Variant> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 
     constexpr static char VOID_PREFIX = 'V';
     constexpr static char INTEGER_PREFIX = 'I';

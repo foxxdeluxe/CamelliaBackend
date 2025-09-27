@@ -1,0 +1,160 @@
+// Include variant schema
+include "variant.fbs";
+
+namespace camellia.fb;
+
+// Text region layout mode enum
+enum LayoutMode: int8 {
+    TEXT_REGION_LAYOUT_SEPARATE_LINES = 0,
+    TEXT_REGION_LAYOUT_ENVELOPE_LINES = 1
+}
+
+// Action timeline keyframe data
+table ActionTimelineKeyframeData {
+    time: float;
+    preferred_duration_signed: float;
+    h_action_name: uint64;
+    override_params: [string]; // Keys
+    override_values: [Variant]; // Values (parallel arrays)
+}
+
+// Action timeline track data
+table ActionTimelineTrackData {
+    keyframes: [ActionTimelineKeyframeData];
+}
+
+// Action timeline data
+table ActionTimelineData {
+    tracks: [ActionTimelineTrackData];
+    effective_duration: float;
+}
+
+// Base action data
+table ActionData {
+    h_action_name: uint64;
+    default_param_keys: [string];
+    default_param_values: [Variant];
+}
+
+// Modifier action data
+table ModifierActionData {
+    base_action: ActionData;
+    h_attribute_name: uint64;
+    value_type: VariantType;
+    h_script_name: uint64;
+}
+
+// Composite action data
+table CompositeActionData {
+    base_action: ActionData;
+    timeline: ActionTimelineData;
+}
+
+// Action union
+union ActionDataUnion {
+    ModifierActionData,
+    CompositeActionData
+}
+
+// Curve point data
+table CurvePointData {
+    position: Vector2;
+    left_tangent: float;
+    right_tangent: float;
+}
+
+// Curve data
+table CurveData {
+    points: [CurvePointData];
+}
+
+// Activity data
+table ActivityData {
+    id: int32;
+    h_actor_id: uint64;
+    timeline: ActionTimelineData;
+    initial_attribute_keys: [uint64];
+    initial_attribute_values: [Variant];
+}
+
+// Actor data
+table ActorData {
+    h_actor_type: uint64;
+    h_actor_id: uint64;
+    default_attribute_keys: [uint64];
+    default_attribute_values: [Variant];
+    children: [ActivityData];
+    timeline: ActionTimelineData;
+}
+
+// Text region attachment data
+table TextRegionAttachmentData {
+    mode: LayoutMode;
+    offset: Vector2;
+    anchor_pos: Vector2;
+    pivot_pos: Vector2;
+    rotation: float;
+}
+
+// Text region attachment text data
+table TextRegionAttachmentTextData {
+    base_attachment: TextRegionAttachmentData;
+    text: string;
+}
+
+// Text style data
+table TextStyleData {
+    font_size: float;
+    font_weight: int32;
+    font_style: int32;
+    font_family: string;
+    color: int32;
+    background_color: int32;
+    decoration: int32;
+    decoration_color: int32;
+    decoration_style: int32;
+    decoration_thickness: float;
+    letter_spacing: float;
+    word_spacing: float;
+}
+
+// Text region data
+table TextRegionData {
+    id: int32;
+    text: string;
+    text_style: TextStyleData;
+    timeline: ActionTimelineData;
+    transition_duration: float;
+    h_transition_script_name: uint64;
+}
+
+// Dialog data
+table DialogData {
+    h_actor_id: uint64;
+    regions: [TextRegionData];
+    region_life_timeline: ActionTimelineData;
+}
+
+// Beat data
+table BeatData {
+    dialog: DialogData;
+    activities: [ActivityData];
+    feature_keys: [uint64];
+    feature_values: [Variant];
+}
+
+// Stage data
+table StageData {
+    h_stage_name: uint64;
+    beats: [BeatData];
+    script_keys: [uint64];
+    script_values: [string];
+    actor_keys: [uint64];
+    actors: [ActorData];
+    action_keys: [uint64];
+    actions: [ActionDataUnion];
+    default_text_style: TextStyleData;
+}
+
+// Root type
+root_type StageData;

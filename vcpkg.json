@@ -15,6 +15,7 @@
       ]
     },
     "xxhash",
-    "constexpr-xxh3"
+    "constexpr-xxh3",
+    "flatbuffers"
   ]
 }

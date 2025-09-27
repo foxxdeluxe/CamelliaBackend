@@ -4,6 +4,8 @@
 #include "../camellia_typedef.h"
 #include "../variant.h"
 #include "helper/algorithm_helper.h"
+#include "stage_data_generated.h"
+#include <flatbuffers/buffer.h>
 #include <format>
 #include <map>
 #include <memory>
@@ -34,8 +36,10 @@ struct action_data {
         auto type = get_action_type();
         return h_action_name != 0ULL && type > ACTION_TYPE_MIN && type < ACTION_TYPE_MAX;
     }
-    
+
     virtual ~action_data() = default;
+
+    flatbuffers::Offset<fb::ActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct action_timeline_keyframe_data {
@@ -46,12 +50,16 @@ struct action_timeline_keyframe_data {
     std::map<text_t, variant> override_params;
 
     [[nodiscard]] boolean_t is_valid() const { return h_action_name != 0ULL; }
+
+    flatbuffers::Offset<fb::ActionTimelineKeyframeData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct action_timeline_track_data {
     std::vector<std::shared_ptr<action_timeline_keyframe_data>> keyframes;
 
     [[nodiscard]] static boolean_t is_valid() { return true; }
+
+    flatbuffers::Offset<fb::ActionTimelineTrackData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct action_timeline_data {
@@ -59,6 +67,8 @@ struct action_timeline_data {
     number_t effective_duration{0.0F};
 
     [[nodiscard]] static boolean_t is_valid() { return true; }
+
+    flatbuffers::Offset<fb::ActionTimelineData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct modifier_action_data : public action_data {
@@ -71,6 +81,8 @@ struct modifier_action_data : public action_data {
     [[nodiscard]] boolean_t is_valid() const {
         return action_data::is_valid() && h_attribute_name != 0ULL && value_type != variant::VOID && h_script_name != 0ULL;
     }
+
+    flatbuffers::Offset<fb::ModifierActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct composite_action_data : public action_data {
@@ -79,6 +91,8 @@ struct composite_action_data : public action_data {
     [[nodiscard]] action_types get_action_type() const override { return action_data::ACTION_COMPOSITE; }
 
     [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && timeline->is_valid(); }
+
+    flatbuffers::Offset<fb::CompositeActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct curve_point_data {
@@ -87,12 +101,16 @@ struct curve_point_data {
     number_t right_tangent{0.0F};
 
     [[nodiscard]] static boolean_t is_valid() { return true; }
+
+    flatbuffers::Offset<fb::CurvePointData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct curve_data {
     std::vector<std::shared_ptr<curve_point_data>> points;
 
     [[nodiscard]] static boolean_t is_valid() { return true; }
+
+    flatbuffers::Offset<fb::CurveData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct activity_data {
@@ -103,6 +121,8 @@ struct activity_data {
     std::map<hash_t, variant> initial_attributes;
 
     [[nodiscard]] boolean_t is_valid() const { return id != 0 && h_actor_id != 0ULL && timeline != nullptr; }
+
+    flatbuffers::Offset<fb::ActivityData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct actor_data {
@@ -116,6 +136,8 @@ struct actor_data {
     std::shared_ptr<action_timeline_data> timeline{nullptr};
 
     [[nodiscard]] boolean_t is_valid() const { return h_actor_id != 0ULL && timeline != nullptr; }
+
+    flatbuffers::Offset<fb::ActorData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct text_region_attachment_data {
@@ -130,6 +152,8 @@ struct text_region_attachment_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     virtual ~text_region_attachment_data() = default;
+
+    flatbuffers::Offset<fb::TextRegionAttachmentData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct text_region_attachment_text_data : public text_region_attachment_data {
@@ -138,6 +162,8 @@ struct text_region_attachment_text_data : public text_region_attachment_data {
     [[nodiscard]] attachment_types get_attachment_type() const override { return TEXT_ATTACHMENT; }
 
     [[nodiscard]] static boolean_t is_valid() { return true; }
+
+    flatbuffers::Offset<fb::TextRegionAttachmentTextData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct text_style_data {
@@ -171,6 +197,8 @@ struct text_style_data {
         // we do the validation in the text_style class
         return true;
     }
+
+    flatbuffers::Offset<fb::TextStyleData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct text_region_data {
@@ -186,6 +214,8 @@ struct text_region_data {
     hash_t h_transition_script_name{};
 
     [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && (text_style == nullptr || text_style->is_valid()); }
+
+    flatbuffers::Offset<fb::TextRegionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct dialog_data {
@@ -194,6 +224,8 @@ struct dialog_data {
     std::shared_ptr<action_timeline_data> region_life_timeline{nullptr};
 
     [[nodiscard]] boolean_t is_valid() const { return region_life_timeline != nullptr; }
+
+    flatbuffers::Offset<fb::DialogData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct beat_data {
@@ -205,6 +237,8 @@ struct beat_data {
     std::map<hash_t, variant> features;
 
     [[nodiscard]] boolean_t is_valid() const { return dialog != nullptr; }
+
+    flatbuffers::Offset<fb::BeatData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 struct stage_data {
@@ -224,6 +258,8 @@ struct stage_data {
 
     stage_data(stage_data &&other) noexcept = default;
     stage_data &operator=(stage_data &&other) noexcept = default;
+
+    flatbuffers::Offset<fb::StageData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
 };
 
 } // namespace camellia

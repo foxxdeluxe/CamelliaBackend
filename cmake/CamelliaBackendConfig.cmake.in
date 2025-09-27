@@ -8,6 +8,7 @@ include(CMakeFindDependencyMacro)
 find_dependency(qjs CONFIG REQUIRED)
 find_dependency(xxHash CONFIG REQUIRED)
 find_dependency(unofficial-skia CONFIG REQUIRED)
+find_dependency(flatbuffers CONFIG REQUIRED)
 
 # Set path variables
 set_and_check(CamelliaBackend_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/camellia-backend")

@@ -33,9 +33,61 @@ find_package(xxHash CONFIG REQUIRED)
 # modified Skia
 find_package(unofficial-skia CONFIG REQUIRED)
 
+# FlatBuffers
+find_package(flatbuffers CONFIG REQUIRED)
+
+# Find FlatBuffers compiler
+find_program(FLATBUFFERS_FLATC_EXECUTABLE flatc)
+if(NOT FLATBUFFERS_FLATC_EXECUTABLE)
+    message(FATAL_ERROR "flatc compiler not found. Please install FlatBuffers compiler.")
+endif()
+
+# Set up FlatBuffers schema compilation
+set(FLATBUFFERS_SCHEMAS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/schemas")
+set(FLATBUFFERS_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+# Create generated directory
+file(MAKE_DIRECTORY "${FLATBUFFERS_GENERATED_DIR}")
+
+# List of schema files to compile
+set(FLATBUFFERS_SCHEMA_FILES
+    "${FLATBUFFERS_SCHEMAS_DIR}/variant.fbs"
+    "${FLATBUFFERS_SCHEMAS_DIR}/message.fbs"
+    "${FLATBUFFERS_SCHEMAS_DIR}/stage_data.fbs"
+)
+
+# Generate C++ headers from FlatBuffers schemas
+set(FLATBUFFERS_GENERATED_HEADERS)
+foreach(SCHEMA_FILE ${FLATBUFFERS_SCHEMA_FILES})
+    get_filename_component(SCHEMA_NAME ${SCHEMA_FILE} NAME_WE)
+    set(GENERATED_HEADER "${FLATBUFFERS_GENERATED_DIR}/${SCHEMA_NAME}_generated.h")
+    
+    add_custom_command(
+        OUTPUT ${GENERATED_HEADER}
+        COMMAND ${FLATBUFFERS_FLATC_EXECUTABLE}
+        ARGS --cpp --gen-mutable --gen-object-api
+             --include-prefix ""
+             --filename-suffix "_generated"
+             -o ${FLATBUFFERS_GENERATED_DIR}
+             ${SCHEMA_FILE}
+        DEPENDS ${SCHEMA_FILE}
+        COMMENT "Generating C++ header from ${SCHEMA_FILE}"
+        VERBATIM
+    )
+    
+    list(APPEND FLATBUFFERS_GENERATED_HEADERS ${GENERATED_HEADER})
+endforeach()
+
+# Create a custom target for FlatBuffers generation
+add_custom_target(flatbuffers_generated
+    DEPENDS ${FLATBUFFERS_GENERATED_HEADERS}
+    COMMENT "Generating all FlatBuffers headers"
+)
+
 # Set up include directories
 include_directories(
     ${PROJECT_SOURCE_DIR}
+    ${FLATBUFFERS_GENERATED_DIR}
 )
 
 add_library(
@@ -51,6 +103,8 @@ target_link_libraries(
     xxHash::xxhash
     # modified Skia
     unofficial::skia::modules::skparagraph
+    # FlatBuffers
+    flatbuffers::flatbuffers
 )
 
 # main C++ library
@@ -58,6 +112,7 @@ add_library(
         CamelliaBackendObject
         OBJECT
         variant.cpp
+        data/stage_data.cpp
         helper/algorithm_helper.cpp
         helper/scripting_helper.cpp
         helper/serialization_helper.cpp
@@ -73,6 +128,9 @@ add_library(
         node/action/action_timeline.cpp
         attribute_registry.cpp
 )
+
+# Make the main library depend on FlatBuffers generation
+add_dependencies(CamelliaBackendObject flatbuffers_generated)
 
 # Link dependencies to CamelliaBackendObject for compilation
 target_link_libraries(

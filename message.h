@@ -3,12 +3,13 @@
 
 #include "camellia_typedef.h"
 #include "variant.h"
+#include <flatbuffers/buffer.h>
 
 namespace camellia {
 
 class node;
 
-enum event_types : integer_t {
+enum event_types : char {
     EVENT_TYPE_MIN = -1,
     EVENT_INVALID = 0,
     EVENT_NODE_CONSTRUCTION = 1,
@@ -23,7 +24,7 @@ enum event_types : integer_t {
 
 struct event {
     [[nodiscard]] virtual event_types get_event_type() const = 0;
-    [[nodiscard]] virtual bytes_t serialize() const;
+    [[nodiscard]] virtual flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const = 0;
 
     virtual ~event() = default;
     event() = default;
@@ -37,7 +38,7 @@ struct node_event : public event {
     hash_t node_handle{0ULL};
 
     explicit node_event(const node &n);
-    [[nodiscard]] bytes_t serialize() const override;
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
 };
 
 struct node_init_event : public node_event {
@@ -46,18 +47,20 @@ struct node_init_event : public node_event {
 
     explicit node_init_event(const node &n);
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_INIT; }
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
 };
 
 struct node_fina_event : public node_event {
     explicit node_fina_event(const node &n);
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_FINA; }
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
 };
 
 struct node_visibility_update_event : public node_event {
     boolean_t is_visible{false};
 
     explicit node_visibility_update_event(const node &n, boolean_t is_visible) : node_event(n), is_visible(is_visible) {}
-    [[nodiscard]] bytes_t serialize() const override;
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_VISIBILITY_UPDATE; }
 };
 
@@ -65,8 +68,9 @@ struct node_attribute_dirty_event : public node_event {
     hash_t attribute_key{0ULL};
     const variant *attribute_value{nullptr};
 
-    explicit node_attribute_dirty_event(const node &n, hash_t attribute_key, const variant *attribute_value) : node_event(n), attribute_key(attribute_key), attribute_value(attribute_value) {}
-    [[nodiscard]] bytes_t serialize() const override;
+    explicit node_attribute_dirty_event(const node &n, hash_t attribute_key, const variant *attribute_value)
+        : node_event(n), attribute_key(attribute_key), attribute_value(attribute_value) {}
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_ATTRIBUTE_DIRTY; }
 };
 
@@ -76,7 +80,7 @@ struct log_event : public event {
 
     explicit log_event(variant message, log_level level) : message(std::move(message)), level(level) {}
 
-    [[nodiscard]] bytes_t serialize() const override;
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_LOG; }
 };
 
