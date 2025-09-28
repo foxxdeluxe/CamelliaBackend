@@ -1,4 +1,4 @@
-﻿project(test)
+project(test)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -23,7 +23,8 @@ enable_testing()
 add_executable(test_run value_test.cpp
         scripting_test.cpp
         stage_test.cpp
-        text_layout_test.cpp)
+        text_layout_test.cpp
+        serialization_test.cpp)
 
 # Link the same libraries as CamelliaBackendCore
 target_link_libraries(
