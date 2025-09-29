@@ -132,6 +132,12 @@ target_link_libraries(
         CamelliaBackendDeps
 )
 
+# Set include directories for the object library
+target_include_directories(CamelliaBackendObject PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FLATBUFFERS_GENERATED_DIR}
+)
+
 add_library(
         CamelliaBackendStatic
         STATIC
@@ -142,6 +148,13 @@ add_library(
 target_link_libraries(
         CamelliaBackendStatic PUBLIC
         CamelliaBackendDeps
+)
+
+# Set include directories for the static library
+target_include_directories(CamelliaBackendStatic PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${FLATBUFFERS_GENERATED_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/camellia-backend>
 )
 
 # Set up proper target properties for static library
@@ -159,6 +172,13 @@ add_library(
 target_link_libraries(
         CamelliaBackendShared PRIVATE
         CamelliaBackendDeps
+)
+
+# Set include directories for the shared library
+target_include_directories(CamelliaBackendShared PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${FLATBUFFERS_GENERATED_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/camellia-backend>
 )
 
 # On ELF platforms, drop unused DT_NEEDED entries to prune transitive deps
@@ -202,6 +222,11 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
 
 # Install the export header
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/camelliabackendshared_export.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/camellia-backend
+)
+
+# Install the generated FlatBuffers headers
+install(FILES ${FLATBUFFERS_GENERATED_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/camellia-backend
 )
 
