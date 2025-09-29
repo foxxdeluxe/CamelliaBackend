@@ -5,6 +5,7 @@
 #include "data/stage_data.h"
 #include "message.h"
 #include "node/stage.h"
+#include "stage_data_generated.h"
 #include <format>
 #include <stdexcept>
 
@@ -21,8 +22,9 @@ hash_t manager::register_stage_data(std::shared_ptr<stage_data> data) {
 }
 
 hash_t manager::register_stage_data(bytes_t data) {
-    // TODO: Implement deserialization logic
-    return 0ULL;
+    const auto *fb = fb::GetStageData(data.data());
+    auto sd = stage_data::from_flatbuffers(*fb);
+    return register_stage_data(sd);
 }
 
 void manager::unregister_stage_data(hash_t h_stage_name) { _stage_data_map.erase(h_stage_name); }

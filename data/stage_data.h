@@ -40,6 +40,7 @@ struct action_data {
     virtual ~action_data() = default;
 
     flatbuffers::Offset<fb::ActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<action_data> from_flatbuffers(const fb::ActionData &fb_data);
 };
 
 struct action_timeline_keyframe_data {
@@ -52,6 +53,7 @@ struct action_timeline_keyframe_data {
     [[nodiscard]] boolean_t is_valid() const { return h_action_name != 0ULL; }
 
     flatbuffers::Offset<fb::ActionTimelineKeyframeData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<action_timeline_keyframe_data> from_flatbuffers(const fb::ActionTimelineKeyframeData &fb_data);
 };
 
 struct action_timeline_track_data {
@@ -60,6 +62,7 @@ struct action_timeline_track_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::ActionTimelineTrackData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<action_timeline_track_data> from_flatbuffers(const fb::ActionTimelineTrackData &fb_data);
 };
 
 struct action_timeline_data {
@@ -69,6 +72,7 @@ struct action_timeline_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::ActionTimelineData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<action_timeline_data> from_flatbuffers(const fb::ActionTimelineData &fb_data);
 };
 
 struct modifier_action_data : public action_data {
@@ -83,6 +87,7 @@ struct modifier_action_data : public action_data {
     }
 
     flatbuffers::Offset<fb::ModifierActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<modifier_action_data> from_flatbuffers(const fb::ModifierActionData &fb_data);
 };
 
 struct composite_action_data : public action_data {
@@ -93,6 +98,7 @@ struct composite_action_data : public action_data {
     [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && timeline->is_valid(); }
 
     flatbuffers::Offset<fb::CompositeActionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<composite_action_data> from_flatbuffers(const fb::CompositeActionData &fb_data);
 };
 
 struct curve_point_data {
@@ -103,6 +109,7 @@ struct curve_point_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::CurvePointData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<curve_point_data> from_flatbuffers(const fb::CurvePointData &fb_data);
 };
 
 struct curve_data {
@@ -111,6 +118,7 @@ struct curve_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::CurveData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<curve_data> from_flatbuffers(const fb::CurveData &fb_data);
 };
 
 struct activity_data {
@@ -123,6 +131,7 @@ struct activity_data {
     [[nodiscard]] boolean_t is_valid() const { return id != 0 && h_actor_id != 0ULL && timeline != nullptr; }
 
     flatbuffers::Offset<fb::ActivityData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<activity_data> from_flatbuffers(const fb::ActivityData &fb_data);
 };
 
 struct actor_data {
@@ -138,6 +147,7 @@ struct actor_data {
     [[nodiscard]] boolean_t is_valid() const { return h_actor_id != 0ULL && timeline != nullptr; }
 
     flatbuffers::Offset<fb::ActorData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<actor_data> from_flatbuffers(const fb::ActorData &fb_data);
 };
 
 struct text_region_attachment_data {
@@ -154,6 +164,7 @@ struct text_region_attachment_data {
     virtual ~text_region_attachment_data() = default;
 
     flatbuffers::Offset<fb::TextRegionAttachmentData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<text_region_attachment_data> from_flatbuffers(const fb::TextRegionAttachmentData &fb_data);
 };
 
 struct text_region_attachment_text_data : public text_region_attachment_data {
@@ -164,6 +175,7 @@ struct text_region_attachment_text_data : public text_region_attachment_data {
     [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::TextRegionAttachmentTextData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<text_region_attachment_text_data> from_flatbuffers(const fb::TextRegionAttachmentTextData &fb_data);
 };
 
 struct text_style_data {
@@ -193,12 +205,10 @@ struct text_style_data {
     number_t letter_spacing{0.0F};
     number_t word_spacing{0.0F};
 
-    [[nodiscard]] static boolean_t is_valid() {
-        // we do the validation in the text_style class
-        return true;
-    }
+    [[nodiscard]] static boolean_t is_valid() { return true; }
 
     flatbuffers::Offset<fb::TextStyleData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<text_style_data> from_flatbuffers(const fb::TextStyleData &fb_data);
 };
 
 struct text_region_data {
@@ -216,6 +226,7 @@ struct text_region_data {
     [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && (text_style == nullptr || text_style->is_valid()); }
 
     flatbuffers::Offset<fb::TextRegionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<text_region_data> from_flatbuffers(const fb::TextRegionData &fb_data);
 };
 
 struct dialog_data {
@@ -226,6 +237,7 @@ struct dialog_data {
     [[nodiscard]] boolean_t is_valid() const { return region_life_timeline != nullptr; }
 
     flatbuffers::Offset<fb::DialogData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<dialog_data> from_flatbuffers(const fb::DialogData &fb_data);
 };
 
 struct beat_data {
@@ -239,6 +251,7 @@ struct beat_data {
     [[nodiscard]] boolean_t is_valid() const { return dialog != nullptr; }
 
     flatbuffers::Offset<fb::BeatData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<beat_data> from_flatbuffers(const fb::BeatData &fb_data);
 };
 
 struct stage_data {
@@ -260,6 +273,7 @@ struct stage_data {
     stage_data &operator=(stage_data &&other) noexcept = default;
 
     flatbuffers::Offset<fb::StageData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
+    static std::shared_ptr<stage_data> from_flatbuffers(const fb::StageData &fb_data);
 };
 
 } // namespace camellia

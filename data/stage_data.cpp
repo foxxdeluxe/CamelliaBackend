@@ -295,4 +295,493 @@ flatbuffers::Offset<fb::StageData> stage_data::to_flatbuffers(flatbuffers::FlatB
                                action_keys_vector, action_types_vector, action_values_vector, default_text_style_offset);
 }
 
+// curve_point_data from_flatbuffers implementation
+std::shared_ptr<curve_point_data> curve_point_data::from_flatbuffers(const fb::CurvePointData &fb_data) {
+
+    auto result = std::make_shared<curve_point_data>();
+
+    if (const auto *position = fb_data.position()) {
+        result->position = vector2(position->x(), position->y());
+    }
+    result->left_tangent = fb_data.left_tangent();
+    result->right_tangent = fb_data.right_tangent();
+
+    return result;
+}
+
+// curve_data from_flatbuffers implementation
+std::shared_ptr<curve_data> curve_data::from_flatbuffers(const fb::CurveData &fb_data) {
+
+    auto result = std::make_shared<curve_data>();
+
+    if (const auto *points = fb_data.points()) {
+        result->points.reserve(points->size());
+        for (const auto *point : *points) {
+            if (point != nullptr) {
+                result->points.push_back(curve_point_data::from_flatbuffers(*point));
+            }
+        }
+    }
+
+    return result;
+}
+
+// text_style_data from_flatbuffers implementation
+std::shared_ptr<text_style_data> text_style_data::from_flatbuffers(const fb::TextStyleData &fb_data) {
+
+    auto result = std::make_shared<text_style_data>();
+
+    result->font_size = fb_data.font_size();
+    result->font_weight = fb_data.font_weight();
+    result->font_style = fb_data.font_style();
+    if (fb_data.font_family() != nullptr) {
+        result->font_family = fb_data.font_family()->str();
+    }
+    result->color = fb_data.color();
+    result->background_color = fb_data.background_color();
+    result->decoration = fb_data.decoration();
+    result->decoration_color = fb_data.decoration_color();
+    result->decoration_style = fb_data.decoration_style();
+    result->decoration_thickness = fb_data.decoration_thickness();
+    result->letter_spacing = fb_data.letter_spacing();
+    result->word_spacing = fb_data.word_spacing();
+
+    return result;
+}
+
+// action_timeline_keyframe_data from_flatbuffers implementation
+std::shared_ptr<action_timeline_keyframe_data> action_timeline_keyframe_data::from_flatbuffers(const fb::ActionTimelineKeyframeData &fb_data) {
+
+    auto result = std::make_shared<action_timeline_keyframe_data>();
+
+    result->time = fb_data.time();
+    result->preferred_duration_signed = fb_data.preferred_duration_signed();
+    result->h_action_name = fb_data.h_action_name();
+
+    // Reconstruct override_params map from parallel arrays
+    if (const auto *keys = fb_data.override_params()) {
+        if (const auto *values = fb_data.override_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                if (const auto *key = keys->Get(i)) {
+                    if (const auto *value = values->Get(i)) {
+                        result->override_params[key->str()] = variant::from_flatbuffers(*value);
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// action_timeline_track_data from_flatbuffers implementation
+std::shared_ptr<action_timeline_track_data> action_timeline_track_data::from_flatbuffers(const fb::ActionTimelineTrackData &fb_data) {
+
+    auto result = std::make_shared<action_timeline_track_data>();
+
+    if (const auto *keyframes = fb_data.keyframes()) {
+        result->keyframes.reserve(keyframes->size());
+        for (const auto *keyframe : *keyframes) {
+            if (keyframe != nullptr) {
+                result->keyframes.push_back(action_timeline_keyframe_data::from_flatbuffers(*keyframe));
+            }
+        }
+    }
+
+    return result;
+}
+
+// action_timeline_data from_flatbuffers implementation
+std::shared_ptr<action_timeline_data> action_timeline_data::from_flatbuffers(const fb::ActionTimelineData &fb_data) {
+
+    auto result = std::make_shared<action_timeline_data>();
+
+    if (const auto *tracks = fb_data.tracks()) {
+        result->tracks.reserve(tracks->size());
+        for (const auto *track : *tracks) {
+            if (track != nullptr) {
+                result->tracks.push_back(action_timeline_track_data::from_flatbuffers(*track));
+            }
+        }
+    }
+    result->effective_duration = fb_data.effective_duration();
+
+    return result;
+}
+
+// action_data from_flatbuffers implementation
+std::shared_ptr<action_data> action_data::from_flatbuffers(const fb::ActionData &fb_data) {
+
+    auto result = std::make_shared<action_data>();
+
+    result->h_action_name = fb_data.h_action_name();
+
+    // Reconstruct default_params map from parallel arrays
+    if (const auto *keys = fb_data.default_param_keys()) {
+        if (const auto *values = fb_data.default_param_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                if (const auto *key = keys->Get(i)) {
+                    if (const auto *value = values->Get(i)) {
+                        result->default_params[key->str()] = variant::from_flatbuffers(*value);
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// modifier_action_data from_flatbuffers implementation
+std::shared_ptr<modifier_action_data> modifier_action_data::from_flatbuffers(const fb::ModifierActionData &fb_data) {
+    auto result = std::make_shared<modifier_action_data>();
+
+    // Copy base action data
+    if (const auto *base_action = fb_data.base_action()) {
+        auto base = action_data::from_flatbuffers(*base_action);
+        if (base) {
+            result->h_action_name = base->h_action_name;
+            result->default_params = base->default_params;
+        }
+    }
+
+    result->h_attribute_name = fb_data.h_attribute_name();
+    result->value_type = static_cast<variant::types>(fb_data.value_type());
+    result->h_script_name = fb_data.h_script_name();
+
+    return result;
+}
+
+// composite_action_data from_flatbuffers implementation
+std::shared_ptr<composite_action_data> composite_action_data::from_flatbuffers(const fb::CompositeActionData &fb_data) {
+    auto result = std::make_shared<composite_action_data>();
+
+    // Copy base action data
+    if (const auto *base_action = fb_data.base_action()) {
+        auto base = action_data::from_flatbuffers(*base_action);
+        if (base) {
+            result->h_action_name = base->h_action_name;
+            result->default_params = base->default_params;
+        }
+    }
+
+    // Set timeline
+    if (const auto *timeline = fb_data.timeline()) {
+        result->timeline = action_timeline_data::from_flatbuffers(*timeline);
+    }
+
+    return result;
+}
+
+// text_region_attachment_data from_flatbuffers implementation
+std::shared_ptr<text_region_attachment_data> text_region_attachment_data::from_flatbuffers(const fb::TextRegionAttachmentData &fb_data) {
+    auto result = std::make_shared<text_region_attachment_data>();
+
+    result->mode = static_cast<text_region_attachment_data::layout_modes>(fb_data.mode());
+
+    if (const auto *offset = fb_data.offset()) {
+        result->offset = vector2(offset->x(), offset->y());
+    }
+    if (const auto *anchor_pos = fb_data.anchor_pos()) {
+        result->anchor_pos = vector2(anchor_pos->x(), anchor_pos->y());
+    }
+    if (const auto *pivot_pos = fb_data.pivot_pos()) {
+        result->pivot_pos = vector2(pivot_pos->x(), pivot_pos->y());
+    }
+    result->rotation = fb_data.rotation();
+
+    return result;
+}
+
+// text_region_attachment_text_data from_flatbuffers implementation
+std::shared_ptr<text_region_attachment_text_data> text_region_attachment_text_data::from_flatbuffers(const fb::TextRegionAttachmentTextData &fb_data) {
+    auto result = std::make_shared<text_region_attachment_text_data>();
+
+    // Copy base attachment data
+    if (const auto *base_attachment = fb_data.base_attachment()) {
+        auto base = text_region_attachment_data::from_flatbuffers(*base_attachment);
+        if (base) {
+            result->mode = base->mode;
+            result->offset = base->offset;
+            result->anchor_pos = base->anchor_pos;
+            result->pivot_pos = base->pivot_pos;
+            result->rotation = base->rotation;
+        }
+    }
+
+    // Set text
+    if (fb_data.text() != nullptr) {
+        result->text = fb_data.text()->str();
+    }
+
+    return result;
+}
+
+// activity_data from_flatbuffers implementation
+std::shared_ptr<activity_data> activity_data::from_flatbuffers(const fb::ActivityData &fb_data) {
+    auto result = std::make_shared<activity_data>();
+
+    result->id = fb_data.id();
+    result->h_actor_id = fb_data.h_actor_id();
+
+    // Set timeline
+    if (const auto *timeline = fb_data.timeline()) {
+        result->timeline = action_timeline_data::from_flatbuffers(*timeline);
+    }
+
+    // Reconstruct initial_attributes map from parallel arrays
+    if (const auto *keys = fb_data.initial_attribute_keys()) {
+        if (const auto *values = fb_data.initial_attribute_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                auto key = keys->Get(i);
+                if (const auto *value = values->Get(i)) {
+                    result->initial_attributes[key] = variant::from_flatbuffers(*value);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// actor_data from_flatbuffers implementation
+std::shared_ptr<actor_data> actor_data::from_flatbuffers(const fb::ActorData &fb_data) {
+    auto result = std::make_shared<actor_data>();
+
+    result->h_actor_type = fb_data.h_actor_type();
+    result->h_actor_id = fb_data.h_actor_id();
+
+    // Reconstruct default_attributes map from parallel arrays
+    if (const auto *keys = fb_data.default_attribute_keys()) {
+        if (const auto *values = fb_data.default_attribute_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                auto key = keys->Get(i);
+                if (const auto *value = values->Get(i)) {
+                    result->default_attributes[key] = variant::from_flatbuffers(*value);
+                }
+            }
+        }
+    }
+
+    // Reconstruct children map from vector
+    if (const auto *children = fb_data.children()) {
+        for (const auto *child : *children) {
+            if (child != nullptr) {
+                auto child_data = activity_data::from_flatbuffers(*child);
+                if (child_data) {
+                    result->children[child_data->id] = child_data;
+                }
+            }
+        }
+    }
+
+    // Set timeline
+    if (const auto *timeline = fb_data.timeline()) {
+        result->timeline = action_timeline_data::from_flatbuffers(*timeline);
+    }
+
+    return result;
+}
+
+// text_region_data from_flatbuffers implementation
+std::shared_ptr<text_region_data> text_region_data::from_flatbuffers(const fb::TextRegionData &fb_data) {
+    auto result = std::make_shared<text_region_data>();
+
+    result->id = fb_data.id();
+    if (fb_data.text() != nullptr) {
+        result->text = fb_data.text()->str();
+    }
+
+    // Set text_style
+    if (const auto *text_style = fb_data.text_style()) {
+        result->text_style = text_style_data::from_flatbuffers(*text_style);
+    }
+
+    // Set timeline
+    if (const auto *timeline = fb_data.timeline()) {
+        result->timeline = action_timeline_data::from_flatbuffers(*timeline);
+    }
+
+    result->transition_duration = fb_data.transition_duration();
+    result->h_transition_script_name = fb_data.h_transition_script_name();
+
+    return result;
+}
+
+// dialog_data from_flatbuffers implementation
+std::shared_ptr<dialog_data> dialog_data::from_flatbuffers(const fb::DialogData &fb_data) {
+    auto result = std::make_shared<dialog_data>();
+
+    result->h_actor_id = fb_data.h_actor_id();
+
+    // Set regions
+    if (const auto *regions = fb_data.regions()) {
+        result->regions.reserve(regions->size());
+        for (const auto *region : *regions) {
+            if (region != nullptr) {
+                result->regions.push_back(text_region_data::from_flatbuffers(*region));
+            }
+        }
+    }
+
+    // Set region_life_timeline
+    if (const auto *timeline = fb_data.region_life_timeline()) {
+        result->region_life_timeline = action_timeline_data::from_flatbuffers(*timeline);
+    }
+
+    return result;
+}
+
+// beat_data from_flatbuffers implementation
+std::shared_ptr<beat_data> beat_data::from_flatbuffers(const fb::BeatData &fb_data) {
+    auto result = std::make_shared<beat_data>();
+
+    // Set dialog
+    if (const auto *dialog = fb_data.dialog()) {
+        result->dialog = dialog_data::from_flatbuffers(*dialog);
+    }
+
+    // Reconstruct activities map from vector
+    if (const auto *activities = fb_data.activities()) {
+        for (const auto *activity : *activities) {
+            if (activity != nullptr) {
+                auto activity_data_ptr = activity_data::from_flatbuffers(*activity);
+                if (activity_data_ptr) {
+                    result->activities[activity_data_ptr->id] = activity_data_ptr;
+                }
+            }
+        }
+    }
+
+    // Reconstruct features map from parallel arrays
+    if (const auto *keys = fb_data.feature_keys()) {
+        if (const auto *values = fb_data.feature_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                auto key = keys->Get(i);
+                if (const auto *value = values->Get(i)) {
+                    result->features[key] = variant::from_flatbuffers(*value);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// stage_data from_flatbuffers implementation
+std::shared_ptr<stage_data> stage_data::from_flatbuffers(const fb::StageData &fb_data) {
+    auto result = std::make_shared<stage_data>();
+
+    result->h_stage_name = fb_data.h_stage_name();
+
+    // Set beats
+    if (const auto *beats = fb_data.beats()) {
+        result->beats.reserve(beats->size());
+        for (const auto *beat : *beats) {
+            if (beat != nullptr) {
+                result->beats.push_back(beat_data::from_flatbuffers(*beat));
+            }
+        }
+    }
+
+    // Reconstruct scripts map from parallel arrays
+    if (const auto *keys = fb_data.script_keys()) {
+        if (const auto *values = fb_data.script_values()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                auto key = keys->Get(i);
+                if (const auto *value = values->Get(i)) {
+                    result->scripts[key] = value->str();
+                }
+            }
+        }
+    }
+
+    // Reconstruct actors map from parallel arrays
+    if (const auto *keys = fb_data.actor_keys()) {
+        if (const auto *values = fb_data.actors()) {
+            auto keys_size = keys->size();
+            auto values_size = values->size();
+            auto min_size = std::min(keys_size, values_size);
+
+            for (size_t i = 0; i < min_size; ++i) {
+                auto key = keys->Get(i);
+                if (const auto *value = values->Get(i)) {
+                    result->actors[key] = actor_data::from_flatbuffers(*value);
+                }
+            }
+        }
+    }
+
+    // Reconstruct actions map from parallel arrays with union
+    if (const auto *keys = fb_data.action_keys()) {
+        if (const auto *types = fb_data.actions_type()) {
+            if (const auto *values = fb_data.actions()) {
+                auto keys_size = keys->size();
+                auto types_size = types->size();
+                auto values_size = values->size();
+                auto min_size = std::min({keys_size, types_size, values_size});
+
+                for (size_t i = 0; i < min_size; ++i) {
+                    auto key = keys->Get(i);
+                    auto type = types->Get(i);
+                    const auto *value = values->Get(i);
+
+                    std::shared_ptr<action_data> action_ptr = nullptr;
+
+                    switch (static_cast<fb::ActionDataUnion>(type)) {
+                    case fb::ActionDataUnion_ModifierActionData: {
+                        const auto *modifier_action = reinterpret_cast<const fb::ModifierActionData *>(value);
+                        action_ptr = modifier_action_data::from_flatbuffers(*modifier_action);
+                        break;
+                    }
+                    case fb::ActionDataUnion_CompositeActionData: {
+                        const auto *composite_action = reinterpret_cast<const fb::CompositeActionData *>(value);
+                        action_ptr = composite_action_data::from_flatbuffers(*composite_action);
+                        break;
+                    }
+                    default:
+                        // Skip unknown types
+                        continue;
+                    }
+
+                    if (action_ptr) {
+                        result->actions[key] = action_ptr;
+                    }
+                }
+            }
+        }
+    }
+
+    // Set default_text_style
+    if (const auto *default_text_style = fb_data.default_text_style()) {
+        result->default_text_style = text_style_data::from_flatbuffers(*default_text_style);
+    }
+
+    return result;
+}
+
 } // namespace camellia

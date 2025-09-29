@@ -1,4 +1,3 @@
-#include <chrono>
 #include <flatbuffers/flatbuffer_builder.h>
 #include <flatbuffers/flatbuffers.h>
 #include <gtest/gtest.h>
@@ -405,14 +404,46 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_SimpleStage) {
     auto verifier = flatbuffers::Verifier(_builder->GetBufferPointer(), _builder->GetSize());
     EXPECT_TRUE(fb::VerifyStageDataBuffer(verifier));
 
-    // Deserialize and verify
+    // Deserialize using from_flatbuffers and verify round-trip
     const auto *fb_stage = fb::GetStageData(_builder->GetBufferPointer());
-    EXPECT_EQ(fb_stage->h_stage_name(), simple_stage_data->h_stage_name);
-    EXPECT_EQ(fb_stage->beats()->size(), 1);
-    EXPECT_EQ(fb_stage->script_keys()->size(), 1);
-    EXPECT_EQ(fb_stage->script_values()->size(), 1);
-    EXPECT_EQ(fb_stage->default_text_style()->font_size(), 16.0F);
-    EXPECT_EQ(fb_stage->default_text_style()->font_family()->str(), "Arial");
+    auto deserialized_stage = stage_data::from_flatbuffers(*fb_stage);
+
+    // Verify the deserialized stage data matches original
+    EXPECT_EQ(deserialized_stage->h_stage_name, simple_stage_data->h_stage_name);
+    EXPECT_EQ(deserialized_stage->beats.size(), 1);
+    EXPECT_EQ(deserialized_stage->scripts.size(), 1);
+    EXPECT_TRUE(deserialized_stage->is_valid());
+
+    // Verify default text style
+    EXPECT_NE(deserialized_stage->default_text_style, nullptr);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_size, 16.0F);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_weight, 400);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_family, "Arial");
+    EXPECT_EQ(deserialized_stage->default_text_style->color, 0xFF000000);
+
+    // Verify beat structure
+    EXPECT_NE(deserialized_stage->beats[0], nullptr);
+    EXPECT_NE(deserialized_stage->beats[0]->dialog, nullptr);
+    EXPECT_EQ(deserialized_stage->beats[0]->dialog->h_actor_id, algorithm_helper::calc_hash("test_actor"));
+    EXPECT_EQ(deserialized_stage->beats[0]->dialog->regions.size(), 1);
+
+    // Verify text region
+    auto &region = deserialized_stage->beats[0]->dialog->regions[0];
+    EXPECT_EQ(region->id, 1);
+    EXPECT_EQ(region->text, "Hello, World!");
+    EXPECT_NE(region->timeline, nullptr);
+    EXPECT_EQ(region->timeline->effective_duration, 5.0F);
+
+    // Verify script
+    auto script_iter = deserialized_stage->scripts.find(algorithm_helper::calc_hash("test_script"));
+    EXPECT_NE(script_iter, deserialized_stage->scripts.end());
+    EXPECT_EQ(script_iter->second, "function test() { return 42; }");
+
+    // Verify feature
+    auto &features = deserialized_stage->beats[0]->features;
+    auto feature_iter = features.find(algorithm_helper::calc_hash("test_feature"));
+    EXPECT_NE(feature_iter, features.end());
+    EXPECT_EQ(feature_iter->second, variant("test_value"));
 
     _builder->Clear();
 }
@@ -511,42 +542,112 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_ComplexStage) {
     auto verifier = flatbuffers::Verifier(_builder->GetBufferPointer(), _builder->GetSize());
     EXPECT_TRUE(fb::VerifyStageDataBuffer(verifier));
 
-    // Deserialize and verify key components
+    // Deserialize using from_flatbuffers and verify comprehensive round-trip
     const auto *fb_stage = fb::GetStageData(_builder->GetBufferPointer());
-    EXPECT_EQ(fb_stage->h_stage_name(), complex_stage_data->h_stage_name);
-    EXPECT_EQ(fb_stage->beats()->size(), 1);
-    EXPECT_EQ(fb_stage->actors()->size(), 1);
-    EXPECT_EQ(fb_stage->actions()->size(), 2);
-    EXPECT_EQ(fb_stage->script_keys()->size(), 2);
-    EXPECT_EQ(fb_stage->script_values()->size(), 2);
+    auto deserialized_stage = stage_data::from_flatbuffers(*fb_stage);
+
+    // Verify basic stage properties
+    EXPECT_EQ(deserialized_stage->h_stage_name, complex_stage_data->h_stage_name);
+    EXPECT_EQ(deserialized_stage->beats.size(), 1);
+    EXPECT_EQ(deserialized_stage->actors.size(), 1);
+    EXPECT_EQ(deserialized_stage->actions.size(), 2);
+    EXPECT_EQ(deserialized_stage->scripts.size(), 2);
+    EXPECT_TRUE(deserialized_stage->is_valid());
 
     // Verify default text style
-    EXPECT_EQ(fb_stage->default_text_style()->font_size(), 18.0F);
-    EXPECT_EQ(fb_stage->default_text_style()->font_family()->str(), "Times New Roman");
-    EXPECT_EQ(fb_stage->default_text_style()->color(), 0xFF0000FF);
+    EXPECT_NE(deserialized_stage->default_text_style, nullptr);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_size, 18.0F);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_weight, 600);
+    EXPECT_EQ(deserialized_stage->default_text_style->font_family, "Times New Roman");
+    EXPECT_EQ(deserialized_stage->default_text_style->color, 0xFF0000FF);
+    EXPECT_EQ(deserialized_stage->default_text_style->background_color, 0xFFFFFFFF);
 
     // Verify beat structure
-    const auto *fb_beat = fb_stage->beats()->Get(0);
-    EXPECT_NE(fb_beat->dialog(), nullptr);
-    EXPECT_EQ(fb_beat->activities()->size(), 1);
-    EXPECT_EQ(fb_beat->feature_keys()->size(), 2);
-    EXPECT_EQ(fb_beat->feature_values()->size(), 2);
+    auto &deserialized_beat = deserialized_stage->beats[0];
+    EXPECT_NE(deserialized_beat, nullptr);
+    EXPECT_NE(deserialized_beat->dialog, nullptr);
+    EXPECT_EQ(deserialized_beat->activities.size(), 1);
+    EXPECT_EQ(deserialized_beat->features.size(), 2);
+    EXPECT_TRUE(deserialized_beat->is_valid());
 
     // Verify dialog structure
-    const auto *fb_dialog = fb_beat->dialog();
-    EXPECT_EQ(fb_dialog->h_actor_id(), test_actor_data->h_actor_id);
-    EXPECT_EQ(fb_dialog->regions()->size(), 2);
+    auto &deserialized_dialog = deserialized_beat->dialog;
+    EXPECT_EQ(deserialized_dialog->h_actor_id, test_actor_data->h_actor_id);
+    EXPECT_EQ(deserialized_dialog->regions.size(), 2);
+    EXPECT_NE(deserialized_dialog->region_life_timeline, nullptr);
+    EXPECT_EQ(deserialized_dialog->region_life_timeline->effective_duration, 6.0F);
+
+    // Verify text regions
+    EXPECT_EQ(deserialized_dialog->regions[0]->id, 1);
+    EXPECT_EQ(deserialized_dialog->regions[0]->text, "Hello there!");
+    EXPECT_EQ(deserialized_dialog->regions[1]->id, 2);
+    EXPECT_EQ(deserialized_dialog->regions[1]->text, "How are you?");
+    EXPECT_NE(deserialized_dialog->regions[0]->timeline, nullptr);
+    EXPECT_NE(deserialized_dialog->regions[1]->timeline, nullptr);
 
     // Verify actor structure
-    const auto *fb_actor = fb_stage->actors()->Get(0);
-    EXPECT_EQ(fb_actor->h_actor_id(), test_actor_data->h_actor_id);
-    EXPECT_EQ(fb_actor->h_actor_type(), test_actor_data->h_actor_type);
-    EXPECT_EQ(fb_actor->children()->size(), 1);
+    auto actor_iter = deserialized_stage->actors.find(test_actor_data->h_actor_id);
+    EXPECT_NE(actor_iter, deserialized_stage->actors.end());
+    auto &actor = actor_iter->second;
+    EXPECT_EQ(actor->h_actor_id, test_actor_data->h_actor_id);
+    EXPECT_EQ(actor->h_actor_type, test_actor_data->h_actor_type);
+    EXPECT_EQ(actor->children.size(), 1);
+    EXPECT_NE(actor->timeline, nullptr);
+    EXPECT_EQ(actor->timeline->effective_duration, 30.0F);
+
+    // Verify actor attributes
+    auto name_attr = actor->default_attributes.find(algorithm_helper::calc_hash("name"));
+    EXPECT_NE(name_attr, actor->default_attributes.end());
+    EXPECT_EQ(name_attr->second, variant("Alice"));
+
+    auto pos_attr = actor->default_attributes.find(algorithm_helper::calc_hash("position"));
+    EXPECT_NE(pos_attr, actor->default_attributes.end());
+    EXPECT_TRUE(pos_attr->second.approx_equals(variant(vector3(0.0F, 0.0F, 0.0F))));
+
+    // Verify activity
+    auto activity_iter = actor->children.find(1);
+    EXPECT_NE(activity_iter, actor->children.end());
+    auto &deserialized_activity = activity_iter->second;
+    EXPECT_EQ(deserialized_activity->id, 1);
+    EXPECT_EQ(deserialized_activity->h_actor_id, test_actor_data->h_actor_id);
+    EXPECT_NE(deserialized_activity->timeline, nullptr);
+    EXPECT_EQ(deserialized_activity->timeline->effective_duration, 15.0F);
 
     // Verify actions
-    EXPECT_EQ(fb_stage->action_keys()->size(), 2);
-    EXPECT_EQ(fb_stage->actions_type()->size(), 2);
-    EXPECT_EQ(fb_stage->actions()->size(), 2);
+    auto modifier_iter = deserialized_stage->actions.find(algorithm_helper::calc_hash("move_action"));
+    EXPECT_NE(modifier_iter, deserialized_stage->actions.end());
+    auto modifier_action_deserialized = std::dynamic_pointer_cast<modifier_action_data>(modifier_iter->second);
+    EXPECT_NE(modifier_action_deserialized, nullptr);
+    EXPECT_EQ(modifier_action_deserialized->get_action_type(), action_data::ACTION_MODIFIER);
+    EXPECT_EQ(modifier_action_deserialized->h_attribute_name, algorithm_helper::calc_hash("position"));
+    EXPECT_EQ(modifier_action_deserialized->value_type, variant::VECTOR3);
+    EXPECT_EQ(modifier_action_deserialized->h_script_name, algorithm_helper::calc_hash("move_script"));
+
+    auto composite_iter = deserialized_stage->actions.find(algorithm_helper::calc_hash("complex_action"));
+    EXPECT_NE(composite_iter, deserialized_stage->actions.end());
+    auto composite_action_deserialized = std::dynamic_pointer_cast<composite_action_data>(composite_iter->second);
+    EXPECT_NE(composite_action_deserialized, nullptr);
+    EXPECT_EQ(composite_action_deserialized->get_action_type(), action_data::ACTION_COMPOSITE);
+    EXPECT_NE(composite_action_deserialized->timeline, nullptr);
+    EXPECT_EQ(composite_action_deserialized->timeline->effective_duration, 10.0F);
+
+    // Verify scripts
+    auto move_script_iter = deserialized_stage->scripts.find(algorithm_helper::calc_hash("move_script"));
+    EXPECT_NE(move_script_iter, deserialized_stage->scripts.end());
+    EXPECT_EQ(move_script_iter->second, "function move() { return position + direction * speed * time; }");
+
+    auto fade_script_iter = deserialized_stage->scripts.find(algorithm_helper::calc_hash("fade_script"));
+    EXPECT_NE(fade_script_iter, deserialized_stage->scripts.end());
+    EXPECT_EQ(fade_script_iter->second, "function fade() { return 1.0 - time / duration; }");
+
+    // Verify beat features
+    auto mood_feature = deserialized_beat->features.find(algorithm_helper::calc_hash("mood"));
+    EXPECT_NE(mood_feature, deserialized_beat->features.end());
+    EXPECT_EQ(mood_feature->second, variant("happy"));
+
+    auto lighting_feature = deserialized_beat->features.find(algorithm_helper::calc_hash("lighting"));
+    EXPECT_NE(lighting_feature, deserialized_beat->features.end());
+    EXPECT_TRUE(lighting_feature->second.approx_equals(variant(vector3(1.0F, 1.0F, 1.0F))));
 
     _builder->Clear();
 }
