@@ -7,7 +7,6 @@
 #include "camellia_typedef.h"
 #include "data/stage_data.h"
 #include "helper/scripting_helper.h"
-#include "helper/text_layout_helper.h"
 #include <memory>
 
 namespace camellia {
@@ -32,7 +31,6 @@ public:
     [[nodiscard]] integer_t get_id() const;
     [[nodiscard]] number_t get_transition_duration() const;
     [[nodiscard]] number_t get_transition_speed() const;
-    [[nodiscard]] boolean_t pop_should_update_layout() { return std::exchange(_should_update_layout, false); }
     number_t update(number_t region_time);
 
     [[nodiscard]] std::string get_locator() const noexcept override;
@@ -56,9 +54,7 @@ private:
     std::map<hash_t, variant> _initial_attributes;
     attribute_registry _attributes{};
 
-    text_layout_helper::text_style _text_style;
-
-    boolean_t _is_visible{false}, _last_is_visible{false}, _should_update_layout{false};
+    boolean_t _is_visible{false}, _last_is_visible{false};
 };
 
 class dialog : public node {

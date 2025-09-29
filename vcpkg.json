@@ -5,15 +5,6 @@
   "homepage": "https://github.com/foxxdeluxe/CamelliaBackend",
   "dependencies": [
     "quickjs-ng",
-    {
-      "name": "skia",
-      "default-features": false,
-      "features": [
-        "freetype",
-        "harfbuzz",
-        "icu"
-      ]
-    },
     "xxhash",
     "constexpr-xxh3",
     "flatbuffers"

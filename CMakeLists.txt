@@ -30,9 +30,6 @@ find_package(qjs CONFIG REQUIRED)
 # xxHash
 find_package(xxHash CONFIG REQUIRED)
 
-# modified Skia
-find_package(unofficial-skia CONFIG REQUIRED)
-
 # FlatBuffers
 find_package(flatbuffers CONFIG REQUIRED)
 
@@ -101,8 +98,6 @@ target_link_libraries(
     qjs
     # xxHash
     xxHash::xxhash
-    # modified Skia
-    unofficial::skia::modules::skparagraph
     # FlatBuffers
     flatbuffers::flatbuffers
 )
@@ -116,7 +111,6 @@ add_library(
         helper/algorithm_helper.cpp
         helper/scripting_helper.cpp
         helper/serialization_helper.cpp
-        helper/text_layout_helper.cpp
         manager.cpp
         message.cpp
         node/activity.cpp

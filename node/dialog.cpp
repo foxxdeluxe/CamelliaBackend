@@ -137,69 +137,6 @@ number_t text_region::update(const number_t region_time) {
         _attributes.update(temp_attributes);
     }
 
-    try {
-        for (const auto &h_key : _attributes.peek_dirty_attributes()) {
-            switch (h_key) {
-            case H_TEXT_NAME:
-                _should_update_layout = true;
-                break;
-            case text_style_data::H_FONT_SIZE_NAME:
-                _should_update_layout = true;
-                _text_style.set_font_size(static_cast<number_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_FONT_WEIGHT_NAME:
-                _should_update_layout = true;
-                _text_style.set_font_weight(static_cast<text_layout_helper::text_style::font_weight>(static_cast<integer_t>(*_attributes.get(h_key))));
-                break;
-            case text_style_data::H_FONT_STYLE_NAME:
-                _should_update_layout = true;
-                _text_style.set_font_style(static_cast<text_layout_helper::text_style::font_style>(static_cast<integer_t>(*_attributes.get(h_key))));
-                break;
-            case text_style_data::H_FONT_FAMILY_NAME:
-                _should_update_layout = true;
-                _text_style.set_font_family(_attributes.get(h_key)->get_text());
-                break;
-            case text_style_data::H_COLOR_NAME:
-                _should_update_layout = true;
-                _text_style.set_color(static_cast<integer_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_BACKGROUND_COLOR_NAME:
-                _should_update_layout = true;
-                _text_style.set_background_color(static_cast<integer_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_DECORATION_NAME:
-                _should_update_layout = true;
-                _text_style.set_decoration(static_cast<text_layout_helper::text_style::text_decoration>(static_cast<integer_t>(*_attributes.get(h_key))));
-                break;
-            case text_style_data::H_DECORATION_COLOR_NAME:
-                _should_update_layout = true;
-                _text_style.set_decoration_color(static_cast<integer_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_DECORATION_STYLE_NAME:
-                _should_update_layout = true;
-                _text_style.set_decoration_style(
-                    static_cast<text_layout_helper::text_style::decoration_style>(static_cast<integer_t>(*_attributes.get(h_key))));
-                break;
-            case text_style_data::H_DECORATION_THICKNESS_NAME:
-                _should_update_layout = true;
-                _text_style.set_decoration_thickness(static_cast<number_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_LETTER_SPACING_NAME:
-                _should_update_layout = true;
-                _text_style.set_letter_spacing(static_cast<number_t>(*_attributes.get(h_key)));
-                break;
-            case text_style_data::H_WORD_SPACING_NAME:
-                _should_update_layout = true;
-                _text_style.set_word_spacing(static_cast<number_t>(*_attributes.get(h_key)));
-                break;
-            default:
-                break;
-            }
-        }
-    } catch (const std::runtime_error &e) {
-        // TODO: Report warning
-    }
-
     const auto &dirty = _attributes.peek_dirty_attributes();
     for (const auto &h_key : dirty) {
         get_manager().notify_event(node_attribute_dirty_event(*this, h_key, _attributes.get(h_key)));
@@ -272,7 +209,6 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
 
 number_t dialog::update(number_t beat_time) {
     number_t time_to_end = 0.0F;
-    boolean_t should_update_layout = false;
 
     if (_use_life_timeline) {
         std::map<integer_t, number_t> time_dict;
@@ -296,7 +232,6 @@ number_t dialog::update(number_t beat_time) {
             } else {
                 p_region->update(it->second);
             }
-            should_update_layout |= p_region->pop_should_update_layout();
         }
 
         time_to_end = _p_region_life_timeline->get_effective_duration() - beat_time;
@@ -308,14 +243,9 @@ number_t dialog::update(number_t beat_time) {
             auto *const p_region = text_region.get();
             p_region->update(_hide_inactive_regions ? time_left : std::max(0.0F, time_left));
             time_left -= p_region->get_transition_duration();
-            should_update_layout |= p_region->pop_should_update_layout();
         }
 
         time_to_end = -time_left;
-    }
-
-    if (should_update_layout) {
-        // TODO: Update layout
     }
 
     return time_to_end;
