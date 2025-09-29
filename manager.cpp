@@ -52,10 +52,10 @@ void manager::notify_event(const event &e) const {
     }
 }
 
-unsigned int manager::_next_id = 0U;
+unsigned int manager::_next_id = 1U;
 std::unordered_set<manager::event_cb> manager::_event_handlers{};
 
-unsigned int node::_next_id = 0U;
+unsigned int node::_next_id = 1U;
 
 node::node(manager *p_mgr) : _handle(static_cast<hash_t>(p_mgr->get_id()) << 32ULL | _next_id++), _p_mgr(p_mgr) {}
 

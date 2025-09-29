@@ -7,8 +7,8 @@
 #include <vector>
 
 namespace camellia::algorithm_helper {
-constexpr hash_t RESERVE_SIZE = 0x8000;
-constexpr hash_t XXHASH_SEED = 431134; // AELLEA
+constexpr hash_t RESERVE_SIZE = 0x8000ULL;
+constexpr hash_t XXHASH_SEED = 431134ULL; // AELLEA
 
 boolean_t approx_equals(number_t a, number_t b);
 integer_t get_bbcode_string_length(const text_t &bbcode);

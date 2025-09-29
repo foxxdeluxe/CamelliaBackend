@@ -3,7 +3,6 @@
 
 #include "camellia_macro.h"
 #include "camellia_typedef.h"
-#include "helper/algorithm_helper.h"
 #include "message.h"
 #include <memory>
 #include <unordered_map>
@@ -64,7 +63,7 @@ public:
     // Do some clean up for a stage instance so it can be configured again
     void clean_stage(stage *s) const;
 
-    manager(text_t name) : _name(std::move(name)), _id(_next_id++) {}
+    explicit manager(text_t name) : _name(std::move(name)), _id(_next_id++) {}
 
     [[nodiscard]] const text_t &get_name() const noexcept { return _name; }
     [[nodiscard]] std::string get_locator() const noexcept;
