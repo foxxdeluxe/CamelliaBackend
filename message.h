@@ -6,6 +6,7 @@
 #include <flatbuffers/buffer.h>
 
 #include <utility>
+#include <variant>
 
 namespace camellia {
 
@@ -67,11 +68,11 @@ struct node_visibility_update_event : public node_event {
 };
 
 struct node_attribute_dirty_event : public node_event {
-    hash_t attribute_key{0ULL};
-    const variant *attribute_value{nullptr};
+    using dirty_attributes_vector = std::vector<std::pair<hash_t, const variant *>>;
+    dirty_attributes_vector dirty_attributes;
 
-    explicit node_attribute_dirty_event(const node &n, hash_t attribute_key, const variant *attribute_value)
-        : node_event(n), attribute_key(attribute_key), attribute_value(attribute_value) {}
+    explicit node_attribute_dirty_event(const node &n, dirty_attributes_vector dirty_attributes)
+        : node_event(n), dirty_attributes(std::move(dirty_attributes)) {}
     [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_ATTRIBUTE_DIRTY; }
 };

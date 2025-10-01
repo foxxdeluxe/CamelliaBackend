@@ -289,7 +289,7 @@ TEST_F(serialization_test, MessageFlatBuffersRoundtrip_NodeEvents) {
     // Test node_attribute_dirty_event
     variant test_attr_value(42);
     hash_t test_attr_key = algorithm_helper::calc_hash("test_attribute");
-    node_attribute_dirty_event attr_event(*test_node, test_attr_key, &test_attr_value);
+    node_attribute_dirty_event attr_event(*test_node, {std::make_pair(test_attr_key, &test_attr_value)});
     auto attr_offset = attr_event.to_flatbuffers(*_builder);
 
     auto attr_event_offset = fb::CreateEvent(*_builder, fb::EventData_NodeAttributeDirtyEvent, attr_offset.o);
@@ -304,8 +304,8 @@ TEST_F(serialization_test, MessageFlatBuffersRoundtrip_NodeEvents) {
     const auto *attr_fb = attr_event_fb->data_as_NodeAttributeDirtyEvent();
     EXPECT_NE(attr_fb, nullptr);
     EXPECT_EQ(attr_fb->base_node()->node_handle(), attr_event.node_handle);
-    EXPECT_EQ(attr_fb->attribute_key(), attr_event.attribute_key);
-    // Note: attribute_value comparison would require deserialization of the variant
+    EXPECT_EQ(attr_fb->dirty_attributes()->Get(0)->attribute_key(), test_attr_key);
+    EXPECT_EQ(variant::from_flatbuffers(*attr_fb->dirty_attributes()->Get(0)->attribute_value()), test_attr_value);
 
     _builder->Clear();
 }

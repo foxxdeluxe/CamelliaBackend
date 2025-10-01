@@ -1,8 +1,12 @@
 ﻿#include "activity.h"
 #include "attribute_registry.h"
 #include "camellia_macro.h"
+#include "camellia_typedef.h"
 #include "node/stage.h"
+#include "variant.h"
 #include <format>
+#include <utility>
+#include <vector>
 
 namespace camellia {
 
@@ -72,12 +76,16 @@ number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, varia
 
     auto updated = _p_timeline->update(beat_time, _initial_attributes, parent_attributes);
 
-    p_actor->get_attributes().update(updated);
-    const auto &dirty = p_actor->get_attributes().peek_dirty_attributes();
+    auto &attributes = p_actor->get_attributes();
+    attributes.update(updated);
+    const auto &dirty = attributes.peek_dirty_attributes();
+    node_attribute_dirty_event::dirty_attributes_vector dirty_attribute_pairs;
+    dirty_attribute_pairs.reserve(dirty.size());
     for (const auto &h_key : dirty) {
-        get_manager().notify_event(node_attribute_dirty_event(*p_actor, h_key, p_actor->get_attributes().get(h_key)));
+        dirty_attribute_pairs.emplace_back(h_key, attributes.get(h_key));
     }
-    p_actor->get_attributes().clear_dirty_attributes();
+    get_manager().notify_event(node_attribute_dirty_event(*p_actor, std::move(dirty_attribute_pairs)));
+    attributes.clear_dirty_attributes();
 
     parent_attributes.push_back(updated);
     auto res = std::max(p_actor->update_children(beat_time, parent_attributes), _p_timeline->get_effective_duration() - beat_time);

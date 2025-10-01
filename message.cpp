@@ -35,7 +35,12 @@ flatbuffers::Offset<void> node_visibility_update_event::to_flatbuffers(flatbuffe
 
 flatbuffers::Offset<void> node_attribute_dirty_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
     auto base_node = node_event::to_flatbuffers(builder);
-    return fb::CreateNodeAttributeDirtyEvent(builder, base_node.o, attribute_key, attribute_value->to_flatbuffers(builder)).o;
+    std::vector<flatbuffers::Offset<fb::AttributeValuePair>> dirty_attributes_offset;
+    dirty_attributes_offset.reserve(dirty_attributes.size());
+    for (const auto &dirty_attribute : dirty_attributes) {
+        dirty_attributes_offset.push_back(fb::CreateAttributeValuePair(builder, dirty_attribute.first, dirty_attribute.second->to_flatbuffers(builder)));
+    }
+    return fb::CreateNodeAttributeDirtyEvent(builder, base_node.o, builder.CreateVector(dirty_attributes_offset)).o;
 }
 
 flatbuffers::Offset<void> log_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {

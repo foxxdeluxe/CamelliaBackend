@@ -35,11 +35,16 @@ table NodeVisibilityUpdateEvent {
     is_visible: bool;
 }
 
+// Attribute-value pair
+table AttributeValuePair {
+    attribute_key: uint64;
+    attribute_value: Variant;
+}
+
 // Node attribute dirty event
 table NodeAttributeDirtyEvent {
     base_node: NodeEvent;
-    attribute_key: uint64;
-    attribute_value: Variant;
+    dirty_attributes: [AttributeValuePair];
 }
 
 // Log event

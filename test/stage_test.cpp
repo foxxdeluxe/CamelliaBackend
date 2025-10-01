@@ -38,7 +38,9 @@ void on_event(unsigned int manager_id, const event &e) {
     } else if (e.get_event_type() == EVENT_NODE_ATTRIBUTE_DIRTY) {
         const auto *nde = static_cast<const node_attribute_dirty_event *>(&e);
         if (text_regions().contains(nde->node_handle)) {
-            text_regions()[nde->node_handle][nde->attribute_key] = *nde->attribute_value;
+            for (const auto &dirty_attribute : nde->dirty_attributes) {
+                text_regions()[nde->node_handle][dirty_attribute.first] = *dirty_attribute.second;
+            }
         }
     }
 }
