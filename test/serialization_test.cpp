@@ -312,10 +312,9 @@ TEST_F(serialization_test, MessageFlatBuffersRoundtrip_NodeEvents) {
 
 TEST_F(serialization_test, MessageFlatBuffersRoundtrip_LogEvent) {
     // Test log_event with different log levels
-    variant log_message("Test log message");
 
     // Test with LOG_DEBUG
-    log_event debug_event(log_message, LOG_DEBUG);
+    log_event debug_event("Test log message", LOG_DEBUG);
     auto debug_offset = debug_event.to_flatbuffers(*_builder);
 
     auto debug_event_offset = fb::CreateEvent(*_builder, fb::EventData_LogEvent, debug_offset.o);
@@ -335,8 +334,7 @@ TEST_F(serialization_test, MessageFlatBuffersRoundtrip_LogEvent) {
     _builder->Clear();
 
     // Test with LOG_ERROR
-    variant error_message("Error occurred", true);
-    log_event error_event(error_message, LOG_ERROR);
+    log_event error_event("Error occurred", LOG_ERROR);
     auto error_offset = error_event.to_flatbuffers(*_builder);
 
     auto error_event_offset = fb::CreateEvent(*_builder, fb::EventData_LogEvent, error_offset.o);

@@ -44,7 +44,7 @@ table NodeAttributeDirtyEvent {
 
 // Log event
 table LogEvent {
-    message: Variant;
+    message: string;
     level: LogLevel;
 }
 

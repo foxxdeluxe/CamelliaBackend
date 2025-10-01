@@ -63,6 +63,8 @@ public:
     // Do some clean up for a stage instance so it can be configured again
     void clean_stage(stage *s) const;
 
+    void log(text_t message, log_level level) const;
+
     explicit manager(text_t name) : _name(std::move(name)), _id(_next_id++) {}
 
     [[nodiscard]] const text_t &get_name() const noexcept { return _name; }

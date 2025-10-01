@@ -52,6 +52,10 @@ void manager::notify_event(const event &e) const {
     }
 }
 
+void manager::log(text_t message, log_level level) const {
+    notify_event(log_event(std::move(message), level));
+}
+
 unsigned int manager::_next_id = 1U;
 std::unordered_set<manager::event_cb> manager::_event_handlers{};
 

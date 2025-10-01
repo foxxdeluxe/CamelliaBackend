@@ -5,6 +5,8 @@
 #include "variant.h"
 #include <flatbuffers/buffer.h>
 
+#include <utility>
+
 namespace camellia {
 
 class node;
@@ -75,10 +77,10 @@ struct node_attribute_dirty_event : public node_event {
 };
 
 struct log_event : public event {
-    variant message{variant()};
+    text_t message;
     log_level level{LOG_DEBUG};
 
-    explicit log_event(variant message, log_level level) : message(std::move(message)), level(level) {}
+    explicit log_event(text_t message, log_level level) : message(std::move(message)), level(level) {}
 
     [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_LOG; }

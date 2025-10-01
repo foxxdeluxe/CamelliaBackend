@@ -39,7 +39,8 @@ flatbuffers::Offset<void> node_attribute_dirty_event::to_flatbuffers(flatbuffers
 }
 
 flatbuffers::Offset<void> log_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    return fb::CreateLogEvent(builder, message.to_flatbuffers(builder), static_cast<fb::LogLevel>(level)).o;
+    auto message_offset = builder.CreateString(message.c_str());
+    return fb::CreateLogEvent(builder, message_offset, static_cast<fb::LogLevel>(level)).o;
 }
 
 } // namespace camellia
