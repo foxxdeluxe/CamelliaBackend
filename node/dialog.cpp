@@ -138,13 +138,17 @@ number_t text_region::update(const number_t region_time) {
     }
 
     const auto &dirty = _attributes.peek_dirty_attributes();
-    node_attribute_dirty_event::dirty_attributes_vector dirty_attribute_pairs;
-    dirty_attribute_pairs.reserve(dirty.size());
-    for (const auto &h_key : dirty) {
-        dirty_attribute_pairs.emplace_back(h_key, _attributes.get(h_key));
+
+    // If dirty values exist, notify the event
+    if (!dirty.empty()) {
+        node_attribute_dirty_event::dirty_attributes_vector dirty_attribute_pairs;
+        dirty_attribute_pairs.reserve(dirty.size());
+        for (const auto &h_key : dirty) {
+            dirty_attribute_pairs.emplace_back(h_key, _attributes.get(h_key));
+        }
+        get_manager().notify_event(node_attribute_dirty_event(*this, std::move(dirty_attribute_pairs)));
+        _attributes.clear_dirty_attributes();
     }
-    get_manager().notify_event(node_attribute_dirty_event(*this, std::move(dirty_attribute_pairs)));
-    _attributes.clear_dirty_attributes();
 
     if (_is_visible != _last_is_visible) {
         get_manager().notify_event(node_visibility_update_event(*this, _is_visible));

@@ -2,8 +2,8 @@
 
 #include "camellia_macro.h"
 #include "helper/algorithm_helper.h"
-#include "stage.h"
 #include "manager.h"
+#include "stage.h"
 
 namespace camellia {
 
@@ -20,6 +20,10 @@ void stage::_set_beat(const std::shared_ptr<beat_data> &beat) {
 
 actor &stage::allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) {
     if (_actors.contains(aid)) {
+        auto &actor = *_actors.at(aid);
+        THROW_IF(actor.is_initialized(), std::format("Tried to allocate an existing actor.\n"
+                                                     "Activity = {}",
+                                                     aid));
         return *_actors.at(aid);
     }
     auto p_actor = get_manager().new_live_object<actor>();
@@ -73,7 +77,7 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
 
     get_main_dialog()->init(*this);
     _is_initialized = true;
-    
+
     get_manager().notify_event(node_init_event(*this));
 }
 
