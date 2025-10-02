@@ -46,11 +46,9 @@ void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_a
     _p_timeline->init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
 
     _is_initialized = true;
-    get_manager().notify_event(node_init_event(*this));
 }
 
 void activity::fina(boolean_t keep_actor) {
-    get_manager().notify_event(node_fina_event(*this));
     _is_initialized = false;
 
     if (!keep_actor) {

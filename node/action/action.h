@@ -34,6 +34,8 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
+    [[nodiscard]] boolean_t is_internal() const noexcept override { return true; }
+
 protected:
     std::shared_ptr<action_data> _p_base_data{nullptr};
 };

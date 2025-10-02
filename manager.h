@@ -28,6 +28,7 @@ public:
     [[nodiscard]] virtual std::string get_locator() const noexcept = 0;
     [[nodiscard]] virtual boolean_t is_initialized() const noexcept { return _is_initialized; }
     [[nodiscard]] node *get_parent() const noexcept { return _p_parent; }
+    [[nodiscard]] virtual boolean_t is_internal() const noexcept { return false; }
 
     node(node &&) noexcept = delete;
     node &operator=(node &&) noexcept = delete;

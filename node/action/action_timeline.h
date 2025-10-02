@@ -54,6 +54,8 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
+    [[nodiscard]] boolean_t is_internal() const noexcept override { return true; }
+
 private:
     std::shared_ptr<action_timeline_keyframe_data> _data{nullptr};
     number_t _effective_duration{0.0F};
@@ -84,6 +86,8 @@ public:
                                                    boolean_t exclude_ongoing = false);
 
     [[nodiscard]] std::string get_locator() const noexcept override;
+
+    [[nodiscard]] boolean_t is_internal() const noexcept override { return true; }
 
 private:
     std::vector<std::shared_ptr<action_timeline_data>> _data;

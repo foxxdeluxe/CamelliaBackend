@@ -31,6 +31,8 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
+    [[nodiscard]] boolean_t is_internal() const noexcept override { return true; }
+
 private:
     std::shared_ptr<activity_data> _p_data{nullptr};
     std::map<hash_t, variant> _initial_attributes;

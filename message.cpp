@@ -9,12 +9,15 @@ using namespace serialization_helper;
 
 node_event::node_event(const node &n) : node_handle(n.get_handle()) {}
 
-flatbuffers::Offset<void> node_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    return fb::CreateNodeEvent(builder, node_handle).o;
-}
+flatbuffers::Offset<void> node_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const { return fb::CreateNodeEvent(builder, node_handle).o; }
 
-node_init_event::node_init_event(const node &n)
-    : node_event(n), node_type(n.get_type()), parent_handle(n.get_parent() != nullptr ? n.get_parent()->get_handle() : 0ULL) {}
+node_init_event::node_init_event(const node &n) : node_event(n), node_type(n.get_type()) {
+    auto *parent = n.get_parent();
+    while (parent != nullptr && parent->is_internal()) {
+        parent = parent->get_parent();
+    }
+    parent_handle = parent != nullptr ? parent->get_handle() : 0ULL;
+}
 
 flatbuffers::Offset<void> node_init_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
     auto base_node = node_event::to_flatbuffers(builder);

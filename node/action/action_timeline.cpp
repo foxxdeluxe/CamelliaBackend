@@ -84,13 +84,9 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     _p_action->init(action_data, this);
 
     _is_initialized = true;
-
-    get_manager().notify_event(node_init_event(*this));
 }
 
 void action_timeline_keyframe::fina() {
-    get_manager().notify_event(node_fina_event(*this));
-
     _is_initialized = false;
     _data = nullptr;
     _p_parent = nullptr;
@@ -151,13 +147,9 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
     }
 
     _is_initialized = true;
-
-    get_manager().notify_event(node_init_event(*this));
 }
 
 void action_timeline::fina() {
-    get_manager().notify_event(node_fina_event(*this));
-
     _is_initialized = false;
     _data.clear();
     _p_stage = nullptr;
