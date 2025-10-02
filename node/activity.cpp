@@ -15,7 +15,7 @@ stage &activity::get_stage() const {
     return *_p_stage;
 }
 
-void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, actor *p_parent) {
+void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, node *p_parent) {
     REQUIRES_VALID(*data);
 
     _p_data = data;
@@ -36,7 +36,7 @@ void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_a
 
     actor *p_actor{nullptr};
     if (!keep_actor) {
-        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, _p_parent == nullptr ? -1 : static_cast<actor *>(_p_parent)->get_parent_activity()._aid);
+        p_actor = &sta.allocate_actor(_aid, actor_data->h_actor_type, _p_parent == _p_stage ? -1 : static_cast<actor *>(_p_parent)->get_parent_activity()._aid);
         p_actor->init(actor_data, *_p_stage, *this);
     } else {
         p_actor = sta.get_actor(_aid);
@@ -103,8 +103,6 @@ std::string activity::get_locator() const noexcept {
     std::string parent_locator{"???"};
     if (_p_parent != nullptr) {
         parent_locator = _p_parent->get_locator();
-    } else if (_p_stage != nullptr) {
-        parent_locator = _p_stage->get_locator();
     }
 
     return std::format("{} > Activity({})", parent_locator, _aid);

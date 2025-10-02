@@ -67,11 +67,11 @@ void scene::set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time
 
             if (activity_it != _activities.end()) {
                 // Reinitialize existing activity (keeping actor state)
-                activity_it->second->init(it->second, true, *static_cast<stage *>(_p_parent), nullptr);
+                activity_it->second->init(it->second, true, *static_cast<stage *>(_p_parent), this);
             } else {
                 // Create new activity
                 _activities[it->first] = get_manager().new_live_object<activity>();
-                _activities[it->first]->init(it->second, false, *static_cast<stage *>(_p_parent), nullptr);
+                _activities[it->first]->init(it->second, false, *static_cast<stage *>(_p_parent), this);
             }
 
             ++it;
