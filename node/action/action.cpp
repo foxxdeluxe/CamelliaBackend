@@ -83,7 +83,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
                 continue;
             }
 
-            if (p.second.get_value_type() == variant::types::ATTRIBUTE) {
+            if (p.second.get_value_type() == variant::types::HASH) {
                 _ref_params[p.first] = static_cast<hash_t>(p.second);
             } else {
                 _p_script->set_property(p.first, p.second);

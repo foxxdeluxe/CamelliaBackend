@@ -6,6 +6,7 @@
 #include "variant_generated.h"
 #include <array>
 #include <format>
+#include <map>
 #include <variant>
 #include <vector>
 
@@ -79,11 +80,12 @@ struct vector4 {
 
 class variant {
 public:
-    enum types : char { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES, ARRAY, ATTRIBUTE };
+    enum types : char { ERROR = -1, VOID, INTEGER, NUMBER, BOOLEAN, TEXT, VECTOR2, VECTOR3, VECTOR4, BYTES, ARRAY, DICTIONARY, HASH };
 
     [[nodiscard]] types get_value_type() const;
     bool operator==(const variant &other) const;
     bool operator!=(const variant &other) const;
+    bool operator<(const variant &other) const;
     variant &operator=(const variant &v);
     variant();
     ~variant() = default;
@@ -97,15 +99,12 @@ public:
     [[nodiscard]] const vector4 &get_vector4() const;
     [[nodiscard]] const bytes_t &get_bytes() const;
     [[nodiscard]] const std::vector<variant> &get_array() const;
+    [[nodiscard]] const std::map<variant, variant> &get_dictionary() const;
     [[nodiscard]] bool approx_equals(const variant &other) const;
 
     // Descriptor conversion functions
     static variant from_desc(const text_t &descriptor);
     [[nodiscard]] text_t to_desc() const;
-
-    // Binary conversion functions
-    static variant from_binary(const bytes_t &binary_data);
-    [[nodiscard]] bytes_t to_binary() const;
 
     // FlatBuffers conversion functions
     static variant from_flatbuffers(const fb::Variant &v);
@@ -122,7 +121,8 @@ public:
     constexpr static char VECTOR4_PREFIX = '4';
     constexpr static char BYTES_PREFIX = 'B';
     constexpr static char ARRAY_PREFIX = '[';
-    constexpr static char ATTRIBUTE_PREFIX = 'A';
+    constexpr static char DICTIONARY_PREFIX = '{';
+    constexpr static char HASH_PREFIX = 'A';
 
     constexpr static char INTEGER_BINARY_SUFFIX = 'B';
     constexpr static char INTEGER_OCTAL_SUFFIX = 'O';
@@ -131,6 +131,10 @@ public:
 
     constexpr static char ARRAY_SEPARATOR = ',';
     constexpr static char ARRAY_SUFFIX = ']';
+
+    constexpr static char DICTIONARY_SEPARATOR = ',';
+    constexpr static char DICTIONARY_KEY_VALUE_SEPARATOR = ':';
+    constexpr static char DICTIONARY_SUFFIX = '}';
 
     constexpr static char VECTOR_SEPARATOR = ',';
 
@@ -141,17 +145,18 @@ public:
     variant(variant &&v) noexcept;
 
     // Using std::variant instead of union
-    using variant_storage = std::variant<std::monostate,       // VOID
-                                         integer_t,            // INTEGER
-                                         number_t,             // NUMBER
-                                         boolean_t,            // BOOLEAN
-                                         text_t,               // TEXT or ERROR
-                                         vector2,              // VECTOR2
-                                         vector3,              // VECTOR3
-                                         vector4,              // VECTOR4
-                                         bytes_t,              // BYTES
-                                         std::vector<variant>, // ARRAY
-                                         hash_t                // ATTRIBUTE
+    using variant_storage = std::variant<std::monostate,             // VOID
+                                         integer_t,                  // INTEGER
+                                         number_t,                   // NUMBER
+                                         boolean_t,                  // BOOLEAN
+                                         text_t,                     // TEXT or ERROR
+                                         vector2,                    // VECTOR2
+                                         vector3,                    // VECTOR3
+                                         vector4,                    // VECTOR4
+                                         bytes_t,                    // BYTES
+                                         std::vector<variant>,       // ARRAY
+                                         std::map<variant, variant>, // DICTIONARY
+                                         hash_t                      // ATTRIBUTE
                                          >;
 
     explicit(false) variant(integer_t i);
@@ -167,6 +172,8 @@ public:
     explicit(false) variant(bytes_t &&b);
     explicit(false) variant(const std::vector<variant> &a);
     explicit(false) variant(std::vector<variant> &&a);
+    explicit(false) variant(const std::map<variant, variant> &d);
+    explicit(false) variant(std::map<variant, variant> &&d);
     explicit(false) variant(hash_t h);
 
 private:
@@ -217,7 +224,10 @@ template <> struct std::formatter<camellia::variant::types> {
         case camellia::variant::ARRAY:
             s = "ARRAY";
             break;
-        case camellia::variant::ATTRIBUTE:
+        case camellia::variant::DICTIONARY:
+            s = "DICTIONARY";
+            break;
+        case camellia::variant::HASH:
             s = "ATTRIBUTE";
             break;
         default:
@@ -228,6 +238,92 @@ template <> struct std::formatter<camellia::variant::types> {
 
 private:
     std::formatter<std::string> fmt;
+};
+
+template <> struct std::hash<camellia::variant> {
+    std::size_t operator()(const camellia::variant &v) const noexcept {
+        std::size_t seed = std::hash<int>{}(static_cast<int>(v.get_value_type()));
+
+        // Helper function to combine hashes using boost::hash_combine algorithm
+        auto hash_combine = [](std::size_t &seed, std::size_t hash) {
+            // Golden ratio constant for hash mixing
+            constexpr std::size_t kGoldenRatio = 0x9e3779b9;
+            constexpr std::size_t kLeftShift = 6;
+            constexpr std::size_t kRightShift = 2;
+            seed ^= hash + kGoldenRatio + (seed << kLeftShift) + (seed >> kRightShift);
+        };
+
+        switch (v.get_value_type()) {
+        case camellia::variant::VOID:
+            // No additional data to hash
+            break;
+        case camellia::variant::INTEGER:
+            hash_combine(seed, std::hash<camellia::integer_t>{}(static_cast<camellia::integer_t>(v)));
+            break;
+        case camellia::variant::NUMBER: {
+            auto num = static_cast<camellia::number_t>(v);
+            hash_combine(seed, std::hash<camellia::number_t>{}(num));
+            break;
+        }
+        case camellia::variant::BOOLEAN:
+            hash_combine(seed, std::hash<camellia::boolean_t>{}(static_cast<camellia::boolean_t>(v)));
+            break;
+        case camellia::variant::TEXT:
+        case camellia::variant::ERROR:
+            hash_combine(seed, std::hash<camellia::text_t>{}(v.get_text()));
+            break;
+        case camellia::variant::VECTOR2: {
+            const auto &vec = v.get_vector2();
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_x()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_y()));
+            break;
+        }
+        case camellia::variant::VECTOR3: {
+            const auto &vec = v.get_vector3();
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_x()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_y()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_z()));
+            break;
+        }
+        case camellia::variant::VECTOR4: {
+            const auto &vec = v.get_vector4();
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_x()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_y()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_z()));
+            hash_combine(seed, std::hash<camellia::number_t>{}(vec.get_w()));
+            break;
+        }
+        case camellia::variant::BYTES: {
+            const auto &bytes = v.get_bytes();
+            for (const auto byte : bytes) {
+                hash_combine(seed, std::hash<std::uint8_t>{}(byte));
+            }
+            break;
+        }
+        case camellia::variant::ARRAY: {
+            const auto &arr = v.get_array();
+            for (const auto &element : arr) {
+                hash_combine(seed, std::hash<camellia::variant>{}(element));
+            }
+            break;
+        }
+        case camellia::variant::DICTIONARY: {
+            const auto &dict = v.get_dictionary();
+            for (const auto &[key, value] : dict) {
+                hash_combine(seed, std::hash<camellia::variant>{}(key));
+                hash_combine(seed, std::hash<camellia::variant>{}(value));
+            }
+            break;
+        }
+        case camellia::variant::HASH:
+            hash_combine(seed, std::hash<camellia::hash_t>{}(static_cast<camellia::hash_t>(v)));
+            break;
+        default:
+            break;
+        }
+
+        return seed;
+    }
 };
 
 #endif // CAMELLIA_VARIANT_H

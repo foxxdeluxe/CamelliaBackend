@@ -215,6 +215,43 @@ TEST_F(serialization_test, VariantFlatBuffersRoundtrip_ComplexTypes) {
     EXPECT_EQ((hash_t)attr_deserialized, test_hash);
 
     _builder->Clear();
+
+    // DICTIONARY
+    std::map<variant, variant> test_dict = {
+        {variant(1), variant("one")}, {variant(2), variant("two")}, {variant("key"), variant(42)}, {variant(true), variant(vector2(1.0F, 2.0F))}};
+    variant dict_var(test_dict);
+    auto dict_offset = dict_var.to_flatbuffers(*_builder);
+    _builder->Finish(dict_offset);
+    auto dict_verifier = flatbuffers::Verifier(_builder->GetBufferPointer(), _builder->GetSize());
+    EXPECT_TRUE(fb::VerifyVariantBuffer(dict_verifier));
+    const auto *dict_fb = fb::GetVariant(_builder->GetBufferPointer());
+    auto dict_deserialized = variant::from_flatbuffers(*dict_fb);
+    EXPECT_EQ(dict_deserialized, dict_var);
+    EXPECT_EQ(dict_deserialized.get_dictionary().size(), 4);
+    EXPECT_EQ(dict_deserialized.get_dictionary().at(variant(1)).get_text(), "one");
+    EXPECT_EQ(dict_deserialized.get_dictionary().at(variant(2)).get_text(), "two");
+    EXPECT_EQ((integer_t)dict_deserialized.get_dictionary().at(variant("key")), 42);
+    EXPECT_EQ(dict_deserialized.get_dictionary().at(variant(true)).get_vector2(), vector2(1.0F, 2.0F));
+
+    _builder->Clear();
+
+    // NESTED DICTIONARY
+    std::map<variant, variant> inner_dict = {{variant("inner_key"), variant("inner_value")}};
+    std::map<variant, variant> outer_dict = {{variant("nested"), variant(inner_dict)}, {variant("regular"), variant(100)}};
+    variant nested_dict_var(outer_dict);
+    auto nested_dict_offset = nested_dict_var.to_flatbuffers(*_builder);
+    _builder->Finish(nested_dict_offset);
+    auto nested_dict_verifier = flatbuffers::Verifier(_builder->GetBufferPointer(), _builder->GetSize());
+    EXPECT_TRUE(fb::VerifyVariantBuffer(nested_dict_verifier));
+    const auto *nested_dict_fb = fb::GetVariant(_builder->GetBufferPointer());
+    auto nested_dict_deserialized = variant::from_flatbuffers(*nested_dict_fb);
+    EXPECT_EQ(nested_dict_deserialized, nested_dict_var);
+    EXPECT_EQ(nested_dict_deserialized.get_dictionary().size(), 2);
+    EXPECT_EQ(nested_dict_deserialized.get_dictionary().at(variant("nested")).get_value_type(), variant::DICTIONARY);
+    EXPECT_EQ(nested_dict_deserialized.get_dictionary().at(variant("nested")).get_dictionary().at(variant("inner_key")).get_text(), "inner_value");
+    EXPECT_EQ((integer_t)nested_dict_deserialized.get_dictionary().at(variant("regular")), 100);
+
+    _builder->Clear();
 }
 
 // ============================================================================

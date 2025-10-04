@@ -13,7 +13,8 @@ enum VariantType: int8 {
     VECTOR4 = 7,
     BYTES = 8,
     ARRAY = 9,
-    ATTRIBUTE = 10
+    DICTIONARY = 10,
+    HASH = 11
 }
 
 // Vector types
@@ -60,6 +61,15 @@ table VariantVectorValue {
     value: [Variant];
 }
 
+table VariantKeyValuePair {
+    key: Variant;
+    value: Variant;
+}
+
+table VariantDictionaryValue {
+    pairs: [VariantKeyValuePair];
+}
+
 // Variant union
 union VariantData {
     error_value: string,
@@ -72,7 +82,8 @@ union VariantData {
     vector4_value: Vector4,
     bytes_value: ByteVectorValue,
     array_value: VariantVectorValue,
-    attribute_value: UInt64Value
+    dictionary_value: VariantDictionaryValue,
+    hash_value: UInt64Value
 }
 
 // Variant table

@@ -1,7 +1,6 @@
 ﻿#include "variant.h"
 #include "camellia_typedef.h"
 #include "helper/algorithm_helper.h"
-#include "helper/serialization_helper.h"
 #include "variant_generated.h"
 #include <cstdio>
 #include <cstring>
@@ -115,7 +114,9 @@ bool variant::operator==(const variant &other) const {
         return std::get<bytes_t>(_data) == std::get<bytes_t>(other._data);
     case ARRAY:
         return std::get<std::vector<variant>>(_data) == std::get<std::vector<variant>>(other._data);
-    case ATTRIBUTE:
+    case DICTIONARY:
+        return std::get<std::map<variant, variant>>(_data) == std::get<std::map<variant, variant>>(other._data);
+    case HASH:
         return std::get<hash_t>(_data) == std::get<hash_t>(other._data);
     default: // others
         return false;
@@ -123,6 +124,68 @@ bool variant::operator==(const variant &other) const {
 }
 
 bool variant::operator!=(const variant &other) const { return !(*this == other); }
+
+bool variant::operator<(const variant &other) const {
+    if (_type != other._type) {
+        return _type < other._type;
+    }
+
+    switch (_type) {
+    case VOID:
+        return false;
+    case BOOLEAN:
+        return static_cast<integer_t>(std::get<boolean_t>(_data)) < static_cast<integer_t>(std::get<boolean_t>(other._data));
+    case INTEGER:
+        return std::get<integer_t>(_data) < std::get<integer_t>(other._data);
+    case NUMBER:
+        return std::get<number_t>(_data) < std::get<number_t>(other._data);
+    case TEXT:
+    case ERROR:
+        return std::get<text_t>(_data) < std::get<text_t>(other._data);
+    case VECTOR2: {
+        const auto &v1 = std::get<vector2>(_data);
+        const auto &v2 = std::get<vector2>(other._data);
+        if (v1.get_x() != v2.get_x())
+            return v1.get_x() < v2.get_x();
+        return v1.get_y() < v2.get_y();
+    }
+    case VECTOR3: {
+        const auto &v1 = std::get<vector3>(_data);
+        const auto &v2 = std::get<vector3>(other._data);
+        if (v1.get_x() != v2.get_x()) {
+            return v1.get_x() < v2.get_x();
+        }
+        if (v1.get_y() != v2.get_y()) {
+            return v1.get_y() < v2.get_y();
+        }
+        return v1.get_z() < v2.get_z();
+    }
+    case VECTOR4: {
+        const auto &v1 = std::get<vector4>(_data);
+        const auto &v2 = std::get<vector4>(other._data);
+        if (v1.get_x() != v2.get_x()) {
+            return v1.get_x() < v2.get_x();
+        }
+        if (v1.get_y() != v2.get_y()) {
+            return v1.get_y() < v2.get_y();
+        }
+        if (v1.get_z() != v2.get_z()) {
+            return v1.get_z() < v2.get_z();
+        }
+        return v1.get_w() < v2.get_w();
+    }
+    case BYTES:
+        return std::get<bytes_t>(_data) < std::get<bytes_t>(other._data);
+    case ARRAY:
+        return std::get<std::vector<variant>>(_data) < std::get<std::vector<variant>>(other._data);
+    case DICTIONARY:
+        return std::get<std::map<variant, variant>>(_data) < std::get<std::map<variant, variant>>(other._data);
+    case HASH:
+        return std::get<hash_t>(_data) < std::get<hash_t>(other._data);
+    default:
+        return false;
+    }
+}
 
 variant &variant::operator=(const variant &v) {
     if (this == &v) {
@@ -163,7 +226,10 @@ variant &variant::operator=(const variant &v) {
     case ARRAY:
         _data = std::get<std::vector<variant>>(v._data);
         break;
-    case ATTRIBUTE:
+    case DICTIONARY:
+        _data = std::get<std::map<variant, variant>>(v._data);
+        break;
+    case HASH:
         _data = std::get<hash_t>(v._data);
         break;
     }
@@ -206,7 +272,11 @@ variant::variant(const std::vector<variant> &a) : variant(ARRAY) { _data = a; }
 
 variant::variant(std::vector<variant> &&a) : variant(ARRAY) { _data = std::move(a); }
 
-variant::variant(hash_t h) : variant(ATTRIBUTE) { _data = h; }
+variant::variant(const std::map<variant, variant> &d) : variant(DICTIONARY) { _data = d; }
+
+variant::variant(std::map<variant, variant> &&d) : variant(DICTIONARY) { _data = std::move(d); }
+
+variant::variant(hash_t h) : variant(HASH) { _data = h; }
 
 variant::variant(types t) : _type(t) {
     switch (_type) {
@@ -241,7 +311,10 @@ variant::variant(types t) : _type(t) {
     case ARRAY:
         _data = std::vector<variant>{};
         break;
-    case ATTRIBUTE:
+    case DICTIONARY:
+        _data = std::map<variant, variant>{};
+        break;
+    case HASH:
         _data = hash_t{};
         break;
     }
@@ -306,6 +379,26 @@ bool variant::approx_equals(const variant &other) const {
         }
         return true;
     }
+    case DICTIONARY: {
+        if (other._type != DICTIONARY) {
+            return *this == other;
+        }
+
+        const auto &dict1 = std::get<std::map<variant, variant>>(_data);
+        const auto &dict2 = std::get<std::map<variant, variant>>(other._data);
+
+        if (dict1.size() != dict2.size()) {
+            return false;
+        }
+
+        for (const auto &[key, value] : dict1) {
+            auto it = dict2.find(key);
+            if (it == dict2.end() || !value.approx_equals(it->second)) {
+                return false;
+            }
+        }
+        return true;
+    }
     default:
         return *this == other;
     }
@@ -320,6 +413,8 @@ const vector4 &variant::get_vector4() const { return std::get<vector4>(_data); }
 const bytes_t &variant::get_bytes() const { return std::get<bytes_t>(_data); }
 
 const std::vector<variant> &variant::get_array() const { return std::get<std::vector<variant>>(_data); }
+
+const std::map<variant, variant> &variant::get_dictionary() const { return std::get<std::map<variant, variant>>(_data); }
 
 variant variant::from_desc(const text_t &descriptor) {
     if (descriptor.empty()) {
@@ -451,6 +546,7 @@ variant variant::from_desc(const text_t &descriptor) {
         // Parse comma-separated elements with escape handling
         size_t start = 1;
         int bracket_level = 0;
+        int brace_level = 0;
         bool escaped = false;
 
         for (size_t i = start; i <= descriptor.length() - 1; ++i) {
@@ -470,12 +566,16 @@ variant variant::from_desc(const text_t &descriptor) {
                 bracket_level++;
             } else if (c == ARRAY_SUFFIX) {
                 bracket_level--;
-            } else if (c == ARRAY_SEPARATOR && bracket_level == 0) {
+            } else if (c == DICTIONARY_PREFIX) {
+                brace_level++;
+            } else if (c == DICTIONARY_SUFFIX) {
+                brace_level--;
+            } else if (c == ARRAY_SEPARATOR && bracket_level == 0 && brace_level == 0) {
                 // Found a separator at top level
                 text_t element_desc = descriptor.substr(start, i - start);
 
                 text_t unescaped;
-                if (element_desc.size() >= 1 && element_desc[0] == TEXT_PREFIX) {
+                if (element_desc.size() >= 1 && (element_desc[0] == TEXT_PREFIX || element_desc[0] == ERROR_PREFIX)) {
                     // Unescape the element descriptor
                     bool esc = false;
                     for (char ch : element_desc) {
@@ -500,7 +600,113 @@ variant variant::from_desc(const text_t &descriptor) {
         return {elements};
     }
 
-    case ATTRIBUTE_PREFIX: { // ATTRIBUTE (hash)
+    case DICTIONARY_PREFIX: { // DICTIONARY - special case where '{' is the type indicator
+        // Parse dictionary: {key1:value1,key2:value2}
+        if (descriptor.back() != DICTIONARY_SUFFIX) {
+            return {std::map<variant, variant>()};
+        }
+
+        std::map<variant, variant> dict;
+        if (descriptor.size() <= 2) {
+            return {dict};
+        }
+
+        // Parse comma-separated key:value pairs with escape handling
+        size_t start = 1;
+        int bracket_level = 0;
+        int brace_level = 0;
+        bool escaped = false;
+
+        for (size_t i = start; i <= descriptor.length() - 1; ++i) {
+            char c = (i < descriptor.length() - 1) ? descriptor[i] : DICTIONARY_SEPARATOR; // Treat end as comma
+
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+
+            if (c == ESCAPE_CHAR) {
+                escaped = true;
+                continue;
+            }
+
+            if (c == ARRAY_PREFIX) {
+                bracket_level++;
+            } else if (c == ARRAY_SUFFIX) {
+                bracket_level--;
+            } else if (c == DICTIONARY_PREFIX) {
+                brace_level++;
+            } else if (c == DICTIONARY_SUFFIX) {
+                brace_level--;
+            } else if (c == DICTIONARY_SEPARATOR && bracket_level == 0 && brace_level == 0) {
+                // Found a separator at top level
+                text_t pair_desc = descriptor.substr(start, i - start);
+
+                // Find the key:value separator at top level
+                size_t colon_pos = text_t::npos;
+                int pair_bracket_level = 0;
+                int pair_brace_level = 0;
+                bool pair_escaped = false;
+                for (size_t j = 0; j < pair_desc.size(); ++j) {
+                    if (pair_escaped) {
+                        pair_escaped = false;
+                        continue;
+                    }
+                    if (pair_desc[j] == ESCAPE_CHAR) {
+                        pair_escaped = true;
+                        continue;
+                    }
+                    if (pair_desc[j] == ARRAY_PREFIX) {
+                        pair_bracket_level++;
+                    } else if (pair_desc[j] == ARRAY_SUFFIX) {
+                        pair_bracket_level--;
+                    } else if (pair_desc[j] == DICTIONARY_PREFIX) {
+                        pair_brace_level++;
+                    } else if (pair_desc[j] == DICTIONARY_SUFFIX) {
+                        pair_brace_level--;
+                    } else if (pair_desc[j] == DICTIONARY_KEY_VALUE_SEPARATOR && pair_bracket_level == 0 && pair_brace_level == 0) {
+                        colon_pos = j;
+                        break;
+                    }
+                }
+
+                if (colon_pos != text_t::npos) {
+                    text_t key_desc = pair_desc.substr(0, colon_pos);
+                    text_t value_desc = pair_desc.substr(colon_pos + 1);
+
+                    // Unescape if needed
+                    auto unescape_if_text = [](const text_t &desc) -> text_t {
+                        if (desc.size() >= 1 && (desc[0] == TEXT_PREFIX || desc[0] == ERROR_PREFIX)) {
+                            text_t unescaped;
+                            bool esc = false;
+                            for (char ch : desc) {
+                                if (esc) {
+                                    unescaped += ch;
+                                    esc = false;
+                                } else if (ch == ESCAPE_CHAR) {
+                                    esc = true;
+                                } else {
+                                    unescaped += ch;
+                                }
+                            }
+                            return unescaped;
+                        }
+                        return desc;
+                    };
+
+                    variant key = from_desc(unescape_if_text(key_desc));
+                    variant value = from_desc(unescape_if_text(value_desc));
+                    dict[key] = value;
+                }
+
+                start = i + 1;
+            }
+        }
+
+        return {dict};
+    }
+
+    case HASH_PREFIX: { // HASH
         try {
             if (descriptor.size() <= 1) {
                 return {hash_t(0)};
@@ -591,7 +797,7 @@ text_t variant::to_desc() const {
 
             auto element_desc = elements[i].to_desc();
 
-            if (element_desc.size() >= 1 && element_desc[0] == TEXT_PREFIX) {
+            if (element_desc.size() >= 1 && (element_desc[0] == TEXT_PREFIX || element_desc[0] == ERROR_PREFIX)) {
                 // Escape special characters in the element string descriptor
                 auto escaped = text_t();
                 escaped.reserve(element_desc.size());
@@ -611,108 +817,55 @@ text_t variant::to_desc() const {
         return result;
     }
 
-    case ATTRIBUTE: {
+    case DICTIONARY: {
+        const auto &dict = std::get<std::map<variant, variant>>(_data);
+        text_t result{DICTIONARY_PREFIX};
+
+        size_t count = 0;
+        for (const auto &[key, value] : dict) {
+            if (count > 0) {
+                result += DICTIONARY_SEPARATOR;
+            }
+
+            auto key_desc = key.to_desc();
+            auto value_desc = value.to_desc();
+
+            // Escape special characters if needed
+            auto escape_if_needed = [](const text_t &desc) -> text_t {
+                if (desc.size() >= 1 && (desc[0] == TEXT_PREFIX || desc[0] == ERROR_PREFIX)) {
+                    text_t escaped;
+                    escaped.reserve(desc.size());
+                    for (char c : desc) {
+                        if (c == ESCAPE_CHAR || c == DICTIONARY_SEPARATOR || c == DICTIONARY_KEY_VALUE_SEPARATOR || c == DICTIONARY_PREFIX ||
+                            c == DICTIONARY_SUFFIX || c == ARRAY_PREFIX || c == ARRAY_SUFFIX) {
+                            escaped += ESCAPE_CHAR;
+                        }
+                        escaped += c;
+                    }
+                    return escaped;
+                }
+                return desc;
+            };
+
+            result += escape_if_needed(key_desc);
+            result += DICTIONARY_KEY_VALUE_SEPARATOR;
+            result += escape_if_needed(value_desc);
+
+            count++;
+        }
+
+        result += DICTIONARY_SUFFIX;
+        return result;
+    }
+
+    case HASH: {
         auto hash = std::get<hash_t>(_data);
-        return std::format("{}{:016X}", ATTRIBUTE_PREFIX, hash);
+        return std::format("{}{:016X}", HASH_PREFIX, hash);
     }
 
     default:
         return text_t{VOID_PREFIX}; // Fallback to VOID
     }
-}
-
-bytes_t variant::to_binary() const {
-    using namespace serialization_helper;
-
-    bytes_t result;
-
-    // Write type as first byte
-    result.push_back(static_cast<unsigned char>(_type));
-
-    switch (_type) {
-    case VOID:
-        // No additional data needed
-        break;
-
-    case INTEGER: {
-        int32_t value = std::get<integer_t>(_data);
-        write_le32(result, static_cast<uint32_t>(value));
-        break;
-    }
-
-    case NUMBER: {
-        float value = std::get<number_t>(_data);
-        write_le_float(result, value);
-        break;
-    }
-
-    case BOOLEAN: {
-        bool value = std::get<boolean_t>(_data);
-        result.push_back(value ? 1 : 0);
-        break;
-    }
-
-    case TEXT:
-    case ERROR: {
-        const auto &text = std::get<text_t>(_data);
-        write_le32(result, static_cast<uint32_t>(text.size()));
-        result.insert(result.end(), text.begin(), text.end());
-        break;
-    }
-
-    case VECTOR2: {
-        const auto &v = std::get<vector2>(_data);
-        write_le_float(result, v.get_x());
-        write_le_float(result, v.get_y());
-        break;
-    }
-
-    case VECTOR3: {
-        const auto &v = std::get<vector3>(_data);
-        write_le_float(result, v.get_x());
-        write_le_float(result, v.get_y());
-        write_le_float(result, v.get_z());
-        break;
-    }
-
-    case VECTOR4: {
-        const auto &v = std::get<vector4>(_data);
-        write_le_float(result, v.get_x());
-        write_le_float(result, v.get_y());
-        write_le_float(result, v.get_z());
-        write_le_float(result, v.get_w());
-        break;
-    }
-
-    case BYTES: {
-        const auto &bytes = std::get<bytes_t>(_data);
-        write_le32(result, static_cast<uint32_t>(bytes.size()));
-        result.insert(result.end(), bytes.begin(), bytes.end());
-        break;
-    }
-
-    case ARRAY: {
-        const auto &elements = std::get<std::vector<variant>>(_data);
-        write_le32(result, static_cast<uint32_t>(elements.size()));
-        for (const auto &element : elements) {
-            auto element_binary = element.to_binary();
-            result.insert(result.end(), element_binary.begin(), element_binary.end());
-        }
-        break;
-    }
-
-    case ATTRIBUTE: {
-        uint64_t hash = std::get<hash_t>(_data);
-        write_le64(result, hash);
-        break;
-    }
-
-    default:
-        // Unknown type, just write the type byte
-        break;
-    }
-
-    return result;
 }
 
 variant variant::from_flatbuffers(const fb::Variant &v) {
@@ -778,9 +931,22 @@ variant variant::from_flatbuffers(const fb::Variant &v) {
 
         break;
     }
-    case fb::VariantData_attribute_value:
-        res._type = ATTRIBUTE;
-        res._data = v.data_as_attribute_value()->value();
+    case fb::VariantData_dictionary_value: {
+        const auto *dict_data = v.data_as_dictionary_value()->pairs();
+        res._type = DICTIONARY;
+        std::map<variant, variant> dict;
+
+        for (const auto *pair : *dict_data) {
+            variant key = from_flatbuffers(*pair->key());
+            variant value = from_flatbuffers(*pair->value());
+            dict[key] = value;
+        }
+        res._data = dict;
+        break;
+    }
+    case fb::VariantData_hash_value:
+        res._type = HASH;
+        res._data = v.data_as_hash_value()->value();
         break;
     }
 
@@ -814,35 +980,35 @@ flatbuffers::Offset<fb::Variant> variant::to_flatbuffers(flatbuffers::FlatBuffer
         data_offset = builder.CreateString(get_text().c_str()).o;
         break;
     case VECTOR2: {
-        const auto& vec = get_vector2();
+        const auto &vec = get_vector2();
         native_type = fb::VariantData_vector2_value;
         data_offset = fb::CreateVector2(builder, vec.get_x(), vec.get_y()).o;
         break;
     }
     case VECTOR3: {
-        const auto& vec = get_vector3();
+        const auto &vec = get_vector3();
         native_type = fb::VariantData_vector3_value;
         data_offset = fb::CreateVector3(builder, vec.get_x(), vec.get_y(), vec.get_z()).o;
         break;
     }
     case VECTOR4: {
-        const auto& vec = get_vector4();
+        const auto &vec = get_vector4();
         native_type = fb::VariantData_vector4_value;
         data_offset = fb::CreateVector4(builder, vec.get_x(), vec.get_y(), vec.get_z(), vec.get_w()).o;
         break;
     }
     case BYTES: {
-        const auto& bytes = get_bytes();
+        const auto &bytes = get_bytes();
         native_type = fb::VariantData_bytes_value;
         data_offset = fb::CreateByteVectorValue(builder, builder.CreateVector(bytes)).o;
         break;
     }
     case ARRAY: {
-        const auto& arr = get_array();
+        const auto &arr = get_array();
         std::vector<flatbuffers::Offset<fb::Variant>> vec;
         vec.reserve(arr.size());
 
-        for (const auto& item : arr) {
+        for (const auto &item : arr) {
             vec.push_back(item.to_flatbuffers(builder));
         }
 
@@ -850,186 +1016,28 @@ flatbuffers::Offset<fb::Variant> variant::to_flatbuffers(flatbuffers::FlatBuffer
         data_offset = fb::CreateVariantVectorValue(builder, builder.CreateVector(vec)).o;
         break;
     }
-    case ATTRIBUTE:
-        native_type = fb::VariantData_attribute_value;
+    case DICTIONARY: {
+        const auto &dict = get_dictionary();
+        std::vector<flatbuffers::Offset<fb::VariantKeyValuePair>> pairs;
+        pairs.reserve(dict.size());
+
+        for (const auto &[key, value] : dict) {
+            auto key_offset = key.to_flatbuffers(builder);
+            auto value_offset = value.to_flatbuffers(builder);
+            pairs.push_back(fb::CreateVariantKeyValuePair(builder, key_offset, value_offset));
+        }
+
+        native_type = fb::VariantData_dictionary_value;
+        data_offset = fb::CreateVariantDictionaryValue(builder, builder.CreateVector(pairs)).o;
+        break;
+    }
+    case HASH:
+        native_type = fb::VariantData_hash_value;
         data_offset = fb::CreateUInt64Value(builder, static_cast<uint64_t>(*this)).o;
         break;
     }
-    
+
     return fb::CreateVariant(builder, native_type, data_offset);
-}
-
-variant variant::from_binary(const bytes_t &binary_data) {
-    using namespace serialization_helper;
-
-    if (binary_data.empty()) {
-        return {}; // VOID
-    }
-
-    size_t offset = 0;
-    auto type = static_cast<types>(binary_data[offset++]);
-
-    switch (type) {
-    case VOID:
-        return {};
-
-    case INTEGER: {
-        uint32_t bits = read_le32(binary_data, offset);
-        auto value = static_cast<int32_t>(bits);
-        return {static_cast<integer_t>(value)};
-    }
-
-    case NUMBER: {
-        float value = read_le_float(binary_data, offset);
-        return {static_cast<number_t>(value)};
-    }
-
-    case BOOLEAN: {
-        if (offset >= binary_data.size()) {
-            return {false};
-        }
-        bool value = binary_data[offset] != 0;
-        return {value};
-    }
-
-    case TEXT: {
-        uint32_t length = read_le32(binary_data, offset);
-        if (offset + length > binary_data.size()) {
-            return {text_t()};
-        }
-        text_t text(binary_data.begin() + static_cast<ptrdiff_t>(offset), binary_data.begin() + static_cast<ptrdiff_t>(offset + length));
-        return {text};
-    }
-
-    case ERROR: {
-        uint32_t length = read_le32(binary_data, offset);
-        if (offset + length > binary_data.size()) {
-            return {text_t(), true};
-        }
-        text_t text(binary_data.begin() + static_cast<ptrdiff_t>(offset), binary_data.begin() + static_cast<ptrdiff_t>(offset + length));
-        return {text, true};
-    }
-
-    case VECTOR2: {
-        float x = read_le_float(binary_data, offset);
-        float y = read_le_float(binary_data, offset);
-        return {vector2(x, y)};
-    }
-
-    case VECTOR3: {
-        float x = read_le_float(binary_data, offset);
-        float y = read_le_float(binary_data, offset);
-        float z = read_le_float(binary_data, offset);
-        return {vector3(x, y, z)};
-    }
-
-    case VECTOR4: {
-        float x = read_le_float(binary_data, offset);
-        float y = read_le_float(binary_data, offset);
-        float z = read_le_float(binary_data, offset);
-        float w = read_le_float(binary_data, offset);
-        return {vector4(x, y, z, w)};
-    }
-
-    case BYTES: {
-        uint32_t length = read_le32(binary_data, offset);
-        if (offset + length > binary_data.size()) {
-            return {bytes_t()};
-        }
-        bytes_t bytes(binary_data.begin() + static_cast<ptrdiff_t>(offset), binary_data.begin() + static_cast<ptrdiff_t>(offset + length));
-        return {bytes};
-    }
-
-    case ARRAY: {
-        uint32_t count = read_le32(binary_data, offset);
-        std::vector<variant> elements;
-        elements.reserve(count);
-
-        for (uint32_t i = 0; i < count && offset < binary_data.size(); ++i) {
-            // Extract the current element by finding where it ends
-            size_t element_start = offset;
-            if (element_start >= binary_data.size()) {
-                break;
-            }
-
-            auto element_type = static_cast<types>(binary_data[element_start]);
-            offset = element_start + 1;
-
-            // Calculate element size based on type
-            size_t element_size = 1; // Type byte
-            switch (element_type) {
-            case VOID:
-                break;
-            case INTEGER:
-            case NUMBER:
-                element_size += 4U;
-                break;
-            case BOOLEAN:
-                element_size += 1U;
-                break;
-            case TEXT:
-            case ERROR:
-            case BYTES: {
-                if (offset + 4 > binary_data.size()) {
-                    return {elements};
-                }
-                uint32_t length = read_le32(binary_data, offset);
-                element_size += 4U + length;
-                offset = element_start + element_size;
-                break;
-            }
-            case VECTOR2:
-                element_size += 8U;
-                break;
-            case VECTOR3:
-                element_size += 12U;
-                break;
-            case VECTOR4:
-                element_size += 16U;
-                break;
-            case ATTRIBUTE:
-                element_size += 8U;
-                break;
-            case ARRAY: {
-                // Recursive case - need to parse the sub-array to find its end
-                offset = element_start + 1;
-                if (offset + 4 > binary_data.size()) {
-                    return {elements};
-                }
-                uint32_t sub_count = read_le32(binary_data, offset);
-                // For simplicity, use recursive call to parse sub-array
-                bytes_t sub_array(binary_data.begin() + static_cast<ptrdiff_t>(element_start), binary_data.end());
-                auto sub_variant = from_binary(sub_array);
-                elements.push_back(sub_variant);
-                // Skip the parsed sub-array - this is complex, so we'll handle it differently
-                continue;
-            }
-            default:
-                return {elements};
-            }
-
-            if (element_type != ARRAY) {
-                offset = element_start + element_size;
-                if (offset > binary_data.size()) {
-                    break;
-                }
-
-                bytes_t element_data(binary_data.begin() + static_cast<ptrdiff_t>(element_start), binary_data.begin() + static_cast<ptrdiff_t>(offset));
-                elements.push_back(from_binary(element_data));
-            }
-        }
-
-        return {elements};
-    }
-
-    case ATTRIBUTE: {
-        uint64_t hash = read_le64(binary_data, offset);
-        return {static_cast<hash_t>(hash)};
-    }
-
-    default:
-        return {}; // Unknown type, return VOID
-    }
 }
 
 } // namespace camellia

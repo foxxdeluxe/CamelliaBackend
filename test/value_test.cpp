@@ -1,6 +1,8 @@
 ﻿#include "helper/algorithm_helper.h"
 #include "variant.h"
 #include "gtest/gtest.h"
+#include <unordered_map>
+#include <unordered_set>
 
 using namespace camellia;
 
@@ -284,287 +286,427 @@ TEST(variant_test_suite, from_desc_error_handling) {
     ASSERT_EQ(variant::from_desc("Axyz"), variant(hash_t(0))); // Should return 0
 }
 
-TEST(variant_test_suite, to_binary_basic_types) {
-    // VOID type
-    auto void_var = variant();
-    auto void_binary = void_var.to_binary();
-    ASSERT_EQ(void_binary.size(), 1);
-    ASSERT_EQ(void_binary[0], variant::VOID);
+TEST(variant_test_suite, hash_basic_types) {
+    // Test that equal variants produce equal hashes
+    std::hash<variant> hasher;
 
-    // INTEGER type
-    auto int_var = variant(42);
-    auto int_binary = int_var.to_binary();
-    ASSERT_EQ(int_binary.size(), 5); // 1 byte type + 4 bytes data
-    ASSERT_EQ(int_binary[0], variant::INTEGER);
+    // VOID
+    ASSERT_EQ(hasher(variant()), hasher(variant()));
 
-    auto int_negative_var = variant(-123);
-    auto int_negative_binary = int_negative_var.to_binary();
-    ASSERT_EQ(int_negative_binary.size(), 5);
-    ASSERT_EQ(int_negative_binary[0], variant::INTEGER);
+    // INTEGER
+    ASSERT_EQ(hasher(variant(42)), hasher(variant(42)));
+    ASSERT_EQ(hasher(variant(-123)), hasher(variant(-123)));
+    ASSERT_EQ(hasher(variant(0)), hasher(variant(0)));
 
-    // NUMBER type
-    auto number_var = variant(3.14159F);
-    auto number_binary = number_var.to_binary();
-    ASSERT_EQ(number_binary.size(), 5); // 1 byte type + 4 bytes data
-    ASSERT_EQ(number_binary[0], variant::NUMBER);
+    // NUMBER
+    ASSERT_EQ(hasher(variant(3.14F)), hasher(variant(3.14F)));
+    ASSERT_EQ(hasher(variant(-2.5F)), hasher(variant(-2.5F)));
+    ASSERT_EQ(hasher(variant(0.0F)), hasher(variant(0.0F)));
 
-    // BOOLEAN type
-    auto bool_true_var = variant(true);
-    auto bool_true_binary = bool_true_var.to_binary();
-    ASSERT_EQ(bool_true_binary.size(), 2); // 1 byte type + 1 byte data
-    ASSERT_EQ(bool_true_binary[0], variant::BOOLEAN);
-    ASSERT_EQ(bool_true_binary[1], 1);
+    // BOOLEAN
+    ASSERT_EQ(hasher(variant(true)), hasher(variant(true)));
+    ASSERT_EQ(hasher(variant(false)), hasher(variant(false)));
 
-    auto bool_false_var = variant(false);
-    auto bool_false_binary = bool_false_var.to_binary();
-    ASSERT_EQ(bool_false_binary.size(), 2);
-    ASSERT_EQ(bool_false_binary[0], variant::BOOLEAN);
-    ASSERT_EQ(bool_false_binary[1], 0);
+    // TEXT
+    ASSERT_EQ(hasher(variant("hello")), hasher(variant("hello")));
+    ASSERT_EQ(hasher(variant("")), hasher(variant("")));
 
-    // TEXT type
-    auto text_var = variant("hello world");
-    auto text_binary = text_var.to_binary();
-    ASSERT_EQ(text_binary.size(), 1 + 4 + 11); // type + length + text
-    ASSERT_EQ(text_binary[0], variant::TEXT);
+    // ERROR
+    ASSERT_EQ(hasher(variant("error", true)), hasher(variant("error", true)));
 
-    auto empty_text_var = variant("");
-    auto empty_text_binary = empty_text_var.to_binary();
-    ASSERT_EQ(empty_text_binary.size(), 5); // type + length(0) + no text
-    ASSERT_EQ(empty_text_binary[0], variant::TEXT);
+    // Test that different variants produce different hashes (most of the time)
+    ASSERT_NE(hasher(variant(1)), hasher(variant(2)));
+    ASSERT_NE(hasher(variant("hello")), hasher(variant("world")));
+    ASSERT_NE(hasher(variant(true)), hasher(variant(false)));
 
-    // ERROR type
-    auto error_var = variant("error message", true);
-    auto error_binary = error_var.to_binary();
-    ASSERT_EQ(error_binary.size(), 1 + 4 + 13); // type + length + error text
-    ASSERT_EQ(error_binary[0], static_cast<unsigned char>(variant::ERROR));
+    // Different types should (usually) have different hashes
+    ASSERT_NE(hasher(variant(1)), hasher(variant(1.0F)));
+    ASSERT_NE(hasher(variant(0)), hasher(variant()));
 }
 
-TEST(variant_test_suite, to_binary_vector_types) {
-    // VECTOR2 type
-    auto vec2_var = variant(vector2(1.5F, -2.7F));
-    auto vec2_binary = vec2_var.to_binary();
-    ASSERT_EQ(vec2_binary.size(), 9); // 1 byte type + 8 bytes data (2 floats)
-    ASSERT_EQ(vec2_binary[0], variant::VECTOR2);
+TEST(variant_test_suite, hash_vector_types) {
+    std::hash<variant> hasher;
 
-    // VECTOR3 type
-    auto vec3_var = variant(vector3(1.1F, 2.2F, -3.3F));
-    auto vec3_binary = vec3_var.to_binary();
-    ASSERT_EQ(vec3_binary.size(), 13); // 1 byte type + 12 bytes data (3 floats)
-    ASSERT_EQ(vec3_binary[0], variant::VECTOR3);
+    // VECTOR2
+    ASSERT_EQ(hasher(variant(vector2(1.0F, 2.0F))), hasher(variant(vector2(1.0F, 2.0F))));
+    ASSERT_NE(hasher(variant(vector2(1.0F, 2.0F))), hasher(variant(vector2(2.0F, 1.0F))));
 
-    // VECTOR4 type
-    auto vec4_var = variant(vector4(1.0F, 2.0F, 3.0F, -4.0F));
-    auto vec4_binary = vec4_var.to_binary();
-    ASSERT_EQ(vec4_binary.size(), 17); // 1 byte type + 16 bytes data (4 floats)
-    ASSERT_EQ(vec4_binary[0], variant::VECTOR4);
+    // VECTOR3
+    ASSERT_EQ(hasher(variant(vector3(1.0F, 2.0F, 3.0F))), hasher(variant(vector3(1.0F, 2.0F, 3.0F))));
+    ASSERT_NE(hasher(variant(vector3(1.0F, 2.0F, 3.0F))), hasher(variant(vector3(3.0F, 2.0F, 1.0F))));
+
+    // VECTOR4
+    ASSERT_EQ(hasher(variant(vector4(1.0F, 2.0F, 3.0F, 4.0F))), hasher(variant(vector4(1.0F, 2.0F, 3.0F, 4.0F))));
+    ASSERT_NE(hasher(variant(vector4(1.0F, 2.0F, 3.0F, 4.0F))), hasher(variant(vector4(4.0F, 3.0F, 2.0F, 1.0F))));
 }
 
-TEST(variant_test_suite, to_binary_bytes_type) {
-    // Empty bytes
-    bytes_t empty_bytes;
-    auto empty_bytes_var = variant(empty_bytes);
-    auto empty_bytes_binary = empty_bytes_var.to_binary();
-    ASSERT_EQ(empty_bytes_binary.size(), 5); // 1 byte type + 4 bytes length + 0 data
-    ASSERT_EQ(empty_bytes_binary[0], variant::BYTES);
+TEST(variant_test_suite, hash_complex_types) {
+    std::hash<variant> hasher;
 
-    // Single byte
-    bytes_t single_byte = {0x42};
-    auto single_byte_var = variant(single_byte);
-    auto single_byte_binary = single_byte_var.to_binary();
-    ASSERT_EQ(single_byte_binary.size(), 6); // 1 byte type + 4 bytes length + 1 byte data
-    ASSERT_EQ(single_byte_binary[0], variant::BYTES);
+    // BYTES
+    bytes_t bytes1 = {0x01, 0x02, 0x03};
+    bytes_t bytes2 = {0x01, 0x02, 0x03};
+    bytes_t bytes3 = {0x03, 0x02, 0x01};
+    ASSERT_EQ(hasher(variant(bytes1)), hasher(variant(bytes2)));
+    ASSERT_NE(hasher(variant(bytes1)), hasher(variant(bytes3)));
 
-    // Multi bytes
-    bytes_t multi_bytes = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
-    auto multi_bytes_var = variant(multi_bytes);
-    auto multi_bytes_binary = multi_bytes_var.to_binary();
-    ASSERT_EQ(multi_bytes_binary.size(), 13); // 1 byte type + 4 bytes length + 8 bytes data
-    ASSERT_EQ(multi_bytes_binary[0], variant::BYTES);
+    // ARRAY
+    std::vector<variant> arr1 = {variant(1), variant("hello"), variant(true)};
+    std::vector<variant> arr2 = {variant(1), variant("hello"), variant(true)};
+    std::vector<variant> arr3 = {variant(1), variant("world"), variant(true)};
+    ASSERT_EQ(hasher(variant(arr1)), hasher(variant(arr2)));
+    ASSERT_NE(hasher(variant(arr1)), hasher(variant(arr3)));
+
+    // ATTRIBUTE
+    ASSERT_EQ(hasher(variant(hash_t(0x123456789ABCDEF0))), hasher(variant(hash_t(0x123456789ABCDEF0))));
+    ASSERT_NE(hasher(variant(hash_t(0x123456789ABCDEF0))), hasher(variant(hash_t(0xFEDCBA9876543210))));
 }
 
-TEST(variant_test_suite, to_binary_array_type) {
-    // Empty array
-    std::vector<variant> empty_array;
-    auto empty_array_var = variant(empty_array);
-    auto empty_array_binary = empty_array_var.to_binary();
-    ASSERT_EQ(empty_array_binary.size(), 5); // 1 byte type + 4 bytes count + 0 elements
-    ASSERT_EQ(empty_array_binary[0], variant::ARRAY);
+TEST(variant_test_suite, unordered_map_usage) {
+    // Test that variant can be used as a key in std::unordered_map
+    std::unordered_map<variant, int> map;
 
-    // Array with single element
-    std::vector<variant> single_elem = {variant(42)};
-    auto single_elem_var = variant(single_elem);
-    auto single_elem_binary = single_elem_var.to_binary();
-    ASSERT_EQ(single_elem_binary.size(), 10); // 1 byte type + 4 bytes count + 5 bytes element
-    ASSERT_EQ(single_elem_binary[0], variant::ARRAY);
+    // Insert various types
+    map[variant()] = 0;
+    map[variant(42)] = 1;
+    map[variant(3.14F)] = 2;
+    map[variant(true)] = 3;
+    map[variant("hello")] = 4;
+    map[variant(vector2(1.0F, 2.0F))] = 5;
+    map[variant(vector3(1.0F, 2.0F, 3.0F))] = 6;
+    map[variant(vector4(1.0F, 2.0F, 3.0F, 4.0F))] = 7;
 
-    // Array with multiple elements
-    std::vector<variant> multi_elem = {variant(1), variant(2.5F), variant(true)};
-    auto multi_elem_var = variant(multi_elem);
-    auto multi_elem_binary = multi_elem_var.to_binary();
-    ASSERT_EQ(multi_elem_binary.size(), 17); // 1 + 4 + (5 + 5 + 2) bytes
-    ASSERT_EQ(multi_elem_binary[0], variant::ARRAY);
+    bytes_t test_bytes = {0x01, 0x02, 0x03};
+    map[variant(test_bytes)] = 8;
+
+    std::vector<variant> test_array = {variant(1), variant("test")};
+    map[variant(test_array)] = 9;
+
+    map[variant(hash_t(0x123456789ABCDEF0))] = 10;
+
+    // Verify all elements are present
+    ASSERT_EQ(map.size(), 11);
+
+    // Verify lookup works correctly
+    ASSERT_EQ(map[variant()], 0);
+    ASSERT_EQ(map[variant(42)], 1);
+    ASSERT_EQ(map[variant(3.14F)], 2);
+    ASSERT_EQ(map[variant(true)], 3);
+    ASSERT_EQ(map[variant("hello")], 4);
+    ASSERT_EQ(map[variant(vector2(1.0F, 2.0F))], 5);
+    ASSERT_EQ(map[variant(vector3(1.0F, 2.0F, 3.0F))], 6);
+    ASSERT_EQ(map[variant(vector4(1.0F, 2.0F, 3.0F, 4.0F))], 7);
+    ASSERT_EQ(map[variant(test_bytes)], 8);
+    ASSERT_EQ(map[variant(test_array)], 9);
+    ASSERT_EQ(map[variant(hash_t(0x123456789ABCDEF0))], 10);
+
+    // Verify that different keys are distinct
+    ASSERT_EQ(map.count(variant(43)), 0);
+    ASSERT_EQ(map.count(variant("world")), 0);
 }
 
-TEST(variant_test_suite, to_binary_attribute_type) {
-    // ATTRIBUTE type with hash values
-    auto attr_zero = variant(hash_t(0));
-    auto attr_zero_binary = attr_zero.to_binary();
-    ASSERT_EQ(attr_zero_binary.size(), 9); // 1 byte type + 8 bytes hash
-    ASSERT_EQ(attr_zero_binary[0], variant::ATTRIBUTE);
+TEST(variant_test_suite, unordered_set_usage) {
+    // Test that variant can be used in std::unordered_set
+    std::unordered_set<variant> set;
 
-    auto attr_var = variant(hash_t(0x123456789ABCDEF0));
-    auto attr_binary = attr_var.to_binary();
-    ASSERT_EQ(attr_binary.size(), 9); // 1 byte type + 8 bytes hash
-    ASSERT_EQ(attr_binary[0], variant::ATTRIBUTE);
+    // Insert various types
+    set.insert(variant());
+    set.insert(variant(42));
+    set.insert(variant(3.14F));
+    set.insert(variant(true));
+    set.insert(variant("hello"));
+    set.insert(variant(vector2(1.0F, 2.0F)));
 
-    auto attr_max = variant(hash_t(0xFFFFFFFFFFFFFFFF));
-    auto attr_max_binary = attr_max.to_binary();
-    ASSERT_EQ(attr_max_binary.size(), 9); // 1 byte type + 8 bytes hash
-    ASSERT_EQ(attr_max_binary[0], variant::ATTRIBUTE);
+    // Verify elements are present
+    ASSERT_EQ(set.size(), 6);
+    ASSERT_TRUE(set.contains(variant()));
+    ASSERT_TRUE(set.contains(variant(42)));
+    ASSERT_TRUE(set.contains(variant(3.14F)));
+    ASSERT_TRUE(set.contains(variant(true)));
+    ASSERT_TRUE(set.contains(variant("hello")));
+    ASSERT_TRUE(set.contains(variant(vector2(1.0F, 2.0F))));
+
+    // Verify that different elements are not present
+    ASSERT_FALSE(set.contains(variant(43)));
+    ASSERT_FALSE(set.contains(variant("world")));
+
+    // Verify that duplicate insertion doesn't increase size
+    set.insert(variant(42));
+    ASSERT_EQ(set.size(), 6);
 }
 
-TEST(variant_test_suite, from_binary_basic_types) {
-    // VOID type
-    bytes_t void_data = {variant::VOID};
-    ASSERT_EQ(variant::from_binary(void_data), variant());
+TEST(variant_test_suite, hash_consistency) {
+    // Test that hash values remain consistent across multiple calls
+    std::hash<variant> hasher;
 
-    // Empty data should return VOID
-    bytes_t empty_data;
-    ASSERT_EQ(variant::from_binary(empty_data), variant());
+    auto v1 = variant(42);
+    auto hash1 = hasher(v1);
+    auto hash2 = hasher(v1);
+    auto hash3 = hasher(variant(42));
 
-    // INTEGER type
-    bytes_t int_data = {variant::INTEGER, 0x2A, 0x00, 0x00, 0x00}; // 42 in little-endian
-    ASSERT_EQ(variant::from_binary(int_data), variant(42));
+    ASSERT_EQ(hash1, hash2);
+    ASSERT_EQ(hash1, hash3);
 
-    bytes_t int_negative_data = {variant::INTEGER, 0x85, 0xFF, 0xFF, 0xFF}; // -123 in little-endian
-    ASSERT_EQ(variant::from_binary(int_negative_data), variant(-123));
+    // Test with complex types
+    std::vector<variant> arr = {variant(1), variant("test"), variant(vector2(1.0F, 2.0F))};
+    auto v2 = variant(arr);
+    auto hash4 = hasher(v2);
+    auto hash5 = hasher(v2);
+    auto hash6 = hasher(variant(arr));
 
-    // NUMBER type (approximation due to float precision)
-    bytes_t number_data = {variant::NUMBER, 0xDB, 0x0F, 0x49, 0x40}; // ~3.1415927 in little-endian
-    auto number_result = variant::from_binary(number_data);
-    ASSERT_EQ(number_result.get_value_type(), variant::NUMBER);
-    ASSERT_TRUE(number_result.approx_equals(variant(3.1415927F)));
-
-    // BOOLEAN type
-    bytes_t bool_true_data = {variant::BOOLEAN, 0x01};
-    ASSERT_EQ(variant::from_binary(bool_true_data), variant(true));
-
-    bytes_t bool_false_data = {variant::BOOLEAN, 0x00};
-    ASSERT_EQ(variant::from_binary(bool_false_data), variant(false));
-
-    // TEXT type
-    bytes_t text_data = {variant::TEXT, 0x05, 0x00, 0x00, 0x00, 'h', 'e', 'l', 'l', 'o'};
-    ASSERT_EQ(variant::from_binary(text_data), variant("hello"));
-
-    bytes_t empty_text_data = {variant::TEXT, 0x00, 0x00, 0x00, 0x00};
-    ASSERT_EQ(variant::from_binary(empty_text_data), variant(""));
-
-    // ERROR type
-    bytes_t error_data = {static_cast<unsigned char>(variant::ERROR), 0x05, 0x00, 0x00, 0x00, 'e', 'r', 'r', 'o', 'r'};
-    ASSERT_EQ(variant::from_binary(error_data), variant("error", true));
+    ASSERT_EQ(hash4, hash5);
+    ASSERT_EQ(hash4, hash6);
 }
 
-TEST(variant_test_suite, from_binary_vector_types) {
-    // VECTOR2 type (1.5, -2.7 as little-endian floats)
-    bytes_t vec2_data = {variant::VECTOR2,
-                         0x00,
-                         0x00,
-                         0xC0,
-                         0x3F, // 1.5 in little-endian
-                         0xCD,
-                         0xCC,
-                         0x2C,
-                         0xC0}; // -2.7 in little-endian
-    auto vec2_result = variant::from_binary(vec2_data);
-    ASSERT_EQ(vec2_result.get_value_type(), variant::VECTOR2);
-    ASSERT_TRUE(vec2_result.approx_equals(variant(vector2(1.5F, -2.7F))));
+TEST(variant_test_suite, unordered_map_update) {
+    // Test that we can update values in an unordered_map with variant keys
+    std::unordered_map<variant, std::string> map;
 
-    // VECTOR3 type (1.1, 2.2, -3.3)
-    bytes_t vec3_data = {variant::VECTOR3,
-                         0xCD,
-                         0xCC,
-                         0x8C,
-                         0x3F, // 1.1
-                         0xCD,
-                         0xCC,
-                         0x0C,
-                         0x40, // 2.2
-                         0x33,
-                         0x33,
-                         0x53,
-                         0xC0}; // -3.3
-    auto vec3_result = variant::from_binary(vec3_data);
-    ASSERT_EQ(vec3_result.get_value_type(), variant::VECTOR3);
-    ASSERT_TRUE(vec3_result.approx_equals(variant(vector3(1.1F, 2.2F, -3.3F))));
+    auto key1 = variant(42);
+    auto key2 = variant("test");
 
-    // VECTOR4 type (1.0, 2.0, 3.0, -4.0)
-    bytes_t vec4_data = {variant::VECTOR4,
-                         0x00,
-                         0x00,
-                         0x80,
-                         0x3F, // 1.0
-                         0x00,
-                         0x00,
-                         0x00,
-                         0x40, // 2.0
-                         0x00,
-                         0x00,
-                         0x40,
-                         0x40, // 3.0
-                         0x00,
-                         0x00,
-                         0x80,
-                         0xC0}; // -4.0
-    auto vec4_result = variant::from_binary(vec4_data);
-    ASSERT_EQ(vec4_result.get_value_type(), variant::VECTOR4);
-    ASSERT_TRUE(vec4_result.approx_equals(variant(vector4(1.0F, 2.0F, 3.0F, -4.0F))));
+    map[key1] = "initial";
+    map[key2] = "value";
+
+    ASSERT_EQ(map[key1], "initial");
+    ASSERT_EQ(map[key2], "value");
+
+    // Update values
+    map[key1] = "updated";
+    map[key2] = "new_value";
+
+    ASSERT_EQ(map[key1], "updated");
+    ASSERT_EQ(map[key2], "new_value");
+    ASSERT_EQ(map.size(), 2);
+
+    // Test erase
+    map.erase(key1);
+    ASSERT_EQ(map.size(), 1);
+    ASSERT_EQ(map.count(key1), 0);
+    ASSERT_EQ(map.count(key2), 1);
 }
 
-TEST(variant_test_suite, from_binary_bytes_type) {
-    // Empty bytes
-    bytes_t empty_bytes_data = {variant::BYTES, 0x00, 0x00, 0x00, 0x00};
-    ASSERT_EQ(variant::from_binary(empty_bytes_data), variant(bytes_t()));
+TEST(variant_test_suite, dictionary_basic_operations) {
+    // Create empty dictionary
+    std::map<variant, variant> empty_dict;
+    auto dict_var = variant(empty_dict);
+    ASSERT_EQ(dict_var.get_value_type(), variant::DICTIONARY);
+    ASSERT_EQ(dict_var.get_dictionary().size(), 0);
 
-    // Single byte
-    bytes_t single_byte_data = {variant::BYTES, 0x01, 0x00, 0x00, 0x00, 0x42};
-    bytes_t expected_single = {0x42};
-    ASSERT_EQ(variant::from_binary(single_byte_data), variant(expected_single));
+    // Create dictionary with various key-value pairs
+    std::map<variant, variant> dict;
+    dict[variant(1)] = variant("one");
+    dict[variant(2)] = variant("two");
+    dict[variant("key")] = variant(42);
 
-    // Multiple bytes
-    bytes_t multi_bytes_data = {variant::BYTES, 0x04, 0x00, 0x00, 0x00, 0x01, 0x23, 0x45, 0x67};
-    bytes_t expected_multi = {0x01, 0x23, 0x45, 0x67};
-    ASSERT_EQ(variant::from_binary(multi_bytes_data), variant(expected_multi));
+    auto dict_var2 = variant(dict);
+    ASSERT_EQ(dict_var2.get_value_type(), variant::DICTIONARY);
+    ASSERT_EQ(dict_var2.get_dictionary().size(), 3);
+
+    // Verify values
+    const auto &dict_ref = dict_var2.get_dictionary();
+    ASSERT_EQ(dict_ref.at(variant(1)), variant("one"));
+    ASSERT_EQ(dict_ref.at(variant(2)), variant("two"));
+    ASSERT_EQ(dict_ref.at(variant("key")), variant(42));
 }
 
-TEST(variant_test_suite, from_binary_array_type) {
-    // Empty array
-    bytes_t empty_array_data = {variant::ARRAY, 0x00, 0x00, 0x00, 0x00};
-    ASSERT_EQ(variant::from_binary(empty_array_data), variant(std::vector<variant>()));
+TEST(variant_test_suite, dictionary_equality) {
+    std::map<variant, variant> dict1;
+    dict1[variant(1)] = variant("one");
+    dict1[variant(2)] = variant("two");
 
-    // Array with single element (integer 42)
-    bytes_t single_elem_data = {variant::ARRAY,   0x01, 0x00, 0x00, 0x00,  // count = 1
-                                variant::INTEGER, 0x2A, 0x00, 0x00, 0x00}; // 42
-    std::vector<variant> expected_single = {variant(42)};
-    ASSERT_EQ(variant::from_binary(single_elem_data), variant(expected_single));
+    std::map<variant, variant> dict2;
+    dict2[variant(1)] = variant("one");
+    dict2[variant(2)] = variant("two");
 
-    // Array with multiple elements
-    bytes_t multi_elem_data = {variant::ARRAY,   0x02, 0x00, 0x00, 0x00, // count = 2
-                               variant::INTEGER, 0x01, 0x00, 0x00, 0x00, // 1
-                               variant::BOOLEAN, 0x01};                  // true
-    std::vector<variant> expected_multi = {variant(1), variant(true)};
-    ASSERT_EQ(variant::from_binary(multi_elem_data), variant(expected_multi));
+    std::map<variant, variant> dict3;
+    dict3[variant(1)] = variant("one");
+    dict3[variant(3)] = variant("three");
+
+    ASSERT_EQ(variant(dict1), variant(dict2));
+    ASSERT_NE(variant(dict1), variant(dict3));
+
+    // Empty dictionaries are equal
+    ASSERT_EQ(variant(std::map<variant, variant>()), variant(std::map<variant, variant>()));
 }
 
-TEST(variant_test_suite, from_binary_attribute_type) {
-    // ATTRIBUTE type with hash value 0
-    bytes_t attr_zero_data = {variant::ATTRIBUTE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    ASSERT_EQ(variant::from_binary(attr_zero_data), variant(hash_t(0)));
+TEST(variant_test_suite, dictionary_comparison) {
+    std::map<variant, variant> dict1;
+    dict1[variant(1)] = variant("a");
 
-    // ATTRIBUTE type with specific hash value
-    bytes_t attr_data = {variant::ATTRIBUTE, 0xF0, 0xDE, 0xBC, 0x9A, 0x78, 0x56, 0x34, 0x12}; // 0x123456789ABCDEF0 in little-endian
-    ASSERT_EQ(variant::from_binary(attr_data), variant(hash_t(0x123456789ABCDEF0)));
+    std::map<variant, variant> dict2;
+    dict2[variant(1)] = variant("b");
 
-    // ATTRIBUTE type with max hash value
-    bytes_t attr_max_data = {variant::ATTRIBUTE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    ASSERT_EQ(variant::from_binary(attr_max_data), variant(hash_t(0xFFFFFFFFFFFFFFFF)));
+    std::map<variant, variant> dict3;
+    dict3[variant(2)] = variant("a");
+
+    // Test operator<
+    ASSERT_TRUE(variant(dict1) < variant(dict2) || variant(dict2) < variant(dict1));
+    ASSERT_TRUE(variant(dict1) < variant(dict3) || variant(dict3) < variant(dict1));
+}
+
+TEST(variant_test_suite, dictionary_to_desc) {
+    // Empty dictionary
+    std::map<variant, variant> empty_dict;
+    ASSERT_EQ(variant(empty_dict).to_desc(), "{}");
+
+    // Dictionary with single key-value pair
+    std::map<variant, variant> single;
+    single[variant(1)] = variant("value");
+    auto single_desc = variant(single).to_desc();
+    ASSERT_TRUE(single_desc == "{I1D:Tvalue}");
+
+    // Dictionary with multiple key-value pairs
+    std::map<variant, variant> multi;
+    multi[variant(1)] = variant("one");
+    multi[variant(2)] = variant("two");
+    auto multi_var = variant(multi);
+    auto multi_desc = multi_var.to_desc();
+    ASSERT_TRUE(multi_desc.find("I1D:Tone") != std::string::npos);
+    ASSERT_TRUE(multi_desc.find("I2D:Ttwo") != std::string::npos);
+}
+
+TEST(variant_test_suite, dictionary_from_desc) {
+    // Empty dictionary
+    auto empty_result = variant::from_desc("{}");
+    ASSERT_EQ(empty_result.get_value_type(), variant::DICTIONARY);
+    ASSERT_EQ(empty_result.get_dictionary().size(), 0);
+
+    // Dictionary with single key-value pair
+    auto single_result = variant::from_desc("{I1D:Tvalue}");
+    ASSERT_EQ(single_result.get_value_type(), variant::DICTIONARY);
+    ASSERT_EQ(single_result.get_dictionary().size(), 1);
+    ASSERT_EQ(single_result.get_dictionary().at(variant(1)), variant("value"));
+
+    // Dictionary with multiple key-value pairs
+    auto multi_result = variant::from_desc("{I1D:Tone,I2D:Ttwo}");
+    ASSERT_EQ(multi_result.get_value_type(), variant::DICTIONARY);
+    ASSERT_EQ(multi_result.get_dictionary().size(), 2);
+    ASSERT_EQ(multi_result.get_dictionary().at(variant(1)), variant("one"));
+    ASSERT_EQ(multi_result.get_dictionary().at(variant(2)), variant("two"));
+}
+
+TEST(variant_test_suite, dictionary_to_desc_from_desc_roundtrip) {
+    // Simple dictionary
+    std::map<variant, variant> dict1;
+    dict1[variant(1)] = variant("one");
+    dict1[variant(2)] = variant("two");
+    dict1[variant("key")] = variant(42);
+
+    auto dict_var1 = variant(dict1);
+    auto desc1 = dict_var1.to_desc();
+    auto result1 = variant::from_desc(desc1);
+    ASSERT_EQ(result1, dict_var1);
+
+    // Dictionary with various value types
+    std::map<variant, variant> dict2;
+    dict2[variant("int")] = variant(123);
+    dict2[variant("float")] = variant(3.14F);
+    dict2[variant("bool")] = variant(true);
+    dict2[variant("text")] = variant("hello");
+
+    auto dict_var2 = variant(dict2);
+    auto desc2 = dict_var2.to_desc();
+    auto result2 = variant::from_desc(desc2);
+    ASSERT_EQ(result2, dict_var2);
+}
+
+TEST(variant_test_suite, dictionary_nested) {
+    // Dictionary containing arrays
+    std::map<variant, variant> dict1;
+    std::vector<variant> arr = {variant(1), variant(2), variant(3)};
+    dict1[variant("array[")] = variant(arr);
+    dict1[variant("nu]mber\\")] = variant(42);
+
+    auto dict_var1 = variant(dict1);
+    auto desc1 = dict_var1.to_desc();
+    auto result1 = variant::from_desc(desc1);
+    ASSERT_EQ(result1, dict_var1);
+
+    // Array containing dictionaries
+    std::map<variant, variant> inner_dict;
+    inner_dict[variant("x:")] = variant(10);
+    inner_dict[variant(":y")] = variant(20);
+
+    std::vector<variant> outer_arr = {variant(inner_dict), variant("test")};
+    auto arr_var = variant(outer_arr);
+    auto desc2 = arr_var.to_desc();
+    auto result2 = variant::from_desc(desc2);
+    ASSERT_EQ(result2, arr_var);
+}
+
+TEST(variant_test_suite, dictionary_approx_equals) {
+    // Dictionary with float values
+    std::map<variant, variant> dict1;
+    dict1[variant("x")] = variant(1.0000001F);
+    dict1[variant("y")] = variant(2.0F);
+
+    std::map<variant, variant> dict2;
+    dict2[variant("x")] = variant(1.0000002F);
+    dict2[variant("y")] = variant(2.0F);
+
+    auto dict_var1 = variant(dict1);
+    auto dict_var2 = variant(dict2);
+
+    ASSERT_NE(dict_var1, dict_var2);
+    ASSERT_TRUE(dict_var1.approx_equals(dict_var2));
+}
+
+TEST(variant_test_suite, dictionary_hash) {
+    std::hash<variant> hasher;
+
+    std::map<variant, variant> dict1;
+    dict1[variant(1)] = variant("one");
+    dict1[variant(2)] = variant("two");
+
+    std::map<variant, variant> dict2;
+    dict2[variant(1)] = variant("one");
+    dict2[variant(2)] = variant("two");
+
+    std::map<variant, variant> dict3;
+    dict3[variant(1)] = variant("one");
+    dict3[variant(3)] = variant("three");
+
+    // Equal dictionaries should have equal hashes
+    ASSERT_EQ(hasher(variant(dict1)), hasher(variant(dict2)));
+
+    // Different dictionaries should (usually) have different hashes
+    ASSERT_NE(hasher(variant(dict1)), hasher(variant(dict3)));
+}
+
+TEST(variant_test_suite, dictionary_as_map_key) {
+    // Test that dictionary variants can be used as keys in maps
+    std::map<variant, int> outer_map;
+
+    std::map<variant, variant> dict1;
+    dict1[variant("a")] = variant(1);
+
+    std::map<variant, variant> dict2;
+    dict2[variant("b")] = variant(2);
+
+    outer_map[variant(dict1)] = 100;
+    outer_map[variant(dict2)] = 200;
+
+    ASSERT_EQ(outer_map.size(), 2);
+    ASSERT_EQ(outer_map[variant(dict1)], 100);
+    ASSERT_EQ(outer_map[variant(dict2)], 200);
+}
+
+TEST(variant_test_suite, dictionary_complex_keys) {
+    // Test dictionary with complex variant keys
+    std::map<variant, variant> dict;
+
+    // Vector as key
+    dict[variant(vector2(1.0F, 2.0F))] = variant("point");
+
+    // Array as key
+    std::vector<variant> arr_key = {variant(1), variant(2)};
+    dict[variant(arr_key)] = variant("array_value");
+
+    // Bytes as key
+    bytes_t bytes_key = {0x01, 0x02, 0x03};
+    dict[variant(bytes_key)] = variant("bytes_value");
+
+    auto dict_var = variant(dict);
+    ASSERT_EQ(dict_var.get_dictionary().size(), 3);
 }
