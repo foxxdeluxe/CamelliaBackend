@@ -10,11 +10,11 @@ void scene::init(integer_t scene_id, stage &parent_stage) {
     _p_parent = &parent_stage;
 
     _is_initialized = true;
-    get_manager().notify_event(node_init_event(*this));
+    get_manager().enqueue_event<node_init_event>(*this);
 }
 
 void scene::fina() {
-    get_manager().notify_event(node_fina_event(*this));
+    get_manager().enqueue_event<node_fina_event>(*this);
     _is_initialized = false;
 
     // Clean up all activities

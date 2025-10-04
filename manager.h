@@ -6,8 +6,8 @@
 #include "message.h"
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace camellia {
 
@@ -50,10 +50,6 @@ class manager {
     NAMED_CLASS(manager)
 
 public:
-    using event_cb = void (*)(unsigned int manager_id, const event &e);
-    static void subscribe_events(event_cb cb);
-    static void unsubscribe_events(event_cb cb);
-
     // Provide a stage data to the manager for future use
     hash_t register_stage_data(std::shared_ptr<stage_data> data);
     hash_t register_stage_data(bytes_t data);
@@ -64,13 +60,18 @@ public:
     // Do some clean up for a stage instance so it can be configured again
     void clean_stage(stage *s) const;
 
-    void log(text_t message, log_level level) const;
+    void log(text_t message, log_level level);
 
     explicit manager(text_t name) : _name(std::move(name)), _id(_next_id++) {}
 
     [[nodiscard]] const text_t &get_name() const noexcept { return _name; }
     [[nodiscard]] std::string get_locator() const noexcept;
-    void notify_event(const event &e) const;
+
+    template <event_derived T, typename... Args> void enqueue_event(Args &&...args) { enqueue_event(std::make_shared<T>(std::forward<Args>(args)...)); }
+    void enqueue_event(const std::shared_ptr<event> &e);
+
+    const std::vector<std::shared_ptr<event>> &get_event_queue() const noexcept { return _event_queue; }
+    void clear_event_queue() noexcept { _event_queue.clear(); }
 
 private:
     friend class node;
@@ -78,7 +79,7 @@ private:
     // Maps hashes to stage data
     std::unordered_map<hash_t, std::shared_ptr<stage_data>> _stage_data_map;
 
-    static std::unordered_set<event_cb> _event_handlers;
+    std::vector<std::shared_ptr<event>> _event_queue;
     text_t _name;
 
     unsigned int _id{0U};

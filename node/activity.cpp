@@ -85,7 +85,7 @@ number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, varia
         for (const auto &h_key : dirty) {
             dirty_attribute_pairs.emplace_back(h_key, attributes.get(h_key));
         }
-        get_manager().notify_event(node_attribute_dirty_event(*p_actor, std::move(dirty_attribute_pairs)));
+        get_manager().enqueue_event<node_attribute_dirty_event>(*p_actor, std::move(dirty_attribute_pairs));
         attributes.clear_dirty_attributes();
     }
 

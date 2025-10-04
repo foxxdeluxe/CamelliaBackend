@@ -1,5 +1,6 @@
 ﻿#include "actor.h"
 #include "camellia_macro.h"
+#include "message.h"
 #include "stage.h"
 
 namespace camellia {
@@ -60,7 +61,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     }
 
     _is_initialized = true;
-    get_manager().notify_event(node_init_event(*this));
+    get_manager().enqueue_event<node_init_event>(*this);
 }
 
 number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
@@ -72,7 +73,7 @@ number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t,
 }
 
 void actor::fina(boolean_t keep_children) {
-    get_manager().notify_event(node_fina_event(*this));
+    get_manager().enqueue_event<node_fina_event>(*this);
     _is_initialized = false;
     _p_data = nullptr;
     _p_parent = nullptr;

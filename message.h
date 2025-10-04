@@ -5,6 +5,7 @@
 #include "variant.h"
 #include <flatbuffers/buffer.h>
 
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -86,6 +87,9 @@ struct log_event : public event {
     [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_LOG; }
 };
+
+template <typename T>
+concept event_derived = std::is_base_of_v<event, T>;
 
 } // namespace camellia
 

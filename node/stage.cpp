@@ -39,7 +39,7 @@ void stage::collect_actor(integer_t aid) {
 
 void stage::advance() {
     REQUIRES_NOT_NULL(_p_scenario);
-    
+
     // Advance to next beat if available
     if (_next_beat_index >= _p_scenario->beats.size()) {
         return;
@@ -77,11 +77,11 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     get_main_dialog()->init(*this);
     _is_initialized = true;
 
-    get_manager().notify_event(node_init_event(*this));
+    get_manager().enqueue_event<node_init_event>(*this);
 }
 
 void stage::fina() {
-    get_manager().notify_event(node_fina_event(*this));
+    get_manager().enqueue_event<node_fina_event>(*this);
     _is_initialized = false;
     get_main_dialog()->fina();
 

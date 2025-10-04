@@ -11,10 +11,6 @@
 
 namespace camellia {
 
-void manager::subscribe_events(event_cb cb) { _event_handlers.insert(cb); }
-
-void manager::unsubscribe_events(event_cb cb) { _event_handlers.erase(cb); }
-
 hash_t manager::register_stage_data(std::shared_ptr<stage_data> data) {
     REQUIRES_NOT_NULL(data);
     _stage_data_map.emplace(data->h_stage_name, data);
@@ -46,18 +42,14 @@ void manager::clean_stage(stage *s) const {
 
 std::string manager::get_locator() const noexcept { return std::format("Manager({})", _name); }
 
-void manager::notify_event(const event &e) const {
-    for (const auto &cb : _event_handlers) {
-        cb(get_id(), e);
-    }
+void manager::enqueue_event(const std::shared_ptr<event> &e) {
+    REQUIRES_NOT_NULL(e);
+    _event_queue.push_back(e);
 }
 
-void manager::log(text_t message, log_level level) const {
-    notify_event(log_event(std::move(message), level));
-}
+void manager::log(text_t message, log_level level) { enqueue_event(std::make_shared<log_event>(std::move(message), level)); }
 
 unsigned int manager::_next_id = 1U;
-std::unordered_set<manager::event_cb> manager::_event_handlers{};
 
 unsigned int node::_next_id = 1U;
 
