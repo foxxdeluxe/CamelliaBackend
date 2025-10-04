@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
-#include <iostream>
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "camellia_typedef.h"
@@ -16,7 +14,7 @@
 using namespace camellia;
 
 constexpr number_t kTimelineDuration = 10.0F;
-constexpr number_t kTransitionDuration = 10.0F;
+constexpr number_t kTransitionSpeed = 5.0F;
 constexpr number_t kUpdateTime1 = 1.0F;
 constexpr number_t kUpdateTime11 = 11.0F;
 constexpr number_t kUpdateTime30 = 30.0F;
@@ -105,7 +103,7 @@ TEST_F(stage_test, simulation) {
     test_beat_2_dialog_1->regions = {
         std::make_shared<text_region_data>(text_region_data{.text = "test_text_2",
                                                             .timeline = std::make_shared<action_timeline_data>(),
-                                                            .transition_duration = kTransitionDuration,
+                                                            .transition_speed = kTransitionSpeed,
                                                             .h_transition_script_name = algorithm_helper::calc_hash("advance")}),
     };
     test_beat_2_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
@@ -176,6 +174,7 @@ TEST_F(stage_test, simulation) {
     }
     _manager->clear_event_queue();
 
+    std::cout << _text_regions.begin()->second.at(algorithm_helper::calc_hash("text")).get_text() << std::endl;
     ASSERT_EQ(_text_regions.size(), 1);
     EXPECT_EQ(_text_regions.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_2");
 

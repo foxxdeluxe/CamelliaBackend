@@ -1,6 +1,7 @@
 ﻿#include <format>
 
 #include "camellia_macro.h"
+#include "camellia_typedef.h"
 #include "dialog.h"
 #include "helper/algorithm_helper.h"
 #include "stage.h"
@@ -29,12 +30,9 @@ dialog &text_region::get_parent_dialog() const {
 
 boolean_t text_region::get_is_visible() const { return _is_visible; }
 
-number_t text_region::get_transition_duration() const {
-    REQUIRES_NOT_NULL(_data);
-    return _data->transition_duration;
-}
+number_t text_region::get_transition_duration() const { return _transition_duration; }
 
-number_t text_region::get_transition_speed() const { return 1.0F; }
+number_t text_region::get_transition_speed_multiplier() const { return 1.0F; }
 
 void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &parent) {
     REQUIRES_VALID(*data);
@@ -43,6 +41,8 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
     _p_parent = &parent;
 
     auto text_style = data->text_style != nullptr ? data->text_style : parent.get_parent_stage().get_default_text_style();
+    auto len = algorithm_helper::get_bbcode_string_length(data->text);
+    _transition_duration = static_cast<number_t>(len) / (data->transition_speed * get_transition_speed_multiplier());
 
     // set initial attributes
     _initial_attributes[H_TEXT_NAME] = data->text;
@@ -72,8 +72,8 @@ void text_region::init(const std::shared_ptr<text_region_data> &data, dialog &pa
         try {
             _p_transition_script = new scripting_helper::scripting_engine();
 
-            _p_transition_script->set_property(FULL_TEXT_LENGTH_NAME, algorithm_helper::get_bbcode_string_length(data->text));
-            _p_transition_script->set_property(TRANSITION_SPEED_NAME, get_transition_speed());
+            _p_transition_script->set_property(FULL_TEXT_LENGTH_NAME, len);
+            _p_transition_script->set_property(TRANSITION_SPEED_NAME, data->transition_speed * get_transition_speed_multiplier());
             _p_transition_script->set_property(ORIG_NAME, data->text);
             _p_transition_script->guarded_evaluate(*p_transition_code, variant::VOID);
         } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
@@ -95,6 +95,7 @@ void text_region::fina() {
     _is_initialized = false;
     _data = nullptr;
     _p_parent = nullptr;
+    _transition_duration = 0.0F;
 
     _attributes.reset();
     _initial_attributes.clear();

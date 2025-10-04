@@ -124,7 +124,7 @@ table TextRegionData {
     text: string;
     text_style: TextStyleData;
     timeline: ActionTimelineData;
-    transition_duration: float;
+    transition_speed: float;
     h_transition_script_name: uint64;
 }
 

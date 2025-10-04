@@ -177,7 +177,7 @@ flatbuffers::Offset<fb::TextRegionData> text_region_data::to_flatbuffers(flatbuf
     auto text_style_offset = text_style ? text_style->to_flatbuffers(builder) : 0;
     auto timeline_offset = timeline ? timeline->to_flatbuffers(builder) : 0;
 
-    return fb::CreateTextRegionData(builder, id, text_offset, text_style_offset, timeline_offset, transition_duration, h_transition_script_name);
+    return fb::CreateTextRegionData(builder, id, text_offset, text_style_offset, timeline_offset, transition_speed, h_transition_script_name);
 }
 
 // dialog_data implementation
@@ -618,7 +618,7 @@ std::shared_ptr<text_region_data> text_region_data::from_flatbuffers(const fb::T
         result->timeline = action_timeline_data::from_flatbuffers(*timeline);
     }
 
-    result->transition_duration = fb_data.transition_duration();
+    result->transition_speed = fb_data.transition_speed();
     result->h_transition_script_name = fb_data.h_transition_script_name();
 
     return result;

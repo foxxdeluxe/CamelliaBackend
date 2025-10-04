@@ -30,7 +30,7 @@ public:
     [[nodiscard]] boolean_t get_is_visible() const;
     [[nodiscard]] integer_t get_id() const;
     [[nodiscard]] number_t get_transition_duration() const;
-    [[nodiscard]] number_t get_transition_speed() const;
+    [[nodiscard]] number_t get_transition_speed_multiplier() const;
     number_t update(number_t region_time);
 
     [[nodiscard]] std::string get_locator() const noexcept override;
@@ -53,6 +53,7 @@ private:
     scripting_helper::scripting_engine *_p_transition_script{nullptr};
     std::map<hash_t, variant> _initial_attributes;
     attribute_registry _attributes{};
+    number_t _transition_duration{0.0F};
 
     boolean_t _is_visible{false}, _last_is_visible{false};
 };

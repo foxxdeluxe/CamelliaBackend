@@ -220,7 +220,7 @@ struct text_region_data {
     // std::vector<std::shared_ptr<text_region_attachment_data>> attachments;
     std::shared_ptr<action_timeline_data> timeline{nullptr};
 
-    number_t transition_duration{0.0F};
+    number_t transition_speed{5.0F};
     hash_t h_transition_script_name{};
 
     [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && (text_style == nullptr || text_style->is_valid()); }
