@@ -35,7 +35,10 @@ public:
     void collect_actor(integer_t aid);
 
     void advance();
+    void fast_forward();
     virtual number_t update(number_t stage_time);
+
+    [[nodiscard]] number_t get_time_to_end() const { return _time_to_end; }
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 

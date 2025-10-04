@@ -39,19 +39,18 @@ void stage::collect_actor(integer_t aid) {
 
 void stage::advance() {
     REQUIRES_NOT_NULL(_p_scenario);
-
-    if (_time_to_end > 0.0F) {
-        // Fast forward
-        _scenes.back()->set_next_beat_time(_scenes.back()->get_beat_time() + _time_to_end);
-        _time_to_end = 0.0F;
-    } else {
-        // Advance to next beat if available
-        if (_next_beat_index >= _p_scenario->beats.size()) {
-            return;
-        }
-        _set_beat(_p_scenario->beats[_next_beat_index]);
-        _next_beat_index++;
+    
+    // Advance to next beat if available
+    if (_next_beat_index >= _p_scenario->beats.size()) {
+        return;
     }
+    _set_beat(_p_scenario->beats[_next_beat_index]);
+    _next_beat_index++;
+}
+
+void stage::fast_forward() {
+    _scenes.back()->set_next_beat_time(_scenes.back()->get_beat_time() + _time_to_end);
+    _time_to_end = 0.0F;
 }
 
 std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
