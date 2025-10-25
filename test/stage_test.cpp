@@ -36,14 +36,14 @@ protected:
     void on_event(const event &e) {
         if (e.get_event_type() == camellia::EVENT_NODE_INIT) {
             const auto *nce = static_cast<const node_init_event *>(&e);
-            if (nce->node_type == algorithm_helper::calc_hash_const("text_region")) {
-                _text_regions[nce->node_handle] = std::unordered_map<hash_t, camellia::variant>();
+            if (nce->node_type == algorithm_helper::calc_hash_const("dialog")) {
+                _dialogs[nce->node_handle] = std::unordered_map<hash_t, camellia::variant>();
             }
         } else if (e.get_event_type() == EVENT_NODE_ATTRIBUTE_DIRTY) {
             const auto *nde = static_cast<const node_attribute_dirty_event *>(&e);
-            if (_text_regions.contains(nde->node_handle)) {
+            if (_dialogs.contains(nde->node_handle)) {
                 for (const auto &dirty_attribute : nde->dirty_attributes) {
-                    _text_regions[nde->node_handle][dirty_attribute.first] = *dirty_attribute.second;
+                    _dialogs[nde->node_handle][dirty_attribute.first] = *dirty_attribute.second;
                 }
             }
         }
@@ -51,8 +51,7 @@ protected:
 
     std::unique_ptr<manager> _manager;
     std::unique_ptr<stage> _stage;
-
-    std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> _text_regions;
+    std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> _dialogs;
 };
 
 TEST_F(stage_test, simulation) {
@@ -93,20 +92,15 @@ TEST_F(stage_test, simulation) {
 
     auto test_beat_1_dialog_1 = std::make_shared<dialog_data>();
     test_beat_1_dialog_1->h_actor_id = actor_data_1->h_actor_id;
-    test_beat_1_dialog_1->regions = {
-        std::make_shared<text_region_data>(text_region_data{.text = "test_text_1", .timeline = std::make_shared<action_timeline_data>()}),
-    };
-    test_beat_1_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
+    test_beat_1_dialog_1->dialog_text = "test_text_1";
+    test_beat_1_dialog_1->transition_duration = -1.0F;
+    test_beat_1_dialog_1->h_transition_script_name = algorithm_helper::calc_hash("advance");
 
     auto test_beat_2_dialog_1 = std::make_shared<dialog_data>();
     test_beat_2_dialog_1->h_actor_id = 0ULL;
-    test_beat_2_dialog_1->regions = {
-        std::make_shared<text_region_data>(text_region_data{.text = "test_text_2",
-                                                            .timeline = std::make_shared<action_timeline_data>(),
-                                                            .transition_speed = kTransitionSpeed,
-                                                            .h_transition_script_name = algorithm_helper::calc_hash("advance")}),
-    };
-    test_beat_2_dialog_1->region_life_timeline = std::make_shared<action_timeline_data>(action_timeline_data{.effective_duration = -1.0F});
+    test_beat_2_dialog_1->dialog_text = "test_text_2";
+    test_beat_2_dialog_1->transition_duration = -1.0F;
+    test_beat_2_dialog_1->h_transition_script_name = algorithm_helper::calc_hash("advance");
 
     auto test_beat_1 = std::make_shared<beat_data>();
     test_beat_1->activities = {{1, test_beat_1_activity_1}};
@@ -125,7 +119,7 @@ TEST_F(stage_test, simulation) {
             script_1,
         },
         {
-            test_beat_2_dialog_1->regions[0]->h_transition_script_name,
+            test_beat_2_dialog_1->h_transition_script_name,
             script_2,
         },
     };
@@ -163,8 +157,8 @@ TEST_F(stage_test, simulation) {
     }
     _manager->clear_event_queue();
 
-    ASSERT_EQ(_text_regions.size(), 1);
-    EXPECT_EQ(_text_regions.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_1");
+    ASSERT_EQ(_dialogs.size(), 1);
+    EXPECT_EQ(_dialogs.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_1");
 
     EXPECT_NO_THROW(_stage->advance());
     EXPECT_NO_THROW(_stage->update(kUpdateTime30));
@@ -174,9 +168,9 @@ TEST_F(stage_test, simulation) {
     }
     _manager->clear_event_queue();
 
-    std::cout << _text_regions.begin()->second.at(algorithm_helper::calc_hash("text")).get_text() << std::endl;
-    ASSERT_EQ(_text_regions.size(), 1);
-    EXPECT_EQ(_text_regions.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_2");
+    std::cout << _dialogs.begin()->second.at(algorithm_helper::calc_hash("text")).get_text() << std::endl;
+    ASSERT_EQ(_dialogs.size(), 1);
+    EXPECT_EQ(_dialogs.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_2");
 
     EXPECT_NO_THROW(_stage->fina());
 }

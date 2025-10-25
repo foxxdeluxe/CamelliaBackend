@@ -150,34 +150,6 @@ struct actor_data {
     static std::shared_ptr<actor_data> from_flatbuffers(const fb::ActorData &fb_data);
 };
 
-struct text_region_attachment_data {
-    enum attachment_types : char { INVALID_ATTACHMENT, TEXT_ATTACHMENT };
-    enum layout_modes : char { TEXT_REGION_LAYOUT_SEPARATE_LINES, TEXT_REGION_LAYOUT_ENVELOPE_LINES };
-
-    layout_modes mode{TEXT_REGION_LAYOUT_SEPARATE_LINES};
-    vector2 offset = {0.0F, 0.0F}, anchor_pos = {0.0F, 0.0F}, pivot_pos = {0.0F, 0.0F};
-    number_t rotation{0.0F};
-
-    [[nodiscard]] virtual attachment_types get_attachment_type() const { return INVALID_ATTACHMENT; }
-    [[nodiscard]] static boolean_t is_valid() { return true; }
-
-    virtual ~text_region_attachment_data() = default;
-
-    flatbuffers::Offset<fb::TextRegionAttachmentData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
-    static std::shared_ptr<text_region_attachment_data> from_flatbuffers(const fb::TextRegionAttachmentData &fb_data);
-};
-
-struct text_region_attachment_text_data : public text_region_attachment_data {
-    text_t text;
-
-    [[nodiscard]] attachment_types get_attachment_type() const override { return TEXT_ATTACHMENT; }
-
-    [[nodiscard]] static boolean_t is_valid() { return true; }
-
-    flatbuffers::Offset<fb::TextRegionAttachmentTextData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
-    static std::shared_ptr<text_region_attachment_text_data> from_flatbuffers(const fb::TextRegionAttachmentTextData &fb_data);
-};
-
 struct text_style_data {
     static constexpr hash_t H_FONT_SIZE_NAME = algorithm_helper::calc_hash_const("font_size");
     static constexpr hash_t H_FONT_WEIGHT_NAME = algorithm_helper::calc_hash_const("font_weight");
@@ -211,30 +183,15 @@ struct text_style_data {
     static std::shared_ptr<text_style_data> from_flatbuffers(const fb::TextStyleData &fb_data);
 };
 
-struct text_region_data {
-
-    integer_t id{0};
-    text_t text;
-    std::shared_ptr<text_style_data> text_style{nullptr};
-
-    // std::vector<std::shared_ptr<text_region_attachment_data>> attachments;
-    std::shared_ptr<action_timeline_data> timeline{nullptr};
-
-    number_t transition_speed{5.0F};
-    hash_t h_transition_script_name{};
-
-    [[nodiscard]] boolean_t is_valid() const { return timeline != nullptr && (text_style == nullptr || text_style->is_valid()); }
-
-    flatbuffers::Offset<fb::TextRegionData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
-    static std::shared_ptr<text_region_data> from_flatbuffers(const fb::TextRegionData &fb_data);
-};
-
 struct dialog_data {
     hash_t h_actor_id{0ULL};
-    std::vector<std::shared_ptr<text_region_data>> regions;
-    std::shared_ptr<action_timeline_data> region_life_timeline{nullptr};
+    text_t dialog_text;
 
-    [[nodiscard]] boolean_t is_valid() const { return region_life_timeline != nullptr; }
+    // + fixed overall duration; - duration per character; 0 instant
+    number_t transition_duration{-0.2F};
+    hash_t h_transition_script_name;
+
+    [[nodiscard]] boolean_t is_valid() const { return true; }
 
     flatbuffers::Offset<fb::DialogData> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const;
     static std::shared_ptr<dialog_data> from_flatbuffers(const fb::DialogData &fb_data);

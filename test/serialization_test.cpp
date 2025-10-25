@@ -411,16 +411,9 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_SimpleStage) {
     auto dialog = std::make_shared<dialog_data>();
     dialog->h_actor_id = algorithm_helper::calc_hash("test_actor");
 
-    auto text_region = std::make_shared<text_region_data>();
-    text_region->id = 1;
-    text_region->text = "Hello, World!";
-    text_region->text_style = simple_text_style;
-    text_region->timeline = std::make_shared<action_timeline_data>();
-    text_region->timeline->effective_duration = 5.0F;
-
-    dialog->regions = {text_region};
-    dialog->region_life_timeline = std::make_shared<action_timeline_data>();
-    dialog->region_life_timeline->effective_duration = 10.0F;
+    dialog->dialog_text = "Hello, World!";
+    dialog->transition_duration = 10.0F;
+    dialog->h_transition_script_name = algorithm_helper::calc_hash("test_script");
 
     auto beat = std::make_shared<beat_data>();
     beat->dialog = dialog;
@@ -460,14 +453,9 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_SimpleStage) {
     EXPECT_NE(deserialized_stage->beats[0], nullptr);
     EXPECT_NE(deserialized_stage->beats[0]->dialog, nullptr);
     EXPECT_EQ(deserialized_stage->beats[0]->dialog->h_actor_id, algorithm_helper::calc_hash("test_actor"));
-    EXPECT_EQ(deserialized_stage->beats[0]->dialog->regions.size(), 1);
-
-    // Verify text region
-    auto &region = deserialized_stage->beats[0]->dialog->regions[0];
-    EXPECT_EQ(region->id, 1);
-    EXPECT_EQ(region->text, "Hello, World!");
-    EXPECT_NE(region->timeline, nullptr);
-    EXPECT_EQ(region->timeline->effective_duration, 5.0F);
+    EXPECT_EQ(deserialized_stage->beats[0]->dialog->dialog_text, "Hello, World!");
+    EXPECT_EQ(deserialized_stage->beats[0]->dialog->transition_duration, 10.0F);
+    EXPECT_EQ(deserialized_stage->beats[0]->dialog->h_transition_script_name, algorithm_helper::calc_hash("test_script"));
 
     // Verify script
     auto script_iter = deserialized_stage->scripts.find(algorithm_helper::calc_hash("test_script"));
@@ -532,27 +520,13 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_ComplexStage) {
     composite_action->timeline = std::make_shared<action_timeline_data>();
     composite_action->timeline->effective_duration = 10.0F;
 
-    // Create a dialog with multiple text regions
+    // Create a dialog
     auto dialog = std::make_shared<dialog_data>();
     dialog->h_actor_id = test_actor_data->h_actor_id;
 
-    auto region1 = std::make_shared<text_region_data>();
-    region1->id = 1;
-    region1->text = "Hello there!";
-    region1->text_style = complex_text_style;
-    region1->timeline = std::make_shared<action_timeline_data>();
-    region1->timeline->effective_duration = 3.0F;
-
-    auto region2 = std::make_shared<text_region_data>();
-    region2->id = 2;
-    region2->text = "How are you?";
-    region2->text_style = complex_text_style;
-    region2->timeline = std::make_shared<action_timeline_data>();
-    region2->timeline->effective_duration = 3.0F;
-
-    dialog->regions = {region1, region2};
-    dialog->region_life_timeline = std::make_shared<action_timeline_data>();
-    dialog->region_life_timeline->effective_duration = 6.0F;
+    dialog->dialog_text = "Hello, World!";
+    dialog->transition_duration = 10.0F;
+    dialog->h_transition_script_name = algorithm_helper::calc_hash("test_script");
 
     // Create a beat with the dialog and activity
     auto beat = std::make_shared<beat_data>();
@@ -608,17 +582,9 @@ TEST_F(serialization_test, StageDataFlatBuffersRoundtrip_ComplexStage) {
     // Verify dialog structure
     auto &deserialized_dialog = deserialized_beat->dialog;
     EXPECT_EQ(deserialized_dialog->h_actor_id, test_actor_data->h_actor_id);
-    EXPECT_EQ(deserialized_dialog->regions.size(), 2);
-    EXPECT_NE(deserialized_dialog->region_life_timeline, nullptr);
-    EXPECT_EQ(deserialized_dialog->region_life_timeline->effective_duration, 6.0F);
-
-    // Verify text regions
-    EXPECT_EQ(deserialized_dialog->regions[0]->id, 1);
-    EXPECT_EQ(deserialized_dialog->regions[0]->text, "Hello there!");
-    EXPECT_EQ(deserialized_dialog->regions[1]->id, 2);
-    EXPECT_EQ(deserialized_dialog->regions[1]->text, "How are you?");
-    EXPECT_NE(deserialized_dialog->regions[0]->timeline, nullptr);
-    EXPECT_NE(deserialized_dialog->regions[1]->timeline, nullptr);
+    EXPECT_EQ(deserialized_dialog->dialog_text, "Hello, World!");
+    EXPECT_EQ(deserialized_dialog->transition_duration, 10.0F);
+    EXPECT_EQ(deserialized_dialog->h_transition_script_name, algorithm_helper::calc_hash("test_script"));
 
     // Verify actor structure
     auto actor_iter = deserialized_stage->actors.find(test_actor_data->h_actor_id);

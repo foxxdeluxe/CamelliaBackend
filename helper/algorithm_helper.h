@@ -3,7 +3,10 @@
 
 #include "../camellia_typedef.h"
 #include "constexpr-xxh3.h"
+#include "manager.h"
 #include <functional>
+#include <memory>
+#include <string_view>
 #include <vector>
 
 namespace camellia::algorithm_helper {
@@ -69,6 +72,34 @@ template <class T> integer_t lower_bound(const std::vector<T> &list, std::functi
 }
 
 hash_t calc_hash(const char *str) noexcept;
+
+struct bbcode {
+    struct bbcode_node {
+        enum node_type : char { TYPE_TEXT, TYPE_TAG };
+
+        virtual ~bbcode_node() = default;
+        [[nodiscard]] virtual node_type get_type() const = 0;
+    };
+
+    struct text_node : public bbcode_node {
+        text_t text;
+        [[nodiscard]] node_type get_type() const override { return TYPE_TEXT; }
+    };
+
+    struct tag_node : public bbcode_node {
+        text_t tag_name;
+        std::vector<text_t> params;
+        std::vector<std::unique_ptr<bbcode_node>> children;
+        [[nodiscard]] node_type get_type() const override { return TYPE_TAG; }
+    };
+
+    explicit bbcode(const text_t &text);
+
+    std::vector<std::unique_ptr<bbcode_node>> root_nodes;
+};
+
+number_t calc_bbcode_node_duration(const bbcode::bbcode_node &node, number_t duration_per_char);
+number_t calc_bbcode_duration(const bbcode &bbcode, number_t duration_per_char);
 
 } // namespace camellia::algorithm_helper
 

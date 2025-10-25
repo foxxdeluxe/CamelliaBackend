@@ -146,23 +146,6 @@ flatbuffers::Offset<fb::ActorData> actor_data::to_flatbuffers(flatbuffers::FlatB
     return fb::CreateActorData(builder, h_actor_type, h_actor_id, keys_vector, values_vector, children_vector, timeline_offset);
 }
 
-// text_region_attachment_data implementation
-flatbuffers::Offset<fb::TextRegionAttachmentData> text_region_attachment_data::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    auto offset_offset = fb::CreateVector2(builder, offset.get_x(), offset.get_y());
-    auto anchor_pos_offset = fb::CreateVector2(builder, anchor_pos.get_x(), anchor_pos.get_y());
-    auto pivot_pos_offset = fb::CreateVector2(builder, pivot_pos.get_x(), pivot_pos.get_y());
-
-    return fb::CreateTextRegionAttachmentData(builder, static_cast<fb::LayoutMode>(mode), offset_offset, anchor_pos_offset, pivot_pos_offset, rotation);
-}
-
-// text_region_attachment_text_data implementation
-flatbuffers::Offset<fb::TextRegionAttachmentTextData> text_region_attachment_text_data::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    auto base_attachment_offset = text_region_attachment_data::to_flatbuffers(builder);
-    auto text_offset = builder.CreateString(text);
-
-    return fb::CreateTextRegionAttachmentTextData(builder, base_attachment_offset, text_offset);
-}
-
 // text_style_data implementation
 flatbuffers::Offset<fb::TextStyleData> text_style_data::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
     auto font_family_offset = builder.CreateString(font_family);
@@ -171,29 +154,10 @@ flatbuffers::Offset<fb::TextStyleData> text_style_data::to_flatbuffers(flatbuffe
                                    decoration_style, decoration_thickness, letter_spacing, word_spacing);
 }
 
-// text_region_data implementation
-flatbuffers::Offset<fb::TextRegionData> text_region_data::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    auto text_offset = builder.CreateString(text);
-    auto text_style_offset = text_style ? text_style->to_flatbuffers(builder) : 0;
-    auto timeline_offset = timeline ? timeline->to_flatbuffers(builder) : 0;
-
-    return fb::CreateTextRegionData(builder, id, text_offset, text_style_offset, timeline_offset, transition_speed, h_transition_script_name);
-}
-
 // dialog_data implementation
 flatbuffers::Offset<fb::DialogData> dialog_data::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
-    auto region_life_timeline_offset = region_life_timeline ? region_life_timeline->to_flatbuffers(builder) : 0;
-
-    std::vector<flatbuffers::Offset<fb::TextRegionData>> region_offsets;
-    for (const auto &region : regions) {
-        if (region) {
-            region_offsets.push_back(region->to_flatbuffers(builder));
-        }
-    }
-
-    auto regions_vector = builder.CreateVector(region_offsets);
-
-    return fb::CreateDialogData(builder, h_actor_id, regions_vector, region_life_timeline_offset);
+    auto dialog_text_offset = builder.CreateString(dialog_text);
+    return fb::CreateDialogData(builder, h_actor_id, dialog_text_offset, transition_duration, h_transition_script_name);
 }
 
 // beat_data implementation
@@ -481,50 +445,6 @@ std::shared_ptr<composite_action_data> composite_action_data::from_flatbuffers(c
     return result;
 }
 
-// text_region_attachment_data from_flatbuffers implementation
-std::shared_ptr<text_region_attachment_data> text_region_attachment_data::from_flatbuffers(const fb::TextRegionAttachmentData &fb_data) {
-    auto result = std::make_shared<text_region_attachment_data>();
-
-    result->mode = static_cast<text_region_attachment_data::layout_modes>(fb_data.mode());
-
-    if (const auto *offset = fb_data.offset()) {
-        result->offset = vector2(offset->x(), offset->y());
-    }
-    if (const auto *anchor_pos = fb_data.anchor_pos()) {
-        result->anchor_pos = vector2(anchor_pos->x(), anchor_pos->y());
-    }
-    if (const auto *pivot_pos = fb_data.pivot_pos()) {
-        result->pivot_pos = vector2(pivot_pos->x(), pivot_pos->y());
-    }
-    result->rotation = fb_data.rotation();
-
-    return result;
-}
-
-// text_region_attachment_text_data from_flatbuffers implementation
-std::shared_ptr<text_region_attachment_text_data> text_region_attachment_text_data::from_flatbuffers(const fb::TextRegionAttachmentTextData &fb_data) {
-    auto result = std::make_shared<text_region_attachment_text_data>();
-
-    // Copy base attachment data
-    if (const auto *base_attachment = fb_data.base_attachment()) {
-        auto base = text_region_attachment_data::from_flatbuffers(*base_attachment);
-        if (base) {
-            result->mode = base->mode;
-            result->offset = base->offset;
-            result->anchor_pos = base->anchor_pos;
-            result->pivot_pos = base->pivot_pos;
-            result->rotation = base->rotation;
-        }
-    }
-
-    // Set text
-    if (fb_data.text() != nullptr) {
-        result->text = fb_data.text()->str();
-    }
-
-    return result;
-}
-
 // activity_data from_flatbuffers implementation
 std::shared_ptr<activity_data> activity_data::from_flatbuffers(const fb::ActivityData &fb_data) {
     auto result = std::make_shared<activity_data>();
@@ -599,51 +519,14 @@ std::shared_ptr<actor_data> actor_data::from_flatbuffers(const fb::ActorData &fb
     return result;
 }
 
-// text_region_data from_flatbuffers implementation
-std::shared_ptr<text_region_data> text_region_data::from_flatbuffers(const fb::TextRegionData &fb_data) {
-    auto result = std::make_shared<text_region_data>();
-
-    result->id = fb_data.id();
-    if (fb_data.text() != nullptr) {
-        result->text = fb_data.text()->str();
-    }
-
-    // Set text_style
-    if (const auto *text_style = fb_data.text_style()) {
-        result->text_style = text_style_data::from_flatbuffers(*text_style);
-    }
-
-    // Set timeline
-    if (const auto *timeline = fb_data.timeline()) {
-        result->timeline = action_timeline_data::from_flatbuffers(*timeline);
-    }
-
-    result->transition_speed = fb_data.transition_speed();
-    result->h_transition_script_name = fb_data.h_transition_script_name();
-
-    return result;
-}
-
 // dialog_data from_flatbuffers implementation
 std::shared_ptr<dialog_data> dialog_data::from_flatbuffers(const fb::DialogData &fb_data) {
     auto result = std::make_shared<dialog_data>();
 
     result->h_actor_id = fb_data.h_actor_id();
-
-    // Set regions
-    if (const auto *regions = fb_data.regions()) {
-        result->regions.reserve(regions->size());
-        for (const auto *region : *regions) {
-            if (region != nullptr) {
-                result->regions.push_back(text_region_data::from_flatbuffers(*region));
-            }
-        }
-    }
-
-    // Set region_life_timeline
-    if (const auto *timeline = fb_data.region_life_timeline()) {
-        result->region_life_timeline = action_timeline_data::from_flatbuffers(*timeline);
-    }
+    result->dialog_text = fb_data.dialog_text()->str();
+    result->transition_duration = fb_data.transition_duration();
+    result->h_transition_script_name = fb_data.h_transition_script_name();
 
     return result;
 }

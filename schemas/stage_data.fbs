@@ -3,12 +3,6 @@ include "variant.fbs";
 
 namespace camellia.fb;
 
-// Text region layout mode enum
-enum LayoutMode: int8 {
-    TEXT_REGION_LAYOUT_SEPARATE_LINES = 0,
-    TEXT_REGION_LAYOUT_ENVELOPE_LINES = 1
-}
-
 // Action timeline keyframe data
 table ActionTimelineKeyframeData {
     time: float;
@@ -87,21 +81,6 @@ table ActorData {
     timeline: ActionTimelineData;
 }
 
-// Text region attachment data
-table TextRegionAttachmentData {
-    mode: LayoutMode;
-    offset: Vector2;
-    anchor_pos: Vector2;
-    pivot_pos: Vector2;
-    rotation: float;
-}
-
-// Text region attachment text data
-table TextRegionAttachmentTextData {
-    base_attachment: TextRegionAttachmentData;
-    text: string;
-}
-
 // Text style data
 table TextStyleData {
     font_size: float;
@@ -118,21 +97,12 @@ table TextStyleData {
     word_spacing: float;
 }
 
-// Text region data
-table TextRegionData {
-    id: int32;
-    text: string;
-    text_style: TextStyleData;
-    timeline: ActionTimelineData;
-    transition_speed: float;
-    h_transition_script_name: uint64;
-}
-
 // Dialog data
 table DialogData {
     h_actor_id: uint64;
-    regions: [TextRegionData];
-    region_life_timeline: ActionTimelineData;
+    dialog_text: string;
+    transition_duration: float;
+    h_transition_script_name: uint64;
 }
 
 // Beat data
