@@ -55,9 +55,185 @@ protected:
 };
 
 TEST_F(stage_test, simulation) {
-    const auto *script_1 = "function run() { var factor = time / duration; return [1 * factor, 2 * factor, 3 * factor]; }";
-    const auto *script_2 =
-        R"(function advance(text, index) {index++;if (index >= text.length) {return [text.length, null];}if (text[index] !== "[") {return [index, null];}let end = index + 1;let eq_index = -1;while (end < text.length && text[end] !== "]") {if (text[end] === "=") {eq_index = end;}end++;}if (end >= text.length) {return [index, null];}return [end + 1, text.slice(index + 1, eq_index < 0 ? end : eq_index)];}function run() {let max_count = time * transition_speed;let cursor = 0, i = 0;let res = [];for (; i < max_count; i++) {[cursor, _] = advance(orig, cursor);if (cursor >= orig.length) {return orig;}}res.push(orig.slice(0, cursor));res.push("[color=00000000]");let last = cursor;while (cursor < orig.length) {let tag;let next;[next, tag] = advance(orig, cursor);if (tag === "color") {res.push(orig.slice(last, cursor));res.push("[color=00000000]");last = next;}cursor = next;}res.push(orig.slice(last));return res.join("");})";
+    const auto *script_1 = "function run() local factor = time / duration; return {1 * factor, 2 * factor, 3 * factor} end";
+    const auto *script_2 = R"(
+function run()
+    -- Typewriter effect: hide unrevealed characters using color tags
+    if g_char_timeline == nil then
+        -- Build character timeline
+        g_char_timeline = {}
+        g_char_count = 0
+        
+        local function build_timeline(node, speed_mult, start_time)
+            local current_time = start_time
+            if type(node) == "string" then
+                -- Text node: each character has a reveal time
+                local char_duration = duration_per_char * speed_mult
+                for i = 1, #node do
+                    g_char_count = g_char_count + 1
+                    g_char_timeline[g_char_count] = {
+                        reveal_time = current_time,
+                        node_ref = node,
+                        char_index = i
+                    }
+                    current_time = current_time + char_duration
+                end
+            elseif type(node) == "table" and node.tag_name then
+                -- Handle speed tag
+                local local_speed = speed_mult
+                if node.tag_name == "speed" and node.params and #node.params > 0 then
+                    local_speed = speed_mult * (tonumber(node.params[1]) or 1)
+                end
+                -- Process children with updated speed multiplier
+                if node.children then
+                    for _, child in ipairs(node.children) do
+                        current_time = build_timeline(child, local_speed, current_time)
+                    end
+                end
+            end
+            return current_time
+        end
+        
+        -- Build timeline for all nodes
+        for _, node in ipairs(base_text) do
+            build_timeline(node, 1.0, 0)
+        end
+    end
+    
+    -- Calculate how many characters to reveal based on current time
+    local chars_to_reveal = 0
+    if time >= total_duration then
+        chars_to_reveal = g_char_count
+    else
+        for i = 1, g_char_count do
+            if g_char_timeline[i].reveal_time <= time then
+                chars_to_reveal = i
+            else
+                break
+            end
+        end
+    end
+    
+    -- Build output with hidden/revealed characters using color tags
+    local revealed_count = 0
+    
+    local function process_node(node)
+        if type(node) == "string" then
+            -- Text node: wrap unrevealed characters in transparent color tags
+            local result = {}
+            local visible_buffer = ""
+            local hidden_buffer = ""
+            
+            for i = 1, #node do
+                revealed_count = revealed_count + 1
+                local char = string.sub(node, i, i)
+                
+                if revealed_count <= chars_to_reveal then
+                    -- Character is revealed
+                    if #hidden_buffer > 0 then
+                        -- Flush hidden buffer first
+                        local hidden_tag = {
+                            tag_name = "color",
+                            params = {"#00000000"},
+                            children = {hidden_buffer}
+                        }
+                        table.insert(result, hidden_tag)
+                        hidden_buffer = ""
+                    end
+                    visible_buffer = visible_buffer .. char
+                else
+                    -- Character is hidden
+                    if #visible_buffer > 0 then
+                        -- Flush visible buffer first
+                        table.insert(result, visible_buffer)
+                        visible_buffer = ""
+                    end
+                    hidden_buffer = hidden_buffer .. char
+                end
+            end
+            
+            -- Flush remaining buffers
+            if #visible_buffer > 0 then
+                table.insert(result, visible_buffer)
+            end
+            if #hidden_buffer > 0 then
+                local hidden_tag = {
+                    tag_name = "color",
+                    params = {"#00000000"},
+                    children = {hidden_buffer}
+                }
+                table.insert(result, hidden_tag)
+            end
+            
+            return result
+        elseif type(node) == "table" and node.tag_name then
+            -- Tag node: process children recursively
+            local new_node = {
+                tag_name = node.tag_name,
+                params = {},
+                children = {}
+            }
+            
+            -- Copy params
+            if node.params then
+                for _, param in ipairs(node.params) do
+                    table.insert(new_node.params, param)
+                end
+            end
+            
+            -- Process children
+            if node.children then
+                for _, child in ipairs(node.children) do
+                    local processed = process_node(child)
+                    if type(processed) == "string" then
+                        if #processed > 0 then
+                            table.insert(new_node.children, processed)
+                        end
+                    elseif type(processed) == "table" then
+                        -- Could be a single tag node or an array of mixed content
+                        if processed.tag_name then
+                            -- Single tag node
+                            table.insert(new_node.children, processed)
+                        else
+                            -- Array of mixed content from text node processing
+                            for _, item in ipairs(processed) do
+                                table.insert(new_node.children, item)
+                            end
+                        end
+                    end
+                end
+            end
+            
+            return new_node
+        end
+        return node
+    end
+    
+    local result = {}
+    for _, node in ipairs(base_text) do
+        local processed = process_node(node)
+        if processed ~= nil then
+            if type(processed) == "string" then
+                if #processed > 0 then
+                    table.insert(result, processed)
+                end
+            elseif type(processed) == "table" then
+                if processed.tag_name then
+                    -- Single tag node
+                    table.insert(result, processed)
+                else
+                    -- Array of mixed content
+                    for _, item in ipairs(processed) do
+                        table.insert(result, item)
+                    end
+                end
+            end
+        end
+    end
+    
+    return result
+end
+)";
 
     auto action_data_1 = std::make_shared<modifier_action_data>();
     action_data_1->h_action_name = algorithm_helper::calc_hash("test_action_1");

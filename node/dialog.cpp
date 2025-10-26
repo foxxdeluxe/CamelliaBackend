@@ -54,9 +54,11 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
         try {
             _p_transition_script = std::make_unique<scripting_helper::scripting_engine>();
 
-            _p_transition_script->set_property("fixed_duration", data->transition_duration >= 0.0F);
-            _p_transition_script->set_property("duration", std::fabsf(data->transition_duration));
-            _p_transition_script->set_property("base_text", data->dialog_text);
+            auto fixed_duration = data->transition_duration >= 0.0F;
+            _p_transition_script->set_property("is_duration_fixed", fixed_duration);
+            _p_transition_script->set_property("total_duration", total_duration);
+            _p_transition_script->set_property("duration_per_char", !fixed_duration ? -data->transition_duration : -1.0F);
+            _p_transition_script->set_property("base_text", _p_bbcode->to_variant());
             _p_transition_script->guarded_evaluate(*p_transition_code, variant::VOID);
         } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
             _p_transition_script = nullptr;
@@ -78,8 +80,8 @@ number_t dialog::update(number_t beat_time) {
     if (_p_transition_script != nullptr) {
         try {
             _p_transition_script->set_property("time", beat_time);
-            const auto text = _p_transition_script->guarded_invoke("run", 0, nullptr, variant::TEXT);
-            _attributes.set(algorithm_helper::calc_hash_const("text"), text);
+            const auto transitioned = algorithm_helper::bbcode::from_variant(_p_transition_script->guarded_invoke("run", 0, nullptr, variant::ARRAY));
+            _attributes.set(algorithm_helper::calc_hash_const("text"), transitioned.to_text());
         } catch (scripting_helper::scripting_engine::scripting_engine_error &ex) {
             get_manager().log(std::format("Error while invoking function 'run()' in transition script ({}) for text region:\n"
                                           "{}",

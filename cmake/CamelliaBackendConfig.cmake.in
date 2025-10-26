@@ -5,7 +5,8 @@
 include(CMakeFindDependencyMacro)
 
 # Find dependencies that CamelliaBackend needs
-find_dependency(qjs CONFIG REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LUAJIT REQUIRED IMPORTED_TARGET luajit)
 find_dependency(xxHash CONFIG REQUIRED)
 find_dependency(flatbuffers CONFIG REQUIRED)
 

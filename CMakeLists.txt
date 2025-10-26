@@ -24,8 +24,9 @@ else()
     message(STATUS "IPO not supported: \n${IPO_OUTPUT}")
 endif()
 
-# QuickJS-ng
-find_package(qjs CONFIG REQUIRED)
+# LuaJIT
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LUAJIT REQUIRED IMPORTED_TARGET luajit)
 
 # xxHash
 find_package(xxHash CONFIG REQUIRED)
@@ -94,8 +95,8 @@ add_library(
 # Link libraries in correct order (dependencies matter)
 target_link_libraries(
     CamelliaBackendDeps INTERFACE
-    # QuickJS-ng
-    qjs
+    # LuaJIT
+    PkgConfig::LUAJIT
     # xxHash
     xxHash::xxhash
     # FlatBuffers

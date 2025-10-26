@@ -4,7 +4,7 @@
   "description": "The core of Camellia Engine - just another visual novel engine",
   "homepage": "https://github.com/foxxdeluxe/CamelliaBackend",
   "dependencies": [
-    "quickjs-ng",
+    "luajit",
     "xxhash",
     "constexpr-xxh3",
     "flatbuffers"

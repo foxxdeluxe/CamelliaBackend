@@ -1,6 +1,7 @@
 ﻿
 #include "algorithm_helper.h"
 #include "camellia_typedef.h"
+#include "variant.h"
 #include "xxhash.h"
 #include <algorithm>
 #include <cctype>
@@ -8,6 +9,8 @@
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 namespace camellia::algorithm_helper {
 boolean_t approx_equals(number_t a, number_t b) {
@@ -271,6 +274,109 @@ bbcode::bbcode(const text_t &text) {
 
     // Flush any remaining text
     flush_text();
+}
+
+variant bbcode::to_variant() const {
+    std::vector<variant> variant_root_nodes;
+    variant_root_nodes.reserve(root_nodes.size());
+    for (const auto &node : root_nodes) {
+        variant_root_nodes.emplace_back(node->to_variant());
+    }
+    return {variant_root_nodes};
+}
+
+bbcode bbcode::from_variant(const variant &v) {
+    auto variant_root_nodes = v.get_array();
+    bbcode res;
+    res.root_nodes.reserve(variant_root_nodes.size());
+    for (const auto &node : variant_root_nodes) {
+        switch (node.get_value_type()) {
+        case variant::TEXT:
+            res.root_nodes.push_back(std::make_unique<text_node>(text_node::from_variant(node)));
+            break;
+        case variant::DICTIONARY:
+            res.root_nodes.push_back(std::make_unique<tag_node>(tag_node::from_variant(node)));
+            break;
+        default:
+            throw std::runtime_error("Cannot convert variant to bbcode: Invalid root node type");
+        }
+    }
+    return res;
+}
+
+text_t bbcode::to_text() const {
+    text_t res;
+    for (const auto &node : root_nodes) {
+        res += node->to_text();
+    }
+    return res;
+}
+
+variant bbcode::tag_node::to_variant() const {
+    std::map<variant, variant> dict;
+    dict["tag_name"] = tag_name;
+
+    std::vector<variant> variant_params;
+    variant_params.reserve(params.size());
+    for (const auto &param : params) {
+        variant_params.emplace_back(param);
+    }
+    dict["params"] = variant_params;
+
+    std::vector<variant> variant_children;
+    variant_children.reserve(children.size());
+    for (const auto &child : children) {
+        variant_children.push_back(child->to_variant());
+    }
+    dict["children"] = variant_children;
+    return {dict};
+}
+
+bbcode::tag_node bbcode::tag_node::from_variant(const variant &v) {
+    tag_node node;
+    auto dict = v.get_dictionary();
+    node.tag_name = dict["tag_name"].get_text();
+    auto variant_params = dict["params"].get_array();
+    node.params.reserve(variant_params.size());
+    for (const auto &param : variant_params) {
+        node.params.push_back(param.get_text());
+    }
+    auto variant_children = dict["children"].get_array();
+    node.children.reserve(variant_children.size());
+    for (const auto &child : variant_children) {
+        switch (child.get_value_type()) {
+        case variant::TEXT:
+            node.children.push_back(std::make_unique<text_node>(text_node::from_variant(child)));
+            break;
+        case variant::DICTIONARY:
+            node.children.push_back(std::make_unique<tag_node>(tag_node::from_variant(child)));
+            break;
+        default:
+            throw std::runtime_error("Cannot convert variant to bbcode node: Invalid child node type");
+        }
+    }
+    return node;
+}
+
+text_t bbcode::tag_node::to_text() const {
+    text_t res = "[" + tag_name;
+    for (const auto &param : params) {
+        res += " " + param;
+    }
+    res += "]";
+    for (const auto &child : children) {
+        res += child->to_text();
+    }
+    res += "[/";
+    res += tag_name;
+    res += "]";
+    return res;
+}
+
+bbcode::text_node bbcode::text_node::from_variant(const variant &v) {
+    text_node node;
+    node.text = v.get_text();
+    return node;
 }
 
 } // namespace camellia::algorithm_helper

@@ -4,9 +4,11 @@
 #include "../camellia_typedef.h"
 #include "constexpr-xxh3.h"
 #include "manager.h"
+#include "variant.h"
 #include <functional>
 #include <memory>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace camellia::algorithm_helper {
@@ -79,11 +81,16 @@ struct bbcode {
 
         virtual ~bbcode_node() = default;
         [[nodiscard]] virtual node_type get_type() const = 0;
+        [[nodiscard]] virtual variant to_variant() const = 0;
+        [[nodiscard]] virtual text_t to_text() const = 0;
     };
 
     struct text_node : public bbcode_node {
         text_t text;
         [[nodiscard]] node_type get_type() const override { return TYPE_TEXT; }
+        [[nodiscard]] variant to_variant() const override { return text; }
+        [[nodiscard]] static text_node from_variant(const variant &v);
+        [[nodiscard]] text_t to_text() const override { return text; }
     };
 
     struct tag_node : public bbcode_node {
@@ -91,11 +98,20 @@ struct bbcode {
         std::vector<text_t> params;
         std::vector<std::unique_ptr<bbcode_node>> children;
         [[nodiscard]] node_type get_type() const override { return TYPE_TAG; }
+        [[nodiscard]] variant to_variant() const override;
+        [[nodiscard]] static tag_node from_variant(const variant &v);
+        [[nodiscard]] text_t to_text() const override;
     };
 
     explicit bbcode(const text_t &text);
+    [[nodiscard]] variant to_variant() const;
+    [[nodiscard]] static bbcode from_variant(const variant &v);
+    [[nodiscard]] text_t to_text() const;
 
     std::vector<std::unique_ptr<bbcode_node>> root_nodes;
+
+private:
+    bbcode() = default;
 };
 
 number_t calc_bbcode_node_duration(const bbcode::bbcode_node &node, number_t duration_per_char);

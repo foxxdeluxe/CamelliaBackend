@@ -3,9 +3,14 @@
 
 #include "../camellia_typedef.h"
 #include "../variant.h"
-#include "quickjs.h"
 #include <exception>
 #include <string>
+
+extern "C" {
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+}
 
 namespace camellia::scripting_helper {
 
@@ -31,22 +36,20 @@ public:
     private:
         text_t msg;
     };
-    variant guarded_invoke(JSValue &this_value, const std::string &func_name, int argc, variant *argv, variant::types result_type);
-    void set_property(JSValue &this_value, const std::string &prop_name, const variant &prop_val);
 
 private:
-    const static size_t RUNTIME_MEMORY_LIMIT;
-    static JSRuntime *_p_runtime;
+    const static size_t MEMORY_LIMIT;
+    static size_t current_memory_usage;
 
-    JSContext *_p_context{nullptr};
-    JSAtom _length_atom{};
-    JSValue _global_obj{};
+    lua_State *_p_state{nullptr};
 
-    variant _js_value_to_value(const JSValue &js_value, variant::types result_type);
-    JSValue _value_to_js_value(const variant &val);
-    JSValue _new_typed_array(JSTypedArrayEnum array_type, size_t length, void *&data);
-    void *_get_typed_array(JSValue typed_array, size_t &data_size) const;
-    scripting_engine_error _get_exception();
+    variant _lua_value_to_value(int stack_index, variant::types result_type);
+    void _value_to_lua_value(const variant &val);
+    void _push_vector_table(const number_t *data, integer_t element_count);
+    bool _table_to_vector(int stack_index, number_t *data, integer_t element_count);
+    scripting_engine_error _get_error();
+
+    static void *_lua_allocator(void *ud, void *ptr, size_t osize, size_t nsize);
 };
 
 } // namespace camellia::scripting_helper
