@@ -75,7 +75,7 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     REQUIRES_VALID(*mad);
 
     _p_parent = p_parent;
-    _p_timeline = &static_cast<action_timeline_keyframe *>(_p_parent)->get_parent_timeline();
+    _p_timeline = static_cast<action_timeline_keyframe *>(_p_parent)->get_parent_timeline();
 
     _p_script = new scripting_helper::scripting_engine();
 
@@ -99,7 +99,9 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     process_params(*p_parent->get_override_params());
     process_params(mad->default_params);
 
-    const auto *code = p_parent->get_parent_timeline().get_stage().get_script_code(mad->h_script_name);
+    auto *parent_timeline = p_parent->get_parent_timeline();
+    auto *stage_ptr = parent_timeline ? parent_timeline->get_stage() : nullptr;
+    const auto *code = stage_ptr ? stage_ptr->get_script_code(mad->h_script_name) : nullptr;
     FAIL_LOG_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
                                              "{}",
                                              mad->h_script_name, mad->h_action_name, get_locator()));
@@ -129,6 +131,7 @@ void modifier_action::fina() {
 
 variant modifier_action::apply_modifier(const number_t action_time, const hash_t h_attribute_name, const variant &val,
                                         std::vector<std::map<hash_t, variant>> &ref_attributes) const {
+    REQUIRES_READY_RETURN(*this, val);
     if (get_attribute_name_hash() != h_attribute_name) {
         return val;
     }
@@ -137,6 +140,7 @@ variant modifier_action::apply_modifier(const number_t action_time, const hash_t
 
 void modifier_action::apply_modifier(const number_t action_time, std::map<hash_t, variant> &attributes,
                                      std::vector<std::map<hash_t, variant>> &ref_attributes) const {
+    REQUIRES_READY(*this);
     const auto it = attributes.find(get_attribute_name_hash());
     if (it == attributes.end()) {
         // TODO: Report warning
@@ -190,7 +194,10 @@ void composite_action::init(const std::shared_ptr<action_data> &data, action_tim
     REQUIRES_NOT_NULL_MSG(cad, std::format("Failed to cast action data ({}) to composite action data.", data->h_action_name));
     REQUIRES_VALID(*cad);
 
-    _p_timeline->init({cad->timeline}, p_parent->get_parent_timeline().get_stage(), this);
+    auto *parent_timeline = p_parent->get_parent_timeline();
+    auto *stage_ptr = parent_timeline ? parent_timeline->get_stage() : nullptr;
+    REQUIRES_NOT_NULL_MSG(stage_ptr, "Failed to get stage from parent timeline.");
+    _p_timeline->init({cad->timeline}, *stage_ptr, this);
 
     action::init(data, p_parent);
 }
@@ -200,7 +207,9 @@ void composite_action::fina() {
     _p_timeline->fina();
 }
 
-action_timeline &composite_action::get_timeline() { return *_p_timeline; }
+action_timeline *composite_action::get_timeline() {
+    return _p_timeline.get();
+}
 
 std::shared_ptr<composite_action_data> composite_action::get_data() const {
     // Assume _p_base_data is valid - this is a precondition

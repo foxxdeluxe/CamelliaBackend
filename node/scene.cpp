@@ -81,9 +81,14 @@ void scene::set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time
     }
 }
 
-number_t scene::get_beat_time() const { return _current_beat_time; }
+number_t scene::get_beat_time() const {
+    return _current_beat_time;
+}
 
-void scene::set_next_beat_time(number_t beat_time) { _next_beat_time = beat_time; }
+void scene::set_next_beat_time(number_t beat_time) {
+    REQUIRES_READY(*this);
+    _next_beat_time = beat_time;
+}
 
 number_t scene::update(number_t stage_time) {
     REQUIRES_READY_RETURN(*this, 0.0F);
@@ -113,12 +118,12 @@ number_t scene::update(number_t stage_time) {
     return time_to_end;
 }
 
-integer_t scene::get_scene_id() const { return _scene_id; }
+integer_t scene::get_scene_id() const {
+    return _scene_id;
+}
 
-stage &scene::get_stage() const {
-    // Assume _p_parent is valid - this is a precondition
-    // If not, behavior is undefined (caller's responsibility)
-    return *static_cast<stage *>(_p_parent);
+stage *scene::get_stage() const {
+    return static_cast<stage *>(_p_parent);
 }
 
 std::string scene::get_locator() const noexcept {

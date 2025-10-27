@@ -52,6 +52,19 @@ protected:
         }
     }
 
+    void poll_event() {
+        for (const auto &pevt : _manager->get_event_queue()) {
+            on_event(*pevt);
+        }
+        _manager->clear_event_queue();
+    }
+
+    void print_failures() {
+        for (const auto &failure : _failures) {
+            std::cout << "Node failure detected - Handle: " << failure.first << ", Error: " << failure.second << std::endl;
+        }
+    }
+
     std::unique_ptr<manager> _manager;
     std::unique_ptr<stage> _stage;
     std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> _dialogs;
@@ -327,22 +340,22 @@ end
 
     EXPECT_NO_THROW(_stage->update(kUpdateTime1));
     ASSERT_NE(p_actor, nullptr);
-    EXPECT_TRUE(p_actor->get_attributes().get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(.1F, .2F, .3F)));
+    auto *attributes = p_actor->get_attributes();
+    ASSERT_NE(attributes, nullptr);
+
+    poll_event();
+    print_failures();
+    EXPECT_TRUE(_failures.empty()) << "Expected no node failures, but " << _failures.size() << " failure(s) occurred";
+
+    EXPECT_TRUE(attributes->get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(.1F, .2F, .3F)));
 
     EXPECT_NO_THROW(_stage->update(kUpdateTime11));
-    EXPECT_TRUE(p_actor->get_attributes().get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(1.0F, 2.0F, 3.0F)));
+    EXPECT_TRUE(attributes->get(algorithm_helper::calc_hash(actor::POSITION_NAME))->approx_equals(vector3(1.0F, 2.0F, 3.0F)));
 
-    for (const auto &pevt : _manager->get_event_queue()) {
-        on_event(*pevt);
-    }
-    _manager->clear_event_queue();
+    poll_event();
 
     // Check for any failures
-    if (!_failures.empty()) {
-        for (const auto &failure : _failures) {
-            std::cout << "Node failure detected - Handle: " << failure.first << ", Error: " << failure.second << std::endl;
-        }
-    }
+    print_failures();
     EXPECT_TRUE(_failures.empty()) << "Expected no node failures, but " << _failures.size() << " failure(s) occurred";
 
     ASSERT_EQ(_dialogs.size(), 1);
@@ -351,17 +364,10 @@ end
     EXPECT_NO_THROW(_stage->advance());
     EXPECT_NO_THROW(_stage->update(kUpdateTime30));
 
-    for (const auto &pevt : _manager->get_event_queue()) {
-        on_event(*pevt);
-    }
-    _manager->clear_event_queue();
+    poll_event();
 
     // Check for any failures
-    if (!_failures.empty()) {
-        for (const auto &failure : _failures) {
-            std::cout << "Node failure detected - Handle: " << failure.first << ", Error: " << failure.second << std::endl;
-        }
-    }
+    print_failures();
     EXPECT_TRUE(_failures.empty()) << "Expected no node failures, but " << _failures.size() << " failure(s) occurred";
 
     std::cout << _dialogs.begin()->second.at(algorithm_helper::calc_hash("text")).get_text() << std::endl;

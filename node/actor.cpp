@@ -4,19 +4,17 @@
 #include "stage.h"
 
 namespace camellia {
-const std::shared_ptr<actor_data> &actor::get_data() const {
-    // Assume _p_data is valid - this is a precondition
-    // If not, behavior is undefined (caller's responsibility)
-    return _p_data;
+const std::shared_ptr<actor_data> *actor::get_data() const {
+    return &_p_data;
 }
 
-const std::map<hash_t, variant> &actor::get_default_attributes() const {
-    // Assume _p_data is valid - this is a precondition
-    // If not, behavior is undefined (caller's responsibility)
-    return _p_data->default_attributes;
+const std::map<hash_t, variant> *actor::get_default_attributes() const {
+    return &_p_data->default_attributes;
 }
 
-attribute_registry &actor::get_attributes() { return _attributes; }
+attribute_registry *actor::get_attributes() {
+    return &_attributes;
+}
 
 void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent) {
     REQUIRES_NOT_NULL(data);
@@ -26,8 +24,11 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
     _p_stage = &sta;
     _p_parent = &parent;
 
-    for (const auto &attribute : parent.get_initial_values()) {
-        _attributes.set(attribute.first, attribute.second);
+    const auto *initial_values = parent.get_initial_values();
+    if (initial_values != nullptr) {
+        for (const auto &attribute : *initial_values) {
+            _attributes.set(attribute.first, attribute.second);
+        }
     }
 
     {
@@ -67,6 +68,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
 }
 
 number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
+    REQUIRES_READY_RETURN(*this, 0.0F);
     number_t time_to_end = 0.0F;
     for (auto &child : _children) {
         time_to_end = std::max(child.second->update(beat_time, parent_attributes), time_to_end);
@@ -91,10 +93,8 @@ void actor::fina(boolean_t keep_children) {
     _attributes.clear();
 }
 
-activity &actor::get_parent_activity() const {
-    // Assume _p_parent is valid - this is a precondition
-    // If not, behavior is undefined (caller's responsibility)
-    return *static_cast<activity *>(_p_parent);
+activity *actor::get_parent_activity() const {
+    return static_cast<activity *>(_p_parent);
 }
 
 std::string actor::get_locator() const noexcept {

@@ -101,7 +101,7 @@ protected:
 public:
     void init(const std::shared_ptr<action_data> &data, action_timeline_keyframe *p_parent) override;
     void fina() override;
-    [[nodiscard]] action_timeline &get_timeline();
+    [[nodiscard]] action_timeline *get_timeline();
     [[nodiscard]] std::shared_ptr<composite_action_data> get_data() const;
     [[nodiscard]] action_data::action_types get_action_type() const override { return action_data::ACTION_COMPOSITE; }
     [[nodiscard]] std::string get_locator() const noexcept override;

@@ -28,7 +28,7 @@ public:
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-    [[nodiscard]] stage &get_parent_stage() const;
+    [[nodiscard]] stage *get_parent_stage() const;
     void init(stage &st);
     void fina();
     void advance(const std::shared_ptr<dialog_data> &data);

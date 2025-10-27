@@ -51,6 +51,7 @@ void stage::advance() {
 }
 
 void stage::fast_forward() {
+    REQUIRES_READY(*this);
     _scenes.back()->set_next_beat_time(_scenes.back()->get_beat_time() + _time_to_end);
     _time_to_end = 0.0F;
 }

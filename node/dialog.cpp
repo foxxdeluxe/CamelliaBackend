@@ -10,10 +10,8 @@
 
 namespace camellia {
 
-stage &dialog::get_parent_stage() const {
-    // Assume _p_parent is valid - this is a precondition
-    // If not, behavior is undefined (caller's responsibility)
-    return *static_cast<stage *>(_p_parent);
+stage *dialog::get_parent_stage() const {
+    return static_cast<stage *>(_p_parent);
 }
 
 void dialog::init(stage &st) {
@@ -49,10 +47,13 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     }
 
     if (data->h_transition_script_name != 0ULL) {
-        const auto *const p_transition_code = get_parent_stage().get_script_code(data->h_transition_script_name);
-        WARN_LOG(std::format("Could not find text region transition script.\n"
-                             "Script = {}",
-                             data->h_transition_script_name));
+        auto *parent_stage = get_parent_stage();
+        const auto *const p_transition_code = parent_stage ? parent_stage->get_script_code(data->h_transition_script_name) : nullptr;
+        if (p_transition_code == nullptr) {
+            WARN_LOG(std::format("Could not find text region transition script.\n"
+                                 "Script = {}",
+                                 data->h_transition_script_name));
+        }
 
         try {
             _p_transition_script = std::make_unique<scripting_helper::scripting_engine>();

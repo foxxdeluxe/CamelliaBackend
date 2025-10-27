@@ -22,13 +22,13 @@ protected:
     explicit actor(manager *p_mgr) : node(p_mgr) {}
 
 public:
-    [[nodiscard]] const std::map<hash_t, variant> &get_default_attributes() const;
-    [[nodiscard]] attribute_registry &get_attributes();
+    [[nodiscard]] const std::map<hash_t, variant> *get_default_attributes() const;
+    [[nodiscard]] attribute_registry *get_attributes();
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
-    [[nodiscard]] activity &get_parent_activity() const;
-    [[nodiscard]] const std::shared_ptr<actor_data> &get_data() const;
+    [[nodiscard]] activity *get_parent_activity() const;
+    [[nodiscard]] const std::shared_ptr<actor_data> *get_data() const;
     void init(const std::shared_ptr<actor_data> &data, stage &sta, activity &parent);
     void fina(boolean_t keep_children);
     number_t update_children(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);

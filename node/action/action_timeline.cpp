@@ -45,14 +45,12 @@ const std::map<text_t, variant> *action_timeline_keyframe::get_override_params()
     return &_data->override_params;
 }
 
-action &action_timeline_keyframe::get_action() const {
-    // Assume _p_action is valid - this is a precondition
-    return *_p_action;
+action *action_timeline_keyframe::get_action() const {
+    return _p_action.get();
 }
 
-action_timeline &action_timeline_keyframe::get_parent_timeline() const {
-    // Assume _p_parent is valid - this is a precondition
-    return *static_cast<action_timeline *>(_p_parent);
+action_timeline *action_timeline_keyframe::get_parent_timeline() const {
+    return static_cast<action_timeline *>(_p_parent);
 }
 
 void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i,
@@ -65,7 +63,8 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     _track_index = ti;
     _index = i;
 
-    const auto action_data = parent->get_stage().get_action_data(data->h_action_name);
+    auto *stage_ptr = parent->get_stage();
+    const auto action_data = stage_ptr ? stage_ptr->get_action_data(data->h_action_name) : nullptr;
     FAIL_LOG_IF(action_data == nullptr, std::format("Action data ({}) not found.", data->h_action_name));
 
     auto type = action_data->get_action_type();
@@ -106,12 +105,13 @@ variant action_timeline_keyframe::query_param(const text_t &key) const {
     return it == get_override_params()->end() ? variant() : it->second;
 }
 
-stage &action_timeline::get_stage() const {
-    // Assume _p_stage is valid - this is a precondition
-    return *_p_stage;
+stage *action_timeline::get_stage() const {
+    return _p_stage;
 }
 
-number_t action_timeline::get_effective_duration() const { return _effective_duration; }
+number_t action_timeline::get_effective_duration() const {
+    return _effective_duration;
+}
 
 void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_data>> &data, stage &stage, node *p_parent) {
     for (size_t i = 0; i < data.size(); i++) {
@@ -235,11 +235,21 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     std::map<hash_t, variant> temp_attributes{attributes};
 
     for (const auto *keyframe : finishing_keyframes) {
-        auto *action = &keyframe->get_action();
+        // Skip if keyframe is in failed state
+        if (keyframe->has_error()) {
+            continue;
+        }
+        auto *action = keyframe->get_action();
+        if (action == nullptr) {
+            continue;
+        }
         switch (action->get_action_type()) {
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
-            temp_attributes = ca->get_timeline().update(keyframe->get_preferred_duration(), temp_attributes, ref_attributes, continuous, true);
+            auto *timeline = ca->get_timeline();
+            if (timeline != nullptr) {
+                temp_attributes = timeline->update(keyframe->get_preferred_duration(), temp_attributes, ref_attributes, continuous, true);
+            }
             break;
         }
         default: {
@@ -249,7 +259,14 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
     }
 
     for (const auto *keyframe : ongoing_keyframes) {
-        auto *action = &keyframe->get_action();
+        // Skip if keyframe is in failed state
+        if (keyframe->has_error()) {
+            continue;
+        }
+        auto *action = keyframe->get_action();
+        if (action == nullptr) {
+            continue;
+        }
         auto action_time = std::min(timeline_time - keyframe->get_time(), keyframe->get_preferred_duration());
         switch (action->get_action_type()) {
         case action_data::action_types::ACTION_MODIFIER: {
@@ -259,7 +276,10 @@ std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, 
         }
         case action_data::action_types::ACTION_COMPOSITE: {
             auto *ca = dynamic_cast<composite_action *>(action);
-            temp_attributes = ca->get_timeline().update(action_time, temp_attributes, ref_attributes, continuous, false);
+            auto *timeline = ca->get_timeline();
+            if (timeline != nullptr) {
+                temp_attributes = timeline->update(action_time, temp_attributes, ref_attributes, continuous, false);
+            }
             break;
         }
         default: {

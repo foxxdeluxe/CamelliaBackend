@@ -42,9 +42,9 @@ public:
 
     [[nodiscard]] const std::map<text_t, variant> *get_override_params() const;
 
-    [[nodiscard]] action &get_action() const;
+    [[nodiscard]] action *get_action() const;
 
-    [[nodiscard]] action_timeline &get_parent_timeline() const;
+    [[nodiscard]] action_timeline *get_parent_timeline() const;
 
     void init(const std::shared_ptr<action_timeline_keyframe_data> &data, action_timeline *parent, integer_t ti, integer_t i, number_t effective_duration);
 
@@ -71,7 +71,7 @@ protected:
     explicit action_timeline(manager *p_mgr) : node(p_mgr) {}
 
 public:
-    [[nodiscard]] stage &get_stage() const;
+    [[nodiscard]] stage *get_stage() const;
 
     [[nodiscard]] number_t get_effective_duration() const;
 

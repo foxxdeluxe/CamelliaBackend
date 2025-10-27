@@ -23,11 +23,11 @@ protected:
     explicit activity(manager *p_mgr) : node(p_mgr) {}
 
 public:
-    [[nodiscard]] stage &get_stage() const;
+    [[nodiscard]] stage *get_stage() const;
     void init(const std::shared_ptr<activity_data> &data, boolean_t keep_actor, stage &sta, node *p_parent);
     void fina(boolean_t keep_actor);
     number_t update(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes);
-    [[nodiscard]] const std::map<hash_t, variant> &get_initial_values();
+    [[nodiscard]] const std::map<hash_t, variant> *get_initial_values();
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 

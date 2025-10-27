@@ -30,7 +30,7 @@ public:
     number_t update(number_t stage_time);
 
     [[nodiscard]] integer_t get_scene_id() const;
-    [[nodiscard]] stage &get_stage() const;
+    [[nodiscard]] stage *get_stage() const;
 
     [[nodiscard]] std::string get_locator() const noexcept override;
 
