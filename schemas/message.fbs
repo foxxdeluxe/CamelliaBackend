@@ -47,6 +47,12 @@ table NodeAttributeDirtyEvent {
     dirty_attributes: [AttributeValuePair];
 }
 
+// Node failure event
+table NodeFailureEvent {
+    base_node: NodeEvent;
+    error_message: string;
+}
+
 // Log event
 table LogEvent {
     message: string;
@@ -59,6 +65,7 @@ union EventData {
     NodeFinaEvent,
     NodeVisibilityUpdateEvent,
     NodeAttributeDirtyEvent,
+    NodeFailureEvent,
     LogEvent
 }
 

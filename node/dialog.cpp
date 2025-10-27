@@ -11,19 +11,21 @@
 namespace camellia {
 
 stage &dialog::get_parent_stage() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return *static_cast<stage *>(_p_parent);
 }
 
 void dialog::init(stage &st) {
     _p_parent = &st;
-    _is_initialized = true;
+    _state = state::READY;
     get_manager().enqueue_event<node_init_event>(*this);
 }
 
 void dialog::fina() {
     get_manager().enqueue_event<node_fina_event>(*this);
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     _p_parent = nullptr;
     _attributes.clear();
     _p_bbcode = nullptr;
@@ -33,6 +35,7 @@ void dialog::fina() {
 }
 
 void dialog::advance(const std::shared_ptr<dialog_data> &data) {
+    REQUIRES_READY(*this);
     REQUIRES_NOT_NULL(data);
     REQUIRES_VALID(*data);
     _current = data;
@@ -41,15 +44,15 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
     try {
         _p_bbcode = std::make_unique<algorithm_helper::bbcode>(data->dialog_text);
     } catch (const std::exception &e) {
-        get_manager().log(std::format("Error while parsing BBCode:\n{}", e.what()), log_level::LOG_ERROR);
+        WARN_LOG(std::format("Error while parsing BBCode:\n{}", e.what()));
         _p_bbcode = std::make_unique<algorithm_helper::bbcode>("");
     }
 
     if (data->h_transition_script_name != 0ULL) {
         const auto *const p_transition_code = get_parent_stage().get_script_code(data->h_transition_script_name);
-        THROW_IF(p_transition_code == nullptr, std::format("Could not find text region transition script.\n"
-                                                           "Script = {}",
-                                                           data->h_transition_script_name));
+        WARN_LOG(std::format("Could not find text region transition script.\n"
+                             "Script = {}",
+                             data->h_transition_script_name));
 
         try {
             _p_transition_script = std::make_unique<scripting_helper::scripting_engine>();
@@ -63,9 +66,9 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
         } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
             _p_transition_script = nullptr;
 
-            THROW(std::format("Error while evaluating transition script ({}) for text region:\n"
-                              "{}",
-                              data->h_transition_script_name, err.what()));
+            WARN_LOG(std::format("Error while evaluating transition script ({}) for text region:\n"
+                                 "{}",
+                                 data->h_transition_script_name, err.what()));
         }
     }
 
@@ -77,16 +80,16 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
 }
 
 number_t dialog::update(number_t beat_time) {
+    REQUIRES_READY_RETURN(*this, 0.0F);
     if (_p_transition_script != nullptr) {
         try {
             _p_transition_script->set_property("time", beat_time);
             const auto transitioned = algorithm_helper::bbcode::from_variant(_p_transition_script->guarded_invoke("run", 0, nullptr, variant::ARRAY));
             _attributes.set(algorithm_helper::calc_hash_const("text"), transitioned.to_text());
         } catch (scripting_helper::scripting_engine::scripting_engine_error &ex) {
-            get_manager().log(std::format("Error while invoking function 'run()' in transition script ({}) for text region:\n"
-                                          "{}",
-                                          _current->h_transition_script_name, ex.what()),
-                              log_level::LOG_ERROR);
+            WARN_LOG(std::format("Error while invoking function 'run()' in transition script ({}) for text region:\n"
+                                 "{}",
+                                 _current->h_transition_script_name, ex.what()));
         }
     }
 

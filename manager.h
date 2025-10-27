@@ -18,6 +18,8 @@ class manager;
 
 class node {
 public:
+    enum class state : char { UNINITIALIZED = 0, READY = 1, FAILED = 2 };
+
     virtual ~node() noexcept = default;
     node(const node &) = delete;
     node &operator=(const node &) = delete;
@@ -26,9 +28,13 @@ public:
     [[nodiscard]] hash_t get_handle() const noexcept { return _handle; }
     [[nodiscard]] virtual hash_t get_type() const noexcept = 0;
     [[nodiscard]] virtual std::string get_locator() const noexcept = 0;
-    [[nodiscard]] virtual boolean_t is_initialized() const noexcept { return _is_initialized; }
     [[nodiscard]] node *get_parent() const noexcept { return _p_parent; }
     [[nodiscard]] virtual boolean_t is_internal() const noexcept { return false; }
+
+    // State management
+    [[nodiscard]] state get_state() const noexcept { return _state; }
+    [[nodiscard]] boolean_t has_error() const noexcept { return _state == state::FAILED; }
+    [[nodiscard]] const text_t &get_error_message() const noexcept { return _error_message; }
 
     node(node &&) noexcept = delete;
     node &operator=(node &&) noexcept = delete;
@@ -36,12 +42,15 @@ public:
 protected:
     friend class manager;
 
-    boolean_t _is_initialized{false};
+    mutable state _state{state::UNINITIALIZED};
+    mutable text_t _error_message;
     manager *_p_mgr{nullptr};
     hash_t _handle;
     node *_p_parent{nullptr};
 
     explicit node(manager *p_mgr);
+
+    void _set_fail(text_t message) const noexcept;
 
     static unsigned int _next_id;
 };
@@ -51,14 +60,14 @@ class manager {
 
 public:
     // Provide a stage data to the manager for future use
-    hash_t register_stage_data(std::shared_ptr<stage_data> data);
-    hash_t register_stage_data(bytes_t data);
+    hash_t register_stage_data(const std::shared_ptr<stage_data> &data);
+    hash_t register_stage_data(const bytes_t &data);
     // Dereference a stage data from the manager
     void unregister_stage_data(hash_t h_stage_name);
     // Initialize a stage instance with the specified stage data
-    void configure_stage(stage *s, hash_t h_stage_name);
+    void configure_stage(stage &s, hash_t h_stage_name);
     // Do some clean up for a stage instance so it can be configured again
-    void clean_stage(stage *s) const;
+    void clean_stage(stage &s) const;
 
     void log(text_t message, log_level level);
 

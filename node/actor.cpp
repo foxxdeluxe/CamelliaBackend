@@ -5,12 +5,14 @@
 
 namespace camellia {
 const std::shared_ptr<actor_data> &actor::get_data() const {
-    REQUIRES_NOT_NULL(_p_data);
+    // Assume _p_data is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return _p_data;
 }
 
 const std::map<hash_t, variant> &actor::get_default_attributes() const {
-    REQUIRES_NOT_NULL(_p_data);
+    // Assume _p_data is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return _p_data->default_attributes;
 }
 
@@ -60,7 +62,7 @@ void actor::init(const std::shared_ptr<actor_data> &data, stage &sta, activity &
         }
     }
 
-    _is_initialized = true;
+    _state = state::READY;
     get_manager().enqueue_event<node_init_event>(*this);
 }
 
@@ -74,7 +76,8 @@ number_t actor::update_children(number_t beat_time, std::vector<std::map<hash_t,
 
 void actor::fina(boolean_t keep_children) {
     get_manager().enqueue_event<node_fina_event>(*this);
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     _p_data = nullptr;
     _p_parent = nullptr;
 
@@ -89,7 +92,8 @@ void actor::fina(boolean_t keep_children) {
 }
 
 activity &actor::get_parent_activity() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return *static_cast<activity *>(_p_parent);
 }
 

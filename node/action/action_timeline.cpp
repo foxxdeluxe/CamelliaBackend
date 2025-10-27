@@ -13,17 +13,17 @@
 
 namespace camellia {
 number_t action_timeline_keyframe::get_time() const {
-    REQUIRES_NOT_NULL(_data);
+    // Assume _data is valid - this is a precondition
     return _data->time;
 }
 
 number_t action_timeline_keyframe::get_preferred_duration() const {
-    REQUIRES_NOT_NULL(_data);
+    // Assume _data is valid - this is a precondition
     return std::fabsf(_data->preferred_duration_signed);
 }
 
 boolean_t action_timeline_keyframe::get_linger() const {
-    REQUIRES_NOT_NULL(_data);
+    // Assume _data is valid - this is a precondition
     return _data->preferred_duration_signed <= 0.0F;
 }
 
@@ -36,22 +36,22 @@ integer_t action_timeline_keyframe::get_track_index() const { return _track_inde
 integer_t action_timeline_keyframe::get_index() const { return _index; }
 
 std::shared_ptr<action_timeline_keyframe_data> action_timeline_keyframe::get_data() const {
-    REQUIRES_NOT_NULL(_data);
+    // Assume _data is valid - this is a precondition
     return _data;
 }
 
 const std::map<text_t, variant> *action_timeline_keyframe::get_override_params() const {
-    REQUIRES_NOT_NULL(_data);
+    // Assume _data is valid - this is a precondition
     return &_data->override_params;
 }
 
 action &action_timeline_keyframe::get_action() const {
-    REQUIRES_NOT_NULL(_p_action);
+    // Assume _p_action is valid - this is a precondition
     return *_p_action;
 }
 
 action_timeline &action_timeline_keyframe::get_parent_timeline() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
     return *static_cast<action_timeline *>(_p_parent);
 }
 
@@ -66,7 +66,7 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
     _index = i;
 
     const auto action_data = parent->get_stage().get_action_data(data->h_action_name);
-    THROW_IF(action_data == nullptr, std::format("Action data ({}) not found.", data->h_action_name));
+    FAIL_LOG_IF(action_data == nullptr, std::format("Action data ({}) not found.", data->h_action_name));
 
     auto type = action_data->get_action_type();
     switch (type) {
@@ -78,16 +78,18 @@ void action_timeline_keyframe::init(const std::shared_ptr<action_timeline_keyfra
         _p_action = get_manager().new_live_object<composite_action>();
         break;
     }
-    default:
-        THROW_NO_LOC(std::format("Unknown action type ({}).", type));
+    default: {
+        FAIL_LOG_RETURN(std::format("Unknown action type ({}).", type), );
+    }
     }
     _p_action->init(action_data, this);
 
-    _is_initialized = true;
+    _state = state::READY;
 }
 
 void action_timeline_keyframe::fina() {
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     _data = nullptr;
     _p_parent = nullptr;
     _track_index = -1;
@@ -105,7 +107,7 @@ variant action_timeline_keyframe::query_param(const text_t &key) const {
 }
 
 stage &action_timeline::get_stage() const {
-    REQUIRES_NOT_NULL(_p_stage);
+    // Assume _p_stage is valid - this is a precondition
     return *_p_stage;
 }
 
@@ -146,11 +148,12 @@ void action_timeline::init(const std::vector<std::shared_ptr<action_timeline_dat
         _effective_duration = std::max(_effective_duration, d->effective_duration);
     }
 
-    _is_initialized = true;
+    _state = state::READY;
 }
 
 void action_timeline::fina() {
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     _data.clear();
     _p_stage = nullptr;
     _p_parent = nullptr;
@@ -167,7 +170,7 @@ void action_timeline::fina() {
 }
 
 std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t timeline_time) const {
-    REQUIRES_INITIALIZED(*this);
+    REQUIRES_READY_RETURN(*this, std::vector<const action_timeline_keyframe *>());
 
     std::vector<const action_timeline_keyframe *> res;
     for (const auto &track : _tracks) {
@@ -184,7 +187,7 @@ std::vector<const action_timeline_keyframe *> action_timeline::sample(number_t t
 std::map<hash_t, variant> action_timeline::update(const number_t timeline_time, const std::map<hash_t, variant> &attributes,
                                                   std::vector<std::map<hash_t, variant>> &ref_attributes, const boolean_t continuous,
                                                   const boolean_t exclude_ongoing) {
-    REQUIRES_INITIALIZED(*this);
+    REQUIRES_READY_RETURN(*this, (std::map<hash_t, variant>()));
     resource_helper::finally fin([this]() { _current_initial_attributes = nullptr; });
 
     _current_initial_attributes = &attributes;

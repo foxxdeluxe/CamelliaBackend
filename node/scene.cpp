@@ -9,13 +9,14 @@ void scene::init(integer_t scene_id, stage &parent_stage) {
     _scene_id = scene_id;
     _p_parent = &parent_stage;
 
-    _is_initialized = true;
+    _state = state::READY;
     get_manager().enqueue_event<node_init_event>(*this);
 }
 
 void scene::fina() {
     get_manager().enqueue_event<node_fina_event>(*this);
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
 
     // Clean up all activities
     for (auto &activity_pair : _activities) {
@@ -31,6 +32,7 @@ void scene::fina() {
 }
 
 void scene::set_beat(const std::shared_ptr<beat_data> &beat, number_t stage_time) {
+    REQUIRES_READY(*this);
     REQUIRES_NOT_NULL(beat);
     REQUIRES_VALID(*beat);
     REQUIRES_NOT_NULL(_p_parent);
@@ -84,7 +86,8 @@ number_t scene::get_beat_time() const { return _current_beat_time; }
 void scene::set_next_beat_time(number_t beat_time) { _next_beat_time = beat_time; }
 
 number_t scene::update(number_t stage_time) {
-    REQUIRES_NOT_NULL(_p_parent);
+    REQUIRES_READY_RETURN(*this, 0.0F);
+    REQUIRES_NOT_NULL_RETURN(_p_parent, 0.0F);
 
     if (_next_beat_time >= 0.0F) {
         // Time travel!
@@ -98,7 +101,7 @@ number_t scene::update(number_t stage_time) {
 
     // Update dialog
     auto *main_dialog = static_cast<stage *>(_p_parent)->get_main_dialog();
-    REQUIRES_NOT_NULL(main_dialog);
+    REQUIRES_NOT_NULL_RETURN(main_dialog, 0.0F);
     time_to_end = std::max(main_dialog->update(beat_time), time_to_end);
 
     // Update all activities and find the maximum time to end
@@ -113,7 +116,8 @@ number_t scene::update(number_t stage_time) {
 integer_t scene::get_scene_id() const { return _scene_id; }
 
 stage &scene::get_stage() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return *static_cast<stage *>(_p_parent);
 }
 

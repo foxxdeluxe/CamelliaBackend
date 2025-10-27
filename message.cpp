@@ -46,6 +46,12 @@ flatbuffers::Offset<void> node_attribute_dirty_event::to_flatbuffers(flatbuffers
     return fb::CreateNodeAttributeDirtyEvent(builder, base_node.o, builder.CreateVector(dirty_attributes_offset)).o;
 }
 
+flatbuffers::Offset<void> node_failure_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
+    auto base_node = node_event::to_flatbuffers(builder);
+    auto error_message_offset = builder.CreateString(error_message.c_str());
+    return fb::CreateNodeFailureEvent(builder, base_node.o, error_message_offset).o;
+}
+
 flatbuffers::Offset<void> log_event::to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const {
     auto message_offset = builder.CreateString(message.c_str());
     return fb::CreateLogEvent(builder, message_offset, static_cast<fb::LogLevel>(level)).o;

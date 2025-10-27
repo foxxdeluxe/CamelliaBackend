@@ -1,7 +1,6 @@
 ﻿#include <memory>
 
 #include "camellia_macro.h"
-#include "helper/algorithm_helper.h"
 #include "manager.h"
 #include "stage.h"
 
@@ -21,13 +20,15 @@ void stage::_set_beat(const std::shared_ptr<beat_data> &beat) {
 actor &stage::allocate_actor(integer_t aid, hash_t h_actor_type, integer_t parent_aid) {
     if (_actors.contains(aid)) {
         auto &actor = *_actors.at(aid);
-        THROW_IF(actor.is_initialized(), std::format("Tried to allocate an existing actor.\n"
-                                                     "Activity = {}",
-                                                     aid));
-        return *_actors.at(aid);
+        FAIL_LOG_IF_RETURN(actor.get_state() == node::state::READY,
+                           std::format("Tried to allocate an existing actor.\n"
+                                       "Activity = {}",
+                                       aid),
+                           actor);
+        return actor;
     }
     auto p_actor = get_manager().new_live_object<actor>();
-    _actors.insert({aid, std::move(p_actor)});
+    _actors.emplace(aid, std::move(p_actor));
     return *_actors.at(aid);
 }
 
@@ -38,6 +39,7 @@ void stage::collect_actor(integer_t aid) {
 }
 
 void stage::advance() {
+    REQUIRES_READY(*this);
     REQUIRES_NOT_NULL(_p_scenario);
 
     // Advance to next beat if available
@@ -54,14 +56,14 @@ void stage::fast_forward() {
 }
 
 std::shared_ptr<actor_data> stage::get_actor_data(const hash_t h_id) const {
-    REQUIRES_NOT_NULL(_p_scenario);
+    REQUIRES_NOT_NULL_RETURN(_p_scenario, nullptr);
 
     const auto it = _p_scenario->actors.find(h_id);
     return it == _p_scenario->actors.end() ? nullptr : it->second;
 }
 
 std::shared_ptr<action_data> stage::get_action_data(const hash_t h_id) const {
-    REQUIRES_NOT_NULL(_p_scenario);
+    REQUIRES_NOT_NULL_RETURN(_p_scenario, nullptr);
     const auto it = _p_scenario->actions.find(h_id);
     return it == _p_scenario->actions.end() ? nullptr : it->second;
 }
@@ -75,14 +77,15 @@ void stage::init(const std::shared_ptr<stage_data> &data, manager &parent) {
     _scenes.back()->init(_next_scene_id++, *this);
 
     get_main_dialog()->init(*this);
-    _is_initialized = true;
+    _state = state::READY;
 
     get_manager().enqueue_event<node_init_event>(*this);
 }
 
 void stage::fina() {
     get_manager().enqueue_event<node_fina_event>(*this);
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     get_main_dialog()->fina();
 
     // Clean up all scenes
@@ -100,8 +103,9 @@ void stage::fina() {
 }
 
 number_t stage::update(const number_t stage_time) {
+    REQUIRES_READY_RETURN(*this, 0.0F);
     auto *main_dialog = get_main_dialog();
-    REQUIRES_NOT_NULL(main_dialog);
+    REQUIRES_NOT_NULL_RETURN(main_dialog, 0.0F);
 
     _stage_time = stage_time;
 
@@ -110,13 +114,13 @@ number_t stage::update(const number_t stage_time) {
 }
 
 const std::string *stage::get_script_code(const hash_t h_script_name) const {
-    REQUIRES_NOT_NULL(_p_scenario);
+    REQUIRES_NOT_NULL_RETURN(_p_scenario, nullptr);
     const auto it = _p_scenario->scripts.find(h_script_name);
     return it == _p_scenario->scripts.end() ? nullptr : &it->second;
 }
 
 std::shared_ptr<text_style_data> stage::get_default_text_style() const {
-    REQUIRES_NOT_NULL(_p_scenario);
+    REQUIRES_NOT_NULL_RETURN(_p_scenario, nullptr);
     return _p_scenario->default_text_style;
 }
 

@@ -46,12 +46,16 @@ protected:
                     _dialogs[nde->node_handle][dirty_attribute.first] = *dirty_attribute.second;
                 }
             }
+        } else if (e.get_event_type() == EVENT_NODE_FAILURE) {
+            const auto *nfe = static_cast<const node_failure_event *>(&e);
+            _failures.emplace_back(nfe->node_handle, nfe->error_message);
         }
     }
 
     std::unique_ptr<manager> _manager;
     std::unique_ptr<stage> _stage;
     std::unordered_map<hash_t, std::unordered_map<hash_t, camellia::variant>> _dialogs;
+    std::vector<std::pair<hash_t, text_t>> _failures;
 };
 
 TEST_F(stage_test, simulation) {
@@ -333,6 +337,14 @@ end
     }
     _manager->clear_event_queue();
 
+    // Check for any failures
+    if (!_failures.empty()) {
+        for (const auto &failure : _failures) {
+            std::cout << "Node failure detected - Handle: " << failure.first << ", Error: " << failure.second << std::endl;
+        }
+    }
+    EXPECT_TRUE(_failures.empty()) << "Expected no node failures, but " << _failures.size() << " failure(s) occurred";
+
     ASSERT_EQ(_dialogs.size(), 1);
     EXPECT_EQ(_dialogs.begin()->second.at(algorithm_helper::calc_hash("text")), "test_text_1");
 
@@ -343,6 +355,14 @@ end
         on_event(*pevt);
     }
     _manager->clear_event_queue();
+
+    // Check for any failures
+    if (!_failures.empty()) {
+        for (const auto &failure : _failures) {
+            std::cout << "Node failure detected - Handle: " << failure.first << ", Error: " << failure.second << std::endl;
+        }
+    }
+    EXPECT_TRUE(_failures.empty()) << "Expected no node failures, but " << _failures.size() << " failure(s) occurred";
 
     std::cout << _dialogs.begin()->second.at(algorithm_helper::calc_hash("text")).get_text() << std::endl;
     ASSERT_EQ(_dialogs.size(), 1);

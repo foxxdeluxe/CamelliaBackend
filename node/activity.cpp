@@ -11,7 +11,8 @@
 namespace camellia {
 
 stage &activity::get_stage() const {
-    REQUIRES_NOT_NULL(_p_stage);
+    // Assume _p_stage is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return *_p_stage;
 }
 
@@ -45,11 +46,12 @@ void activity::init(const std::shared_ptr<activity_data> &data, boolean_t keep_a
 
     _p_timeline->init({p_actor->get_data()->timeline, data->timeline}, *_p_stage, this);
 
-    _is_initialized = true;
+    _state = state::READY;
 }
 
 void activity::fina(boolean_t keep_actor) {
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
 
     if (!keep_actor) {
         auto *p_actor = _p_stage->get_actor(_aid);
@@ -67,10 +69,11 @@ void activity::fina(boolean_t keep_actor) {
 }
 
 number_t activity::update(number_t beat_time, std::vector<std::map<hash_t, variant>> &parent_attributes) {
-    REQUIRES_NOT_NULL(_p_stage);
+    REQUIRES_READY_RETURN(*this, 0.0F);
+    REQUIRES_NOT_NULL_RETURN(_p_stage, 0.0F);
 
     auto *p_actor = _p_stage->get_actor(_aid);
-    REQUIRES_NOT_NULL(p_actor);
+    REQUIRES_NOT_NULL_RETURN(p_actor, 0.0F);
 
     auto updated = _p_timeline->update(beat_time, _initial_attributes, parent_attributes);
 

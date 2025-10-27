@@ -21,6 +21,7 @@ Checks: "*,
         -misc-no-recursion,
         -cppcoreguidelines-pro-type-static-cast-downcast,
         -cppcoreguidelines-avoid-magic-numbers,
+        -cppcoreguidelines-avoid-do-while,
 "
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

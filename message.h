@@ -23,7 +23,8 @@ enum event_types : char {
     EVENT_LOG = 5,
     EVENT_NODE_VISIBILITY_UPDATE = 6,
     EVENT_NODE_ATTRIBUTE_DIRTY = 7,
-    EVENT_TYPE_MAX = 8
+    EVENT_NODE_FAILURE = 8,
+    EVENT_TYPE_MAX = 9
 };
 
 struct event {
@@ -76,6 +77,14 @@ struct node_attribute_dirty_event : public node_event {
         : node_event(n), dirty_attributes(std::move(dirty_attributes)) {}
     [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
     [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_ATTRIBUTE_DIRTY; }
+};
+
+struct node_failure_event : public node_event {
+    text_t error_message;
+
+    explicit node_failure_event(const node &n, text_t error_message) : node_event(n), error_message(std::move(error_message)) {}
+    [[nodiscard]] flatbuffers::Offset<void> to_flatbuffers(flatbuffers::FlatBufferBuilder &builder) const override;
+    [[nodiscard]] event_types get_event_type() const override { return EVENT_NODE_FAILURE; }
 };
 
 struct log_event : public event {

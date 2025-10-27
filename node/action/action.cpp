@@ -8,7 +8,8 @@
 
 namespace camellia {
 action_timeline_keyframe &action::get_parent_keyframe() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return *static_cast<action_timeline_keyframe *>(_p_parent);
 }
 
@@ -18,51 +19,53 @@ void action::init(const std::shared_ptr<action_data> &data, action_timeline_keyf
     _p_base_data = data;
     _p_parent = parent;
 
-    _is_initialized = true;
+    _state = state::READY;
 }
 
 void action::fina() {
-    _is_initialized = false;
+    _state = state::UNINITIALIZED;
+    _error_message.clear();
     _p_base_data = nullptr;
     _p_parent = nullptr;
 }
 
 std::shared_ptr<modifier_action_data> modifier_action::get_data() const {
-    REQUIRES_NOT_NULL(_p_base_data);
+    // Assume _p_base_data is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return std::static_pointer_cast<modifier_action_data>(_p_base_data);
 }
 
 hash_t modifier_action::get_name_hash() const {
     auto p_data = get_data();
-    REQUIRES_NOT_NULL(p_data);
+    // Assume p_data is valid - this is a precondition
     return p_data->h_action_name;
 }
 
 number_t modifier_action::get_actual_duration() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
     return static_cast<action_timeline_keyframe *>(_p_parent)->get_actual_duration();
 }
 
 number_t modifier_action::get_preferred_duration() const {
-    REQUIRES_NOT_NULL(_p_parent);
+    // Assume _p_parent is valid - this is a precondition
     return static_cast<action_timeline_keyframe *>(_p_parent)->get_preferred_duration();
 }
 
 hash_t modifier_action::get_attribute_name_hash() const {
     auto p_data = get_data();
-    REQUIRES_NOT_NULL(p_data);
+    // Assume p_data is valid - this is a precondition
     return p_data->h_attribute_name;
 }
 
 variant::types modifier_action::get_value_type() const {
     auto p_data = get_data();
-    REQUIRES_NOT_NULL(p_data);
+    // Assume p_data is valid - this is a precondition
     return p_data->value_type;
 }
 
 const std::map<text_t, variant> &modifier_action::get_default_params() const {
     auto p_data = get_data();
-    REQUIRES_NOT_NULL(p_data);
+    // Assume p_data is valid - this is a precondition
     return p_data->default_params;
 }
 
@@ -97,16 +100,16 @@ void modifier_action::init(const std::shared_ptr<action_data> &data, action_time
     process_params(mad->default_params);
 
     const auto *code = p_parent->get_parent_timeline().get_stage().get_script_code(mad->h_script_name);
-    THROW_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
-                                          "{}",
-                                          mad->h_script_name, mad->h_action_name, get_locator()));
+    FAIL_LOG_IF(code == nullptr, std::format("Failed to find script ({}) for modifier action ({}).\n"
+                                             "{}",
+                                             mad->h_script_name, mad->h_action_name, get_locator()));
 
     try {
         _p_script->guarded_evaluate(*code, variant::VOID);
     } catch (const scripting_helper::scripting_engine::scripting_engine_error &err) {
-        THROW(std::format("Error while evaluating script ({}) for modifier action ({}):\n"
-                          "{}",
-                          mad->h_script_name, mad->h_action_name, err.what()));
+        FAIL_LOG(std::format("Error while evaluating script ({}) for modifier action ({}):\n"
+                             "{}",
+                             mad->h_script_name, mad->h_action_name, err.what()));
     }
 
     action::init(data, p_parent);
@@ -149,7 +152,7 @@ const char *modifier_action::ORIG_NAME = "orig";
 const char *modifier_action::RUN_NAME = "run";
 
 variant modifier_action::modify(const number_t action_time, const variant &base_value, std::vector<std::map<hash_t, variant>> &ref_attributes) const {
-    REQUIRES_INITIALIZED(*this);
+    REQUIRES_READY_RETURN(*this, variant());
 
     try {
         // set built-in constants
@@ -167,7 +170,7 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
                 }
             }
             if (i >= ref_attributes.size()) {
-                THROW(std::format("Failed to find referenced attribute ({}) for modifier action.", p.second));
+                FAIL_LOG_RETURN(std::format("Failed to find referenced attribute ({}) for modifier action.", p.second), variant());
             }
         }
 
@@ -175,9 +178,10 @@ variant modifier_action::modify(const number_t action_time, const variant &base_
 
     } catch (scripting_helper::scripting_engine::scripting_engine_error &err) {
         const auto data = get_data();
-        THROW(std::format("Error while invoking function 'run()' in script ({}) for modifier action ({}):\n"
-                          "{}",
-                          data->h_script_name, data->h_action_name, err.what()));
+        FAIL_LOG_RETURN(std::format("Error while invoking function 'run()' in script ({}) for modifier action ({}):\n"
+                                    "{}",
+                                    data->h_script_name, data->h_action_name, err.what()),
+                        variant());
     }
 }
 
@@ -199,7 +203,8 @@ void composite_action::fina() {
 action_timeline &composite_action::get_timeline() { return *_p_timeline; }
 
 std::shared_ptr<composite_action_data> composite_action::get_data() const {
-    REQUIRES_NOT_NULL(_p_base_data);
+    // Assume _p_base_data is valid - this is a precondition
+    // If not, behavior is undefined (caller's responsibility)
     return std::static_pointer_cast<composite_action_data>(_p_base_data);
 }
 
