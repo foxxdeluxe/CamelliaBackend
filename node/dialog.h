@@ -37,7 +37,6 @@ private:
     std::shared_ptr<dialog_data> _current{nullptr};
     std::unique_ptr<scripting_helper::scripting_engine> _p_transition_script;
     number_t total_duration{};
-    std::unique_ptr<algorithm_helper::bbcode> _p_bbcode;
     attribute_registry _attributes;
 };
 

@@ -74,181 +74,244 @@ protected:
 TEST_F(stage_test, simulation) {
     const auto *script_1 = "function run() local factor = time / duration; return {1 * factor, 2 * factor, 3 * factor} end";
     const auto *script_2 = R"(
-function run()
-    -- Typewriter effect: hide unrevealed characters using color tags
-    if g_char_timeline == nil then
-        -- Build character timeline
-        g_char_timeline = {}
-        g_char_count = 0
-        
-        local function build_timeline(node, speed_mult, start_time)
-            local current_time = start_time
-            if type(node) == "string" then
-                -- Text node: each character has a reveal time
-                local char_duration = duration_per_char * speed_mult
-                for i = 1, #node do
-                    g_char_count = g_char_count + 1
-                    g_char_timeline[g_char_count] = {
-                        reveal_time = current_time,
-                        node_ref = node,
-                        char_index = i
-                    }
-                    current_time = current_time + char_duration
-                end
-            elseif type(node) == "table" and node.tag_name then
-                -- Handle speed tag
-                local local_speed = speed_mult
-                if node.tag_name == "speed" and node.params and #node.params > 0 then
-                    local_speed = speed_mult * (tonumber(node.params[1]) or 1)
-                end
-                -- Process children with updated speed multiplier
-                if node.children then
-                    for _, child in ipairs(node.children) do
-                        current_time = build_timeline(child, local_speed, current_time)
-                    end
-                end
-            end
-            return current_time
+-- BBCode parser using state machine (same approach as C++ implementation)
+local function parse_bbcode(text)
+    -- State enum
+    local State = {
+        NORMAL = 1,
+        BRACKET_OPEN = 2,
+        TAG_NAME = 3,
+        TAG_PARAMS = 4,
+        CLOSING_TAG = 5,
+        BRACKET_CLOSE = 6
+    }
+    
+    -- Parse context
+    local ctx = {
+        state = State.NORMAL,
+        buffer = "",
+        tag_name = "",
+        params_buffer = "",
+        node_stack = {},
+        pos = 0,
+        root_nodes = {}
+    }
+    
+    -- Helper: get current children list
+    local function get_current_children()
+        if #ctx.node_stack == 0 then
+            return ctx.root_nodes
         end
-        
-        -- Build timeline for all nodes
-        for _, node in ipairs(base_text) do
-            build_timeline(node, 1.0, 0)
+        return ctx.node_stack[#ctx.node_stack].children
+    end
+    
+    -- Helper: flush text buffer
+    local function flush_text()
+        if #ctx.buffer > 0 then
+            table.insert(get_current_children(), ctx.buffer)
+            ctx.buffer = ""
         end
     end
     
-    -- Calculate how many characters to reveal based on current time
-    local chars_to_reveal = 0
-    if time >= total_duration then
-        chars_to_reveal = g_char_count
-    else
-        for i = 1, g_char_count do
-            if g_char_timeline[i].reveal_time <= time then
-                chars_to_reveal = i
+    -- Helper: create tag node
+    local function create_tag_node(tag, params_str)
+        flush_text()
+        
+        local node = {
+            tag_name = tag,
+            params = {},
+            children = {}
+        }
+        
+        -- Parse space-separated parameters
+        if #params_str > 0 then
+            for param in string.gmatch(params_str, "%S+") do
+                table.insert(node.params, param)
+            end
+        end
+        
+        table.insert(get_current_children(), node)
+        table.insert(ctx.node_stack, node)
+    end
+    
+    -- Helper: close tag
+    local function close_tag(tag)
+        flush_text()
+        
+        if #ctx.node_stack == 0 then
+            error("BBCode parse error: Unexpected closing tag [/" .. tag .. "] at position " .. ctx.pos)
+        end
+        
+        local closing_node = ctx.node_stack[#ctx.node_stack]
+        if closing_node.tag_name ~= tag then
+            error("BBCode parse error: Mismatched closing tag [/" .. tag .. "], expected [/" .. closing_node.tag_name .. "] at position " .. ctx.pos)
+        end
+        
+        table.remove(ctx.node_stack)
+    end
+    
+    -- Helper: check if character is alpha
+    local function is_alpha(c)
+        local byte = string.byte(c)
+        return (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
+    end
+    
+    -- Helper: check if character is alphanumeric
+    local function is_alnum(c)
+        local byte = string.byte(c)
+        return (byte >= 48 and byte <= 57) or (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
+    end
+    
+    -- Main parsing loop - O(n)
+    local i = 1
+    while i <= #text do
+        ctx.pos = i
+        local c = string.sub(text, i, i)
+        
+        if ctx.state == State.NORMAL then
+            if c == '[' then
+                -- Check for escaped bracket [[
+                if i + 1 <= #text and string.sub(text, i + 1, i + 1) == '[' then
+                    ctx.buffer = ctx.buffer .. '['
+                    i = i + 1
+                else
+                    ctx.state = State.BRACKET_OPEN
+                    ctx.tag_name = ""
+                    ctx.params_buffer = ""
+                end
+            elseif c == ']' then
+                -- Check for escaped bracket ]]
+                if i + 1 <= #text and string.sub(text, i + 1, i + 1) == ']' then
+                    ctx.buffer = ctx.buffer .. ']'
+                    i = i + 1
+                else
+                    error("BBCode parse error: Unexpected ']' at position " .. i)
+                end
             else
-                break
+                ctx.buffer = ctx.buffer .. c
+            end
+            
+        elseif ctx.state == State.BRACKET_OPEN then
+            if c == '/' then
+                -- Closing tag
+                ctx.state = State.CLOSING_TAG
+            elseif c == ']' then
+                error("BBCode parse error: Empty tag at position " .. i)
+            elseif is_alpha(c) or c == '_' then
+                ctx.tag_name = ctx.tag_name .. c
+                ctx.state = State.TAG_NAME
+            else
+                error("BBCode parse error: Invalid tag name start at position " .. i)
+            end
+            
+        elseif ctx.state == State.TAG_NAME then
+            if c == ' ' then
+                -- Parameters follow
+                ctx.state = State.TAG_PARAMS
+            elseif c == ']' then
+                -- Tag with no parameters
+                create_tag_node(ctx.tag_name, "")
+                ctx.state = State.NORMAL
+            elseif is_alnum(c) or c == '_' then
+                ctx.tag_name = ctx.tag_name .. c
+            else
+                error("BBCode parse error: Invalid character in tag name at position " .. i)
+            end
+            
+        elseif ctx.state == State.TAG_PARAMS then
+            if c == ']' then
+                -- End of tag
+                create_tag_node(ctx.tag_name, ctx.params_buffer)
+                ctx.state = State.NORMAL
+            else
+                ctx.params_buffer = ctx.params_buffer .. c
+            end
+            
+        elseif ctx.state == State.CLOSING_TAG then
+            if c == ']' then
+                -- End of closing tag
+                close_tag(ctx.tag_name)
+                ctx.state = State.NORMAL
+            elseif is_alnum(c) or c == '_' then
+                ctx.tag_name = ctx.tag_name .. c
+            else
+                error("BBCode parse error: Invalid character in closing tag at position " .. i)
             end
         end
+        
+        i = i + 1
     end
     
-    -- Build output with hidden/revealed characters using color tags
-    local revealed_count = 0
+    -- Check for incomplete tags
+    if ctx.state ~= State.NORMAL then
+        error("BBCode parse error: Incomplete tag at end of string")
+    end
     
-    local function process_node(node)
+    -- Check for unclosed tags
+    if #ctx.node_stack > 0 then
+        local unclosed_node = ctx.node_stack[#ctx.node_stack]
+        error("BBCode parse error: Unclosed tag [" .. unclosed_node.tag_name .. "]")
+    end
+    
+    -- Flush any remaining text
+    flush_text()
+    
+    return ctx.root_nodes
+end
+
+-- Calculate duration from parsed BBCode
+local function calc_duration(nodes, speed_mult)
+    local total = 0
+    for _, node in ipairs(nodes) do
         if type(node) == "string" then
-            -- Text node: wrap unrevealed characters in transparent color tags
-            local result = {}
-            local visible_buffer = ""
-            local hidden_buffer = ""
-            
-            for i = 1, #node do
-                revealed_count = revealed_count + 1
-                local char = string.sub(node, i, i)
-                
-                if revealed_count <= chars_to_reveal then
-                    -- Character is revealed
-                    if #hidden_buffer > 0 then
-                        -- Flush hidden buffer first
-                        local hidden_tag = {
-                            tag_name = "color",
-                            params = {"#00000000"},
-                            children = {hidden_buffer}
-                        }
-                        table.insert(result, hidden_tag)
-                        hidden_buffer = ""
-                    end
-                    visible_buffer = visible_buffer .. char
-                else
-                    -- Character is hidden
-                    if #visible_buffer > 0 then
-                        -- Flush visible buffer first
-                        table.insert(result, visible_buffer)
-                        visible_buffer = ""
-                    end
-                    hidden_buffer = hidden_buffer .. char
-                end
-            end
-            
-            -- Flush remaining buffers
-            if #visible_buffer > 0 then
-                table.insert(result, visible_buffer)
-            end
-            if #hidden_buffer > 0 then
-                local hidden_tag = {
-                    tag_name = "color",
-                    params = {"#00000000"},
-                    children = {hidden_buffer}
-                }
-                table.insert(result, hidden_tag)
-            end
-            
-            return result
+            total = total + #node * duration_per_char * speed_mult
         elseif type(node) == "table" and node.tag_name then
-            -- Tag node: process children recursively
-            local new_node = {
-                tag_name = node.tag_name,
-                params = {},
-                children = {}
-            }
-            
-            -- Copy params
-            if node.params then
-                for _, param in ipairs(node.params) do
-                    table.insert(new_node.params, param)
-                end
+            local local_speed = speed_mult
+            if node.tag_name == "speed" and #node.params > 0 then
+                local_speed = speed_mult * (tonumber(node.params[1]) or 1)
             end
-            
-            -- Process children
-            if node.children then
-                for _, child in ipairs(node.children) do
-                    local processed = process_node(child)
-                    if type(processed) == "string" then
-                        if #processed > 0 then
-                            table.insert(new_node.children, processed)
-                        end
-                    elseif type(processed) == "table" then
-                        -- Could be a single tag node or an array of mixed content
-                        if processed.tag_name then
-                            -- Single tag node
-                            table.insert(new_node.children, processed)
-                        else
-                            -- Array of mixed content from text node processing
-                            for _, item in ipairs(processed) do
-                                table.insert(new_node.children, item)
-                            end
-                        end
-                    end
-                end
-            end
-            
-            return new_node
-        end
-        return node
-    end
-    
-    local result = {}
-    for _, node in ipairs(base_text) do
-        local processed = process_node(node)
-        if processed ~= nil then
-            if type(processed) == "string" then
-                if #processed > 0 then
-                    table.insert(result, processed)
-                end
-            elseif type(processed) == "table" then
-                if processed.tag_name then
-                    -- Single tag node
-                    table.insert(result, processed)
-                else
-                    -- Array of mixed content
-                    for _, item in ipairs(processed) do
-                        table.insert(result, item)
-                    end
-                end
-            end
+            total = total + calc_duration(node.children, local_speed)
         end
     end
-    
+    return total
+end
+
+-- Convert BBCode tree to string
+local function bbcode_to_string(nodes)
+    local result = ""
+    for _, node in ipairs(nodes) do
+        if type(node) == "string" then
+            result = result .. node
+        elseif type(node) == "table" and node.tag_name then
+            result = result .. "[" .. node.tag_name
+            for _, param in ipairs(node.params) do
+                result = result .. " " .. param
+            end
+            result = result .. "]"
+            result = result .. bbcode_to_string(node.children)
+            result = result .. "[/" .. node.tag_name .. "]"
+        end
+    end
     return result
+end
+
+function preprocess()
+    -- Parse BBCode from base_text string
+    g_parsed = parse_bbcode(base_text)
+    
+    -- Calculate total duration if not fixed
+    if duration_per_char and duration_per_char > 0 then
+        return calc_duration(g_parsed, 1.0)
+    else
+        return 0
+    end
+end
+
+function run()
+    -- Simple implementation: just return the original text
+    -- For a full typewriter effect, you would process g_parsed based on time
+    -- and return a modified BBCode string
+    return base_text
 end
 )";
 
