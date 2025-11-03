@@ -100,7 +100,7 @@ variant scripting_engine::_lua_value_to_value(int stack_index, variant::types re
         }
         case LUA_TTABLE: {
             // Try to distinguish between array and dictionary
-            size_t len = lua_objlen(_p_state, stack_index);
+            size_t len = lua_rawlen(_p_state, stack_index);
 
             // Check if it's an array-like table (consecutive integer keys starting from 1)
             bool is_array = true;
@@ -143,7 +143,7 @@ variant scripting_engine::_lua_value_to_value(int stack_index, variant::types re
         return {};
     case variant::INTEGER: {
         if (lua_isnumber(_p_state, stack_index) != 0) {
-            return {static_cast<integer_t>(lua_tointeger(_p_state, stack_index))};
+            return {static_cast<integer_t>(lua_tonumber(_p_state, stack_index))};
         }
         return {get_type_mismatch_msg(variant::INTEGER), true};
     }
@@ -154,7 +154,7 @@ variant scripting_engine::_lua_value_to_value(int stack_index, variant::types re
         return {get_type_mismatch_msg(variant::NUMBER), true};
     }
     case variant::BOOLEAN: {
-        if (lua_isboolean(_p_state, stack_index)) {
+        if (lua_type(_p_state, stack_index) == LUA_TBOOLEAN) {
             return {static_cast<boolean_t>(lua_toboolean(_p_state, stack_index))};
         }
         return {get_type_mismatch_msg(variant::BOOLEAN), true};
@@ -207,7 +207,7 @@ variant scripting_engine::_lua_value_to_value(int stack_index, variant::types re
         }
 
         std::vector<variant> array;
-        size_t len = lua_objlen(_p_state, stack_index);
+        size_t len = lua_rawlen(_p_state, stack_index);
         array.reserve(len);
 
         for (size_t i = 1; i <= len; i++) {
@@ -353,7 +353,7 @@ bool scripting_engine::_table_to_vector(int stack_index, number_t *data, integer
     }
 
     // Check table length
-    size_t len = lua_objlen(_p_state, stack_index);
+    size_t len = lua_rawlen(_p_state, stack_index);
     if (len < element_count) {
         return false;
     }

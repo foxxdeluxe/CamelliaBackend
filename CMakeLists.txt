@@ -24,9 +24,8 @@ else()
     message(STATUS "IPO not supported: \n${IPO_OUTPUT}")
 endif()
 
-# LuaJIT
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LUAJIT REQUIRED IMPORTED_TARGET luajit)
+# Lua
+find_package(Lua 5.4 REQUIRED)
 
 # xxHash
 find_package(xxHash CONFIG REQUIRED)
@@ -95,8 +94,8 @@ add_library(
 # Link libraries in correct order (dependencies matter)
 target_link_libraries(
     CamelliaBackendDeps INTERFACE
-    # LuaJIT
-    PkgConfig::LUAJIT
+    # Lua
+    ${LUA_LIBRARIES}
     # xxHash
     xxHash::xxhash
     # FlatBuffers
