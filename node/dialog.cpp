@@ -50,7 +50,11 @@ void dialog::advance(const std::shared_ptr<dialog_data> &data) {
 
             auto fixed_duration = data->transition_duration >= 0.0F;
             _p_transition_script->set_property("is_duration_fixed", fixed_duration);
-            _p_transition_script->set_property("duration_per_char", !fixed_duration ? -data->transition_duration : -1.0F);
+            if (fixed_duration) {
+                _p_transition_script->set_property("total_duration", data->transition_duration);
+            } else {
+                _p_transition_script->set_property("duration_per_char", -data->transition_duration);
+            }
             _p_transition_script->set_property("base_text", data->dialog_text);
             _p_transition_script->guarded_evaluate(*p_transition_code, variant::VOID);
 

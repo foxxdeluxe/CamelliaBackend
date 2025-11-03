@@ -74,7 +74,7 @@ protected:
 TEST_F(stage_test, simulation) {
     const auto *script_1 = "function run() local factor = time / duration; return {1 * factor, 2 * factor, 3 * factor} end";
     const auto *script_2 = R"(
--- BBCode parser using state machine (same approach as C++ implementation)
+-- BBCode parser
 local function parse_bbcode(text)
     -- State enum
     local State = {
@@ -307,11 +307,103 @@ function preprocess()
     end
 end
 
+-- Apply transparency to BBCode tree based on character budget
+-- Returns modified nodes where unrevealed characters are wrapped in [color #00000000]
+local function apply_transparency(nodes, budget, speed_mult)
+    local result = {}
+    local remaining = budget
+    
+    for _, node in ipairs(nodes) do
+        if type(node) == "string" then
+            -- Plain text node
+            local char_cost = #node * duration_per_char * speed_mult
+            if remaining >= char_cost then
+                -- All characters visible
+                table.insert(result, node)
+                remaining = remaining - char_cost
+            elseif remaining <= 0 then
+                -- All characters transparent
+                local transparent_node = {
+                    tag_name = "color",
+                    params = {"#00000000"},
+                    children = {node}
+                }
+                table.insert(result, transparent_node)
+            else
+                -- Partial visibility - split the string
+                local chars_to_show = math.floor(remaining / (duration_per_char * speed_mult))
+                if chars_to_show > 0 then
+                    local visible_part = string.sub(node, 1, chars_to_show)
+                    local hidden_part = string.sub(node, chars_to_show + 1)
+                    
+                    -- Add visible part
+                    table.insert(result, visible_part)
+                    
+                    -- Add transparent part
+                    if #hidden_part > 0 then
+                        local transparent_node = {
+                            tag_name = "color",
+                            params = {"#00000000"},
+                            children = {hidden_part}
+                        }
+                        table.insert(result, transparent_node)
+                    end
+                else
+                    -- No characters to show, all transparent
+                    local transparent_node = {
+                        tag_name = "color",
+                        params = {"#00000000"},
+                        children = {node}
+                    }
+                    table.insert(result, transparent_node)
+                end
+                remaining = 0
+            end
+        elseif type(node) == "table" and node.tag_name then
+            -- Tag node
+            local local_speed = speed_mult
+            if node.tag_name == "speed" and #node.params > 0 then
+                local_speed = speed_mult * (tonumber(node.params[1]) or 1)
+            end
+            
+            local modified_children, child_remaining = apply_transparency(node.children, remaining, local_speed)
+            
+            -- Always include the node, even if all children are transparent
+            local new_node = {
+                tag_name = node.tag_name,
+                params = node.params,
+                children = modified_children
+            }
+            table.insert(result, new_node)
+            
+            remaining = child_remaining
+        end
+    end
+    
+    return result, remaining
+end
+
 function run()
-    -- Simple implementation: just return the original text
-    -- For a full typewriter effect, you would process g_parsed based on time
-    -- and return a modified BBCode string
-    return base_text
+    -- Handle fixed duration case
+    if is_duration_fixed then
+        if time >= total_duration then
+            return base_text
+        else
+            -- For fixed duration, scale time proportionally
+            local budget = (time / total_duration) * calc_duration(g_parsed, 1.0)
+            local modified = apply_transparency(g_parsed, budget, 1.0)
+            return bbcode_to_string(modified)
+        end
+    end
+    
+    -- Handle duration per character case
+    if time >= calc_duration(g_parsed, 1.0) then
+        return base_text
+    end
+    
+    -- Apply transparency based on current time budget
+    local modified = apply_transparency(g_parsed, time, 1.0)
+    return bbcode_to_string(modified)
 end
 )";
 
