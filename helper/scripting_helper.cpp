@@ -9,10 +9,16 @@ const size_t scripting_engine::MEMORY_LIMIT = 10'000'000;
 const size_t scripting_engine::INSTRUCTION_LIMIT = 100'000;
 const size_t scripting_engine::INSTRUCTION_HOOK_GRANULARITY = 1000;
 const char scripting_engine::ENGINE_KEY = 'e';
-std::unordered_map<lua_State *, scripting_engine *> scripting_engine::_engine_map;
 
 void *scripting_engine::_lua_allocator(void *ud, void *ptr, size_t osize, size_t nsize) {
     auto *p_engine = static_cast<scripting_engine *>(ud);
+
+    if (ptr == nullptr) {
+        // When ptr is null, osize encodes the type of the object to be allocated
+        // The actual original size here should be 0 instead
+        // https://www.lua.org/manual/5.4/manual.html#lua_Alloc
+        osize = 0;
+    }
 
     if (nsize == 0) {
         // Free memory
@@ -40,10 +46,10 @@ void *scripting_engine::_lua_allocator(void *ud, void *ptr, size_t osize, size_t
 void scripting_engine::_instruction_callback(lua_State *L, lua_Debug *ar) {
     (void)ar;
 
-    auto *p_engine = _engine_map[L];
+    auto *p_engine = *static_cast<scripting_engine **>(lua_getextraspace(L));
     p_engine->instruction_budget -= INSTRUCTION_HOOK_GRANULARITY;
     if (p_engine->instruction_budget <= 0) {
-        luaL_error(L, "Script execution timeout: instruction limit exceeded");
+        luaL_error(L, "instruction limit exceeded");
     }
 }
 
@@ -51,7 +57,8 @@ scripting_engine::scripting_engine() : _p_state(lua_newstate(_lua_allocator, thi
     if (_p_state == nullptr) {
         throw scripting_engine_error(text_t("Failed to create Lua state"));
     }
-    _engine_map[_p_state] = this;
+    auto *ex = static_cast<scripting_engine **>(lua_getextraspace(_p_state));
+    *ex = this;
 
     // Open standard libraries
     luaL_openlibs(_p_state);
@@ -63,7 +70,6 @@ scripting_engine::scripting_engine() : _p_state(lua_newstate(_lua_allocator, thi
 scripting_engine::~scripting_engine() {
     if (_p_state != nullptr) {
         lua_close(_p_state);
-        _engine_map.erase(_p_state);
         _p_state = nullptr;
     }
 }
@@ -449,6 +455,8 @@ void scripting_engine::set_property(const std::string &prop_name, const variant 
     _value_to_lua_value(prop_val);
     lua_setglobal(_p_state, prop_name.c_str());
 }
+
+void scripting_engine::collect_garbage() { lua_gc(_p_state, LUA_GCCOLLECT, 0); }
 
 const char *scripting_engine::scripting_engine_error::what() const noexcept { return msg.c_str(); }
 

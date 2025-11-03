@@ -23,6 +23,7 @@ public:
     variant guarded_evaluate(const std::string &code, variant::types result_type);
     variant guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type);
     void set_property(const std::string &prop_name, const variant &prop_val);
+    void collect_garbage();
 
     scripting_engine(const scripting_engine &other) = delete;
     scripting_engine &operator=(const scripting_engine &other) = delete;
@@ -45,10 +46,8 @@ private:
     const static size_t INSTRUCTION_HOOK_GRANULARITY;
     const static char ENGINE_KEY;
 
-    static std::unordered_map<lua_State *, scripting_engine *> _engine_map;
-
+    // The following 3 fields' order matters, as the first 2 must be initialized before lua_newstate is called!
     size_t instruction_budget{0};
-    // The following 2 fields can't swap positions, as memory_usage must be initialized before lua_newstate is called!
     size_t memory_usage{0};
     lua_State *_p_state{nullptr};
 

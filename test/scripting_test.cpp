@@ -28,6 +28,16 @@ TEST(scripting_text_suite, infinite_loop) {
     ASSERT_THROW(engine.guarded_evaluate("while true do end", variant::VOID), scripting_helper::scripting_engine::scripting_engine_error);
 }
 
+TEST(scripting_text_suite, not_enough_calls) {
+    auto engine = scripting_helper::scripting_engine();
+    ASSERT_NO_THROW(engine.guarded_evaluate("function run() local factor = time / duration; return {1 * factor, 2 * factor, 3 * factor} end", variant::VOID));
+    engine.set_property("duration", variant(1000));
+    for (int i = 0; i < 1e6; i++) {
+        engine.set_property("time", variant(i));
+        ASSERT_NO_THROW(engine.guarded_invoke("run", 0, nullptr, variant::VECTOR3));
+    }
+}
+
 TEST(scripting_text_suite, lua_value_from_to_value) {
     auto engine = scripting_helper::scripting_engine();
     variant res;
