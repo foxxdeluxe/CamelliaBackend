@@ -6,57 +6,64 @@
 
 namespace camellia::scripting_helper {
 const size_t scripting_engine::MEMORY_LIMIT = 10'000'000;
-size_t scripting_engine::current_memory_usage = 0;
+const size_t scripting_engine::INSTRUCTION_LIMIT = 100'000;
+const size_t scripting_engine::INSTRUCTION_HOOK_GRANULARITY = 1000;
+const char scripting_engine::ENGINE_KEY = 'e';
+std::unordered_map<lua_State *, scripting_engine *> scripting_engine::_engine_map;
 
 void *scripting_engine::_lua_allocator(void *ud, void *ptr, size_t osize, size_t nsize) {
-    (void)ud;
+    auto *p_engine = static_cast<scripting_engine *>(ud);
 
     if (nsize == 0) {
         // Free memory
         if (ptr != nullptr) {
-            current_memory_usage -= osize;
+            p_engine->memory_usage -= osize;
             free(ptr);
         }
         return nullptr;
     }
 
     // Check memory limit
-    size_t new_usage = current_memory_usage - osize + nsize;
+    size_t new_usage = p_engine->memory_usage - osize + nsize;
     if (new_usage > MEMORY_LIMIT) {
         return nullptr; // Out of memory
     }
 
     void *new_ptr = realloc(ptr, nsize);
     if (new_ptr != nullptr) {
-        current_memory_usage = new_usage;
+        p_engine->memory_usage = new_usage;
     }
 
     return new_ptr;
 }
 
-scripting_engine::scripting_engine() : _p_state(lua_newstate(_lua_allocator, nullptr)) {
-    // Create Lua state with custom allocator for memory limiting
+void scripting_engine::_instruction_callback(lua_State *L, lua_Debug *ar) {
+    (void)ar;
 
+    auto *p_engine = _engine_map[L];
+    p_engine->instruction_budget -= INSTRUCTION_HOOK_GRANULARITY;
+    if (p_engine->instruction_budget <= 0) {
+        luaL_error(L, "Script execution timeout: instruction limit exceeded");
+    }
+}
+
+scripting_engine::scripting_engine() : _p_state(lua_newstate(_lua_allocator, this)) {
     if (_p_state == nullptr) {
         throw scripting_engine_error(text_t("Failed to create Lua state"));
     }
+    _engine_map[_p_state] = this;
 
     // Open standard libraries
     luaL_openlibs(_p_state);
 
     // Set up memory and execution limits
-    lua_sethook(
-        _p_state,
-        [](lua_State *L, lua_Debug *ar) {
-            (void)ar;
-            luaL_error(L, "script execution timeout or stack overflow");
-        },
-        LUA_MASKCOUNT, 100000); // Instruction count limit
+    lua_sethook(_p_state, _instruction_callback, LUA_MASKCOUNT, INSTRUCTION_HOOK_GRANULARITY); // Instruction count limit
 }
 
 scripting_engine::~scripting_engine() {
     if (_p_state != nullptr) {
         lua_close(_p_state);
+        _engine_map.erase(_p_state);
         _p_state = nullptr;
     }
 }
@@ -374,6 +381,8 @@ scripting_engine::scripting_engine_error scripting_engine::_get_error() {
 }
 
 variant scripting_engine::guarded_evaluate(const std::string &code, variant::types result_type) {
+    instruction_budget = INSTRUCTION_LIMIT;
+
     // Load and compile the code
     int load_result = luaL_loadstring(_p_state, code.c_str());
     if (load_result != 0) {
@@ -402,6 +411,8 @@ variant scripting_engine::guarded_evaluate(const std::string &code, variant::typ
 }
 
 variant scripting_engine::guarded_invoke(const std::string &func_name, int argc, variant *argv, variant::types result_type) {
+    instruction_budget = INSTRUCTION_LIMIT;
+
     // Get the function from global table
     lua_getglobal(_p_state, func_name.c_str());
 

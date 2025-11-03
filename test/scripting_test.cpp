@@ -22,6 +22,12 @@ TEST(scripting_text_suite, out_of_memory) {
     ASSERT_THROW(engine.guarded_evaluate("s = string.rep('a', 10000000)", variant::VOID), scripting_helper::scripting_engine::scripting_engine_error);
 }
 
+TEST(scripting_text_suite, infinite_loop) {
+    auto engine = scripting_helper::scripting_engine();
+    // Making a infinite loop will exceed instruction limit
+    ASSERT_THROW(engine.guarded_evaluate("while true do end", variant::VOID), scripting_helper::scripting_engine::scripting_engine_error);
+}
+
 TEST(scripting_text_suite, lua_value_from_to_value) {
     auto engine = scripting_helper::scripting_engine();
     variant res;
